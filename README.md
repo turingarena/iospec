@@ -70,7 +70,7 @@ Features:
 
 * statically-typed variables,
 * I/O instructions (`read` and `write`),
-* invoking functions implementedby the problem solver (`call`),
+* invoking functions implemented by the problem solver (`call`),
 * range-based loops (`for`),
 * generic loops (`loop`),
 * conditionals (`if`),
@@ -81,7 +81,7 @@ Features:
 Restrictions:
 
 * *Variables must be set exactly once each time they are in-scope*.
-* *Reusable functions and/or recursion are not supported*. This allows mapping each lexical location in the code to a specific state of the parsers, and asserts that any given variable has at most one value at any given time.
+* *Reusable functions and/or recursion are not supported*. This allows mapping each lexical location in the code to a specific state of the parsers, and ensures that any given variable has at most one value at any given time.
 * *All identifiers have global scope, and must be named differently*. This simplifies referencing any given variable from outside the spec (say, in the documentation) and simplifies the generation of the skeleton code. NB: only identifiers have global scope, not variables, so it is still an error to refer to a variable outside its definition scope.
 * *Arguments of problem-solver functions must be simple variables, not expressions.* This makes sure that the parameter and the corresponding variable are the same object, and can be defined/documented only once.
 
