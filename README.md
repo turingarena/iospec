@@ -30,7 +30,7 @@ Once the format is specifies, the following tasks can be automated:
 
 ## The specification language
 
-In IOspec, the format is describe in a language *similar to a programming language*, which defines, *from the perspective of the problem solver*:
+In IOspec, the format is described in a language *similar to a programming language*, which defines, *from the perspective of the problem solver*:
 
 * how the input should be parsed,
 * when solution code needs to be executed to compute the output,
