@@ -63,6 +63,7 @@ impl Gen for ScanfFormat<ScalarType> {
         let Self(ty) = self;
         Ok(match ty {
             ScalarType::I32 | ScalarType::N32 => quote!("%d"),
+            ScalarType::I64 | ScalarType::N64 => quote!("%lld"),
             _ => quote!(invalid format),
         })
     }
@@ -73,6 +74,7 @@ impl Gen for PrintfFormat<ScalarType> {
         let Self(ty) = self;
         Ok(match ty {
             ScalarType::I32 | ScalarType::N32 => quote!("%d "),
+            ScalarType::I64 | ScalarType::N64 => quote!("%lld "),
             _ => quote!(invalid format),
         })
     }
@@ -84,7 +86,7 @@ impl Gen for Skeleton<&CompiledStmt<'_>> {
         Ok(match stmt {
             CompiledStmt::Write(CompiledStmtWrite { args, .. }) => quote! {
                 printf(#(
-                    for a in args join ( ) => "%d "
+                    for a in args join ( ) => #(PrintfFormat(a.ty()).gen()?)
                 )  r"\n", #(
                     for a in args join (, ) => #(Skeleton(a).gen()?)
                 ));

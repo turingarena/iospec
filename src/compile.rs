@@ -36,7 +36,6 @@ enum NameResolution<'ast> {
 
 impl<'ast> Scope<'ast> {
     fn resolve(self: &Self, name: &str) -> Option<NameResolution<'ast>> {
-        println!("Resolving {:?} in scope {:?}", name, &self);
         match self {
             Scope::Decl(ScopeDecl { decl, parent }) => {
                 if decl.name == name {
@@ -70,6 +69,8 @@ fn compile<'ast, T, U>(ast: &'ast T, scope: &Scope<'ast>) -> CompileResult<U>
 pub enum ScalarType {
     I32,
     N32,
+    I64,
+    N64,
 }
 
 #[derive(Debug, Clone)]
@@ -85,6 +86,8 @@ impl<'ast> Compile<'ast, ParsedScalarTypeExpr> for CompiledScalarTypeExpr<'ast> 
             ty: match ast.ident.sym.as_str() {
                 "i32" => ScalarType::I32,
                 "n32" => ScalarType::N32,
+                "i64" => ScalarType::I64,
+                "n64" => ScalarType::N64,
                 _ => Err("invalid type")?,
             },
         })
@@ -132,6 +135,16 @@ impl<'ast> Compile<'ast, ParsedDecl> for CompiledDecl<'ast> {
 pub enum CompiledExpr<'ast> {
     Var(CompiledExprVar<'ast>),
     Index(CompiledExprIndex<'ast>),
+}
+
+impl CompiledExpr<'_> {
+    // TODO: array types
+    pub fn ty(self: &Self) -> ScalarType {
+        match self {
+            CompiledExpr::Var(expr) => expr.decl.ty.ty,
+            CompiledExpr::Index(expr) => unimplemented!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
