@@ -1,3 +1,5 @@
+#![feature(proc_macro_span)]
+
 extern crate structopt;
 
 use std::path::PathBuf;
@@ -17,11 +19,19 @@ enum App {
     Lint {
         #[structopt(long, parse(from_os_str), default_value = "./iospec")]
         spec_file: PathBuf,
-    }
+    },
+    #[structopt(
+        about = "Generates code (parser, template, etc.)"
+    )]
+    Gen {
+        #[structopt(long, parse(from_os_str), default_value = "./iospec")]
+        spec_file: PathBuf,
+    },
 }
 
 mod ast;
 mod parse;
+mod gen;
 
 fn main() {
     let app = App::from_args();
@@ -39,6 +49,20 @@ fn main() {
                     exit(1)
                 }
             }
-        }
+        },
+
+        App::Gen {
+            spec_file
+        } => {
+            match parse_spec_file(&spec_file).and_then(|spec| gen::gen_file(&spec)) {
+                Ok(content) => {
+                    print!("{}", content);
+                }
+                Err(e) => {
+                    println!("{}", e);
+                    exit(1)
+                }
+            }
+        },
     }
 }

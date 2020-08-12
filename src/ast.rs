@@ -8,7 +8,7 @@ use syn::Error;
 
 #[derive(Debug)]
 pub struct Ident {
-    sym: String,
+    pub sym: String,
 }
 
 impl Parse for Ident {
@@ -24,7 +24,7 @@ impl Parse for Ident {
 
 #[derive(Debug)]
 pub struct ScalarType {
-    ident: Ident,
+    pub ident: Ident,
 }
 
 impl Parse for ScalarType {
@@ -89,9 +89,9 @@ impl Parse for ExprIndex {
 
 #[derive(Debug)]
 pub struct Decl {
-    expr: Expr,
-    colon: syn::Token![:],
-    ty: ScalarType,
+    pub expr: Expr,
+    pub colon: syn::Token![:],
+    pub ty: ScalarType,
 }
 
 impl Parse for Decl {
@@ -133,9 +133,9 @@ impl Parse for Stmt {
 
 #[derive(Debug)]
 pub struct StmtWrite {
-    inst: kw::write,
-    args: Punctuated<Expr, syn::Token![,]>,
-    semi: syn::Token![;],
+    pub inst: kw::write,
+    pub args: Punctuated<Expr, syn::Token![,]>,
+    pub semi: syn::Token![;],
 }
 
 impl Parse for StmtWrite {
@@ -150,9 +150,9 @@ impl Parse for StmtWrite {
 
 #[derive(Debug)]
 pub struct StmtRead {
-    inst: kw::read,
-    args: Punctuated<Decl, syn::Token![,]>,
-    semi: syn::Token![;],
+    pub inst: kw::read,
+    pub args: Punctuated<Decl, syn::Token![,]>,
+    pub semi: syn::Token![;],
 }
 
 impl Parse for StmtRead {
@@ -167,12 +167,12 @@ impl Parse for StmtRead {
 
 #[derive(Debug)]
 pub struct StmtCall {
-    inst: kw::call,
-    name: Ident,
-    args_paren: syn::token::Paren,
-    args: Punctuated<Expr, syn::Token![,]>,
-    return_value: Option<(syn::Token![->], Decl)>,
-    semi: syn::Token![;],
+    pub inst: kw::call,
+    pub name: Ident,
+    pub args_paren: syn::token::Paren,
+    pub args: Punctuated<Expr, syn::Token![,]>,
+    pub return_value: Option<(syn::Token![->], Decl)>,
+    pub semi: syn::Token![;],
 }
 
 impl Parse for StmtCall {
@@ -194,8 +194,8 @@ impl Parse for StmtCall {
 }
 
 #[derive(Debug)]
-struct Block {
-    stmts: Vec<Stmt>,
+pub struct Block {
+    pub stmts: Vec<Stmt>,
 }
 
 impl Parse for Block {
@@ -210,7 +210,7 @@ impl Parse for Block {
 
 #[derive(Debug)]
 pub struct Spec {
-    main: Block,
+    pub main: Block,
 }
 
 impl Parse for Spec {
