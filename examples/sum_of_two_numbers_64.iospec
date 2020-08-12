@@ -1,0 +1,3 @@
+read A:n64, B:n64;
+call sum(A, B) -> C:n64;
+write C;
