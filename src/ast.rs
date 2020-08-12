@@ -107,12 +107,14 @@ impl Parse for Decl {
 mod kw {
     syn::custom_keyword!(read);
     syn::custom_keyword!(write);
+    syn::custom_keyword!(call);
 }
 
 #[derive(Debug)]
 pub enum Stmt {
     Write(StmtWrite),
     Read(StmtRead),
+    Call(StmtCall),
 }
 
 impl Parse for Stmt {
@@ -121,6 +123,8 @@ impl Parse for Stmt {
             Ok(Stmt::Read(input.parse()?))
         } else if input.peek(kw::write) {
             Ok(Stmt::Write(input.parse()?))
+        } else if input.peek(kw::call) {
+            Ok(Stmt::Call(input.parse()?))
         } else {
             Err(Error::new(input.span(), "statement expected"))
         }
@@ -156,6 +160,34 @@ impl Parse for StmtRead {
         Ok(Self {
             inst: input.parse()?,
             args: Punctuated::parse_separated_nonempty(input)?,
+            semi: input.parse()?,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct StmtCall {
+    inst: kw::call,
+    name: Ident,
+    args_paren: syn::token::Paren,
+    args: Punctuated<Expr, syn::Token![,]>,
+    return_value: Option<(syn::Token![->], Decl)>,
+    semi: syn::Token![;],
+}
+
+impl Parse for StmtCall {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let args_input;
+        Ok(Self {
+            inst: input.parse()?,
+            name: input.parse()?,
+            args_paren: syn::parenthesized!(args_input in input),
+            args: Punctuated::parse_terminated(&args_input)?,
+            return_value: if input.peek(syn::Token![->]) {
+                Some((input.parse()?, input.parse()?))
+            } else {
+                None
+            },
             semi: input.parse()?,
         })
     }
