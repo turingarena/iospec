@@ -1,0 +1,24 @@
+read N:n32, M:n32;
+
+// assume 2 <= N && N <= 100_000;
+// assume 1 <= M && M <= 1_000_000;
+
+// for i to M {
+//     read A[i]:n32, B[i]:n32;
+//
+//     assume 0 <= A[i] && A[i] < B[i] && B[i] < N;
+// }
+//
+// call find_cycle(N, M, A, B) -> cycle_len:n32;
+// assert 2 <= cycle_len && cycle_len <= N;
+//
+
+write cycle_len;
+
+//
+// for i to cycle_len {
+//     call get_cycle_node(i) -> u:n32;
+//     assert 0 <= u && u < N;
+//
+//     write u;
+// }
