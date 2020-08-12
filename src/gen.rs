@@ -14,11 +14,24 @@ struct Skeleton<T>(T);
 
 impl Gen for Skeleton<&Spec> {
     fn gen(self: &Self) -> GenResult {
-        let Self (Spec { main: Block { stmts } }) = self;
-
+        let Self (Spec { main }) = self;
         Ok(quote! {
             int main() {
-                #(for s in stmts join (#<push>) => #(Skeleton(s).gen()?))
+                #(Skeleton(main).gen()?)
+            }
+        })
+    }
+}
+
+impl Gen for Skeleton<&Block> {
+    fn gen(self: &Self) -> GenResult {
+        let Self (b) = self;
+
+        Ok(match b {
+            Block::Empty(_) => quote!(),
+            Block::Cons(BlockCons { prev, stmt }) => quote!{
+                #(Skeleton(prev.as_ref()).gen()?)
+                #(Skeleton(stmt).gen()?)
             }
         })
     }
