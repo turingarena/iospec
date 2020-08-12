@@ -1,0 +1,3 @@
+read A:n32, B:n32;
+call sum(A, B) -> C:n32;
+write C;

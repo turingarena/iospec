@@ -194,30 +194,19 @@ impl Parse for ParsedStmtCall {
 }
 
 #[derive(Debug, Clone)]
-pub enum ParsedBlock {
-    Empty(ParsedBlockEmpty),
-    Cons(ParsedBlockCons),
+pub struct ParsedBlock {
+    pub stmts: Vec<ParsedStmt>,
 }
-
-#[derive(Debug, Clone)]
-pub struct ParsedBlockCons {
-    pub prev: Box<ParsedBlock>,
-    pub stmt: ParsedStmt,
-}
-
-#[derive(Debug, Clone)]
-pub struct ParsedBlockEmpty;
 
 impl Parse for ParsedBlock {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let mut current: ParsedBlock = ParsedBlock::Empty(ParsedBlockEmpty);
+        let mut stmts = vec![];
         while !input.is_empty() {
-            current = ParsedBlock::Cons(ParsedBlockCons {
-                prev: Box::new(current),
-                stmt: input.parse()?,
-            });
+            stmts.push(input.parse()?);
         }
-        Ok(current)
+        Ok(ParsedBlock {
+            stmts
+        })
     }
 }
 

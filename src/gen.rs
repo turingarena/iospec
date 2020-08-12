@@ -27,12 +27,8 @@ impl Gen for Skeleton<&CompiledBlock<'_>> {
     fn gen(self: &Self) -> GenResult {
         let Self(b) = self;
 
-        Ok(match b {
-            CompiledBlock::Empty(_) => quote!(),
-            CompiledBlock::Cons(CompiledBlockCons { prev, stmt, .. }) => quote! {
-                #(Skeleton(prev.as_ref()).gen()?)
-                #(Skeleton(stmt).gen()?)
-            },
+        Ok(quote! {
+            #(for s in b.stmts.iter() join (#<push>) => #(Skeleton(s).gen()?))
         })
     }
 }

@@ -36,6 +36,7 @@ enum NameResolution<'ast> {
 
 impl<'ast> Scope<'ast> {
     fn resolve(self: &Self, name: &str) -> Option<NameResolution<'ast>> {
+        println!("Resolving {:?} in scope {:?}", name, &self);
         match self {
             Scope::Decl(ScopeDecl { decl, parent }) => {
                 if decl.name == name {
@@ -52,15 +53,15 @@ impl<'ast> Scope<'ast> {
 type CompileResult<T> = Result<T, String>;
 
 trait Compile<'ast, T>
-where
-    Self: std::marker::Sized,
+    where
+        Self: std::marker::Sized,
 {
     fn compile(ast: &'ast T, scope: &Scope<'ast>) -> CompileResult<Self>;
 }
 
 fn compile<'ast, T, U>(ast: &'ast T, scope: &Scope<'ast>) -> CompileResult<U>
-where
-    U: Compile<'ast, T>,
+    where
+        U: Compile<'ast, T>,
 {
     U::compile(ast, scope)
 }
@@ -114,8 +115,8 @@ impl<'ast> Compile<'ast, ParsedDecl> for CompiledDecl<'ast> {
     fn compile(ast: &'ast ParsedDecl, scope: &Scope<'ast>) -> CompileResult<Self> {
         let name = match &ast.expr {
             ParsedExpr::Var(ParsedExprVar {
-                ident: ParsedIdent { sym },
-            }) => sym,
+                                ident: ParsedIdent { sym },
+                            }) => sym,
             _ => Err("unsupported expression in declaration")?,
         };
 
@@ -153,7 +154,7 @@ impl<'ast> Compile<'ast, ParsedExpr> for CompiledExpr<'ast> {
                 ast,
                 decl: match scope.resolve(&ast.ident.sym) {
                     Some(NameResolution::Decl(decl)) => decl,
-                    _ => Err("undefined variable")?,
+                    _ => panic!("undefined variable"),
                 },
             }),
             ParsedExpr::Index(ast) => CompiledExpr::Index(CompiledExprIndex {
@@ -190,6 +191,30 @@ pub struct CompiledStmtCall<'ast> {
     pub name: &'ast str,
     pub args: Vec<CompiledExpr<'ast>>,
     pub return_value: Option<CompiledDecl<'ast>>,
+}
+
+impl<'ast> CompiledStmt<'ast> {
+    fn extend_scope(self: &Self, scope: Scope<'ast>) -> Scope<'ast> {
+        match self {
+            CompiledStmt::Read(CompiledStmtRead { args, .. }) => {
+                let mut current = scope;
+                for decl in args {
+                    current = Scope::Decl(ScopeDecl {
+                        decl: decl.clone(),
+                        parent: Box::new(current.clone()),
+                    })
+                }
+                current
+            }
+            CompiledStmt::Call(CompiledStmtCall { return_value: Some(return_value), .. }) => {
+                Scope::Decl(ScopeDecl {
+                    decl: return_value.clone(),
+                    parent: Box::new(scope.clone()),
+                })
+            }
+            _ => scope,
+        }
+    }
 }
 
 impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
@@ -229,37 +254,25 @@ impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
 }
 
 #[derive(Debug, Clone)]
-pub enum CompiledBlock<'ast> {
-    Empty(CompiledBlockEmpty<'ast>),
-    Cons(CompiledBlockCons<'ast>),
-}
-
-#[derive(Debug, Clone)]
-pub struct CompiledBlockEmpty<'ast> {
-    pub ast: &'ast ParsedBlockEmpty,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompiledBlockCons<'ast> {
-    pub ast: &'ast ParsedBlockCons,
-    pub prev: Box<CompiledBlock<'ast>>,
-    pub stmt: CompiledStmt<'ast>,
+pub struct CompiledBlock<'ast> {
+    pub ast: &'ast ParsedBlock,
+    pub stmts: Vec<CompiledStmt<'ast>>,
 }
 
 impl<'ast> Compile<'ast, ParsedBlock> for CompiledBlock<'ast> {
     fn compile(ast: &'ast ParsedBlock, scope: &Scope<'ast>) -> CompileResult<Self> {
-        Ok(match ast {
-            ParsedBlock::Empty(ast) => CompiledBlock::Empty(CompiledBlockEmpty { ast }),
-            ParsedBlock::Cons(ast) => {
-                let prev = compile(ast.prev.as_ref(), scope)?;
-                let new_scope = scope; // TODO
+        let mut stmts = vec![];
+        let mut scope = scope.clone();
 
-                CompiledBlock::Cons(CompiledBlockCons {
-                    ast,
-                    prev: Box::new(prev),
-                    stmt: compile(&ast.stmt, new_scope)?,
-                })
-            }
+        for ast in ast.stmts.iter() {
+            let stmt: CompiledStmt = compile(ast, &scope)?;
+            scope = stmt.extend_scope(scope);
+            stmts.push(stmt);
+        }
+
+        Ok(CompiledBlock {
+            ast,
+            stmts,
         })
     }
 }
