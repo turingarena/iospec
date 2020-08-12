@@ -52,15 +52,15 @@ impl<'ast> Scope<'ast> {
 type CompileResult<T> = Result<T, String>;
 
 trait Compile<'ast, T>
-    where
-        Self: std::marker::Sized,
+where
+    Self: std::marker::Sized,
 {
     fn compile(ast: &'ast T, scope: &Scope<'ast>) -> CompileResult<Self>;
 }
 
 fn compile<'ast, T, U>(ast: &'ast T, scope: &Scope<'ast>) -> CompileResult<U>
-    where
-        U: Compile<'ast, T>,
+where
+    U: Compile<'ast, T>,
 {
     U::compile(ast, scope)
 }
@@ -118,8 +118,8 @@ impl<'ast> Compile<'ast, ParsedDecl> for CompiledDecl<'ast> {
     fn compile(ast: &'ast ParsedDecl, scope: &Scope<'ast>) -> CompileResult<Self> {
         let name = match &ast.expr {
             ParsedExpr::Var(ParsedExprVar {
-                                ident: ParsedIdent { sym },
-                            }) => sym,
+                ident: ParsedIdent { sym },
+            }) => sym,
             _ => Err("unsupported expression in declaration")?,
         };
 
@@ -219,12 +219,13 @@ impl<'ast> CompiledStmt<'ast> {
                 }
                 current
             }
-            CompiledStmt::Call(CompiledStmtCall { return_value: Some(return_value), .. }) => {
-                Scope::Decl(ScopeDecl {
-                    decl: return_value.clone(),
-                    parent: Box::new(scope.clone()),
-                })
-            }
+            CompiledStmt::Call(CompiledStmtCall {
+                return_value: Some(return_value),
+                ..
+            }) => Scope::Decl(ScopeDecl {
+                decl: return_value.clone(),
+                parent: Box::new(scope.clone()),
+            }),
             _ => scope,
         }
     }
@@ -283,10 +284,7 @@ impl<'ast> Compile<'ast, ParsedBlock> for CompiledBlock<'ast> {
             stmts.push(stmt);
         }
 
-        Ok(CompiledBlock {
-            ast,
-            stmts,
-        })
+        Ok(CompiledBlock { ast, stmts })
     }
 }
 

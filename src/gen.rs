@@ -3,6 +3,7 @@ extern crate genco;
 use genco::prelude::*;
 
 use crate::compile::*;
+use crate::ir::*;
 
 type GenResult = std::result::Result<Tokens, Box<dyn std::error::Error>>;
 
@@ -12,9 +13,9 @@ trait Gen {
 
 struct Skeleton<T>(T);
 
-impl Gen for Skeleton<&CompiledSpec<'_>> {
+impl Gen for Skeleton<&IrSpec<'_>> {
     fn gen(self: &Self) -> GenResult {
-        let Self(CompiledSpec { main, .. }) = self;
+        let Self(IrSpec { main }) = self;
         Ok(quote! {
             int main() {
                 #(Skeleton(main).gen()?)
@@ -23,12 +24,12 @@ impl Gen for Skeleton<&CompiledSpec<'_>> {
     }
 }
 
-impl Gen for Skeleton<&CompiledBlock<'_>> {
+impl Gen for Skeleton<&IrBlock<'_>> {
     fn gen(self: &Self) -> GenResult {
-        let Self(b) = self;
+        let Self(insts) = self;
 
         Ok(quote! {
-            #(for s in b.stmts.iter() join (#<push>) => #(Skeleton(s).gen()?))
+            #(for s in insts.iter() join (#<push>) => #(Skeleton(s).gen()?))
         })
     }
 }
@@ -46,17 +47,9 @@ impl Gen for Skeleton<&CompiledExpr<'_>> {
     }
 }
 
-struct ScanfTarget<T>(T);
-
-impl Gen for ScanfTarget<&CompiledDecl<'_>> {
-    fn gen(self: &Self) -> GenResult {
-        let Self(decl) = self;
-        Ok(quote!( #(decl.name) ))
-    }
-}
-
 struct ScanfFormat<T>(T);
 struct PrintfFormat<T>(T);
+struct LeftHandType<T>(T);
 
 impl Gen for ScanfFormat<ScalarType> {
     fn gen(self: &Self) -> GenResult {
@@ -75,44 +68,54 @@ impl Gen for PrintfFormat<ScalarType> {
         Ok(match ty {
             ScalarType::I32 | ScalarType::N32 => quote!("%d "),
             ScalarType::I64 | ScalarType::N64 => quote!("%lld "),
-            _ => quote!(invalid format),
         })
     }
 }
 
-impl Gen for Skeleton<&CompiledStmt<'_>> {
+impl Gen for LeftHandType<ScalarType> {
     fn gen(self: &Self) -> GenResult {
-        let Self(stmt) = self;
-        Ok(match stmt {
-            CompiledStmt::Write(CompiledStmtWrite { args, .. }) => quote! {
-                printf(#(
-                    for a in args join ( ) => #(PrintfFormat(a.ty()).gen()?)
-                )  r"\n", #(
-                    for a in args join (, ) => #(Skeleton(a).gen()?)
-                ));
+        let Self(ty) = self;
+        Ok(match ty {
+            ScalarType::I32 | ScalarType::N32 => quote!(int),
+            ScalarType::I64 | ScalarType::N64 => quote!(int64_t),
+        })
+    }
+}
+
+impl Gen for Skeleton<&IrInst<'_>> {
+    fn gen(self: &Self) -> GenResult {
+        let Self(inst) = self;
+        Ok(match inst {
+            IrInst::Decl(inst) => quote! {
+                #(LeftHandType(inst.inner.ty.ty).gen()?) #(inst.inner.name);
             },
-            CompiledStmt::Read(CompiledStmtRead { args, .. }) => quote! {
-                scanf(#(
-                    for a in args join ( ) => #(ScanfFormat(a.ty.ty).gen()?)
-                ), #(
-                    for a in args join (, ) => &#(ScanfTarget(a).gen()?)
-                ));
+            IrInst::Write(inst) => quote! {
+                printf(#(PrintfFormat(inst.expr.ty()).gen()?), #(Skeleton(inst.expr).gen()?));
             },
-            CompiledStmt::Call(CompiledStmtCall {
-                name,
-                args,
-                return_value: None,
-                ..
+            IrInst::Read(inst) => quote! {
+                scanf(#(ScanfFormat(inst.decl.ty.ty).gen()?), &#(inst.decl.name));
+            },
+            IrInst::Call(IrInstCall {
+                inner:
+                    CompiledStmtCall {
+                        name,
+                        args,
+                        return_value: None,
+                        ..
+                    },
             }) => quote! {
                 #(*name)(#(
                     for a in args join (, ) => #(Skeleton(a).gen()?)
                 ));
             },
-            CompiledStmt::Call(CompiledStmtCall {
-                name,
-                args,
-                return_value: Some(return_value),
-                ..
+            IrInst::Call(IrInstCall {
+                inner:
+                    CompiledStmtCall {
+                        name,
+                        args,
+                        return_value: Some(return_value),
+                        ..
+                    },
             }) => quote! {
                 #(Skeleton(&return_value.expr()).gen()?) = #(*name)(#(
                     for a in args join (, ) => #(Skeleton(a).gen()?)
@@ -126,5 +129,5 @@ impl Gen for Skeleton<&CompiledStmt<'_>> {
 }
 
 pub fn gen_file(spec: &CompiledSpec<'_>) -> Result<String, Box<dyn std::error::Error>> {
-    Ok(Skeleton(spec).gen()?.to_file_string().unwrap())
+    Ok(Skeleton(&spec.build_ir()).gen()?.to_file_string().unwrap())
 }

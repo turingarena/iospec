@@ -28,6 +28,7 @@ enum App {
 
 mod compile;
 mod gen;
+mod ir;
 mod parse;
 mod parsefile;
 

@@ -204,9 +204,7 @@ impl Parse for ParsedBlock {
         while !input.is_empty() {
             stmts.push(input.parse()?);
         }
-        Ok(ParsedBlock {
-            stmts
-        })
+        Ok(ParsedBlock { stmts })
     }
 }
 
