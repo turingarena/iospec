@@ -11,8 +11,7 @@ use annotate_snippets::display_list::{DisplayList, FormatOptions};
 
 use std::fs::read_to_string;
 use std::error::Error;
-use std::fmt::Display;
-use self::syn::export::Formatter;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub struct ParseError;
