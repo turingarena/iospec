@@ -1,78 +1,235 @@
-extern crate annotate_snippets;
-extern crate codemap;
 extern crate proc_macro2;
 extern crate syn;
 
-use std::path::Path;
-use crate::ast::Spec;
+use syn::parse::Parse;
+use syn::parse::ParseBuffer;
+use syn::punctuated::Punctuated;
+use syn::Error;
 
-use annotate_snippets::snippet::*;
-use annotate_snippets::display_list::{DisplayList, FormatOptions};
+#[derive(Debug, Clone)]
+pub struct ParsedIdent {
+    pub sym: String,
+}
 
-use std::fs::read_to_string;
-use std::error::Error;
-use std::fmt::{Display, Formatter};
-
-#[derive(Debug)]
-pub struct ParseError;
-
-impl Display for ParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        f.write_fmt(format_args!("{:?}", self))
+impl Parse for ParsedIdent {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        // Parsing TokenTree instead of Indent to ignore Rust keywords
+        let token_tree: proc_macro2::TokenTree = input.parse()?;
+        match token_tree {
+            proc_macro2::TokenTree::Ident(x) => Ok(ParsedIdent { sym: x.to_string() }),
+            _ => Err(Error::new(token_tree.span(), "expected identifier")),
+        }
     }
 }
 
-impl Error for ParseError {}
+#[derive(Debug, Clone)]
+pub struct ParsedScalarTypeExpr {
+    pub ident: ParsedIdent,
+}
 
-pub fn parse_spec_file(path: &Path) -> Result<Spec, Box<dyn Error>> {
-    let mut code_map = codemap::CodeMap::new();
+impl Parse for ParsedScalarTypeExpr {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Ok(Self {
+            ident: input.parse()?,
+        })
+    }
+}
 
-    let file = code_map.add_file(
-        path.to_str().expect("file path is not valid UTF-8").into(),
-        read_to_string(path)?,
-    );
+#[derive(Debug, Clone)]
+pub enum ParsedExpr {
+    Var(ParsedExprVar),
+    Index(ParsedExprIndex),
+}
 
-    let res = syn::parse_str::<Spec>(file.source());
-
-    match res {
-        Err(e) => {
-            let start_loc = e.span().start();
-            let end_loc = e.span().end();
-            let message = e.to_string();
-
-            let display_list = DisplayList::from(Snippet {
-                title: Some(Annotation {
-                    id: None,
-                    label: Some(message.as_str()),
-                    annotation_type: AnnotationType::Error,
-                }),
-                footer: vec![],
-                slices: vec![Slice {
-                    source: file.source(),
-                    line_start: 1,
-                    origin: None,
-                    fold: false,
-                    annotations: vec![SourceAnnotation {
-                        range: (
-                            (file.line_span(start_loc.line - 1).low() - file.span.low()) as usize
-                                + start_loc.column,
-                            (file.line_span(end_loc.line - 1).low() - file.span.low()) as usize
-                                + end_loc.column,
-                        ),
-                        annotation_type: AnnotationType::Error,
-                        label: "here",
-                    }],
-                }],
-                opt: FormatOptions {
-                    color: true,
-                    ..Default::default()
-                },
+impl Parse for ParsedExpr {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let mut current = ParsedExpr::Var(input.parse()?);
+        while input.peek(syn::token::Bracket) {
+            let index_input;
+            current = ParsedExpr::Index(ParsedExprIndex {
+                array: Box::new(current),
+                bracket: syn::bracketed!(index_input in input),
+                index: index_input.parse()?,
             });
-
-            print!("{}", display_list);
-
-            Err(Box::new(ParseError))
         }
-        Ok(spec) => Ok(spec),
+        Ok(current)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedExprVar {
+    pub ident: ParsedIdent,
+}
+
+impl Parse for ParsedExprVar {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Ok(Self {
+            ident: input.parse()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedExprIndex {
+    pub array: Box<ParsedExpr>,
+    pub bracket: syn::token::Bracket,
+    pub index: Box<ParsedExpr>,
+}
+
+impl Parse for ParsedExprIndex {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let index_input;
+        Ok(Self {
+            array: input.parse()?,
+            bracket: syn::bracketed!(index_input in input),
+            index: index_input.parse()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedDecl {
+    pub expr: ParsedExpr,
+    pub colon: syn::Token![:],
+    pub ty: ParsedScalarTypeExpr,
+}
+
+impl Parse for ParsedDecl {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Ok(Self {
+            expr: input.parse()?,
+            colon: input.parse()?,
+            ty: input.parse()?,
+        })
+    }
+}
+
+mod kw {
+    syn::custom_keyword!(read);
+    syn::custom_keyword!(write);
+    syn::custom_keyword!(call);
+}
+
+#[derive(Debug, Clone)]
+pub enum ParsedStmt {
+    Write(ParsedStmtWrite),
+    Read(ParsedStmtRead),
+    Call(ParsedStmtCall),
+}
+
+impl Parse for ParsedStmt {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        if input.peek(kw::read) {
+            Ok(ParsedStmt::Read(input.parse()?))
+        } else if input.peek(kw::write) {
+            Ok(ParsedStmt::Write(input.parse()?))
+        } else if input.peek(kw::call) {
+            Ok(ParsedStmt::Call(input.parse()?))
+        } else {
+            Err(Error::new(input.span(), "statement expected"))
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedStmtWrite {
+    pub inst: kw::write,
+    pub args: Punctuated<ParsedExpr, syn::Token![,]>,
+    pub semi: syn::Token![;],
+}
+
+impl Parse for ParsedStmtWrite {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Ok(Self {
+            inst: input.parse()?,
+            args: Punctuated::parse_separated_nonempty(input)?,
+            semi: input.parse()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedStmtRead {
+    pub inst: kw::read,
+    pub args: Punctuated<ParsedDecl, syn::Token![,]>,
+    pub semi: syn::Token![;],
+}
+
+impl Parse for ParsedStmtRead {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Ok(Self {
+            inst: input.parse()?,
+            args: Punctuated::parse_separated_nonempty(input)?,
+            semi: input.parse()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedStmtCall {
+    pub inst: kw::call,
+    pub name: ParsedIdent,
+    pub args_paren: syn::token::Paren,
+    pub args: Punctuated<ParsedExpr, syn::Token![,]>,
+    pub return_value: Option<(syn::Token![->], ParsedDecl)>,
+    pub semi: syn::Token![;],
+}
+
+impl Parse for ParsedStmtCall {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let args_input;
+        Ok(Self {
+            inst: input.parse()?,
+            name: input.parse()?,
+            args_paren: syn::parenthesized!(args_input in input),
+            args: Punctuated::parse_terminated(&args_input)?,
+            return_value: if input.peek(syn::Token![->]) {
+                Some((input.parse()?, input.parse()?))
+            } else {
+                None
+            },
+            semi: input.parse()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ParsedBlock {
+    Empty(ParsedBlockEmpty),
+    Cons(ParsedBlockCons),
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedBlockCons {
+    pub prev: Box<ParsedBlock>,
+    pub stmt: ParsedStmt,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedBlockEmpty;
+
+impl Parse for ParsedBlock {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let mut current: ParsedBlock = ParsedBlock::Empty(ParsedBlockEmpty);
+        while !input.is_empty() {
+            current = ParsedBlock::Cons(ParsedBlockCons {
+                prev: Box::new(current),
+                stmt: input.parse()?,
+            });
+        }
+        Ok(current)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedSpec {
+    pub main: ParsedBlock,
+}
+
+impl Parse for ParsedSpec {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Ok(ParsedSpec {
+            main: input.parse()?,
+        })
     }
 }
