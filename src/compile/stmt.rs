@@ -18,8 +18,7 @@ pub enum CompiledStmt<'ast> {
     },
     For {
         ast: &'ast ParsedStmt,
-        index_name: &'ast str,
-        range: CompiledExpr<'ast>,
+        range: CompiledRange<'ast>,
         body: CompiledBlock<'ast>,
     },
 }
@@ -85,13 +84,16 @@ impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
             },
             ParsedStmt::For {
                 index_name,
-                range,
+                bound,
                 body,
                 ..
             } => CompiledStmt::For {
                 ast,
-                index_name: &index_name.sym,
-                range: compile(range, &scope)?,
+                range: CompiledRange {
+                    stmt_ast: ast,
+                    index_name: &index_name.sym,
+                    bound: compile(bound, &scope)?,
+                },
                 // TODO: change the scope to include the index
                 body: compile(body, &scope)?,
             },

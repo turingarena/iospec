@@ -8,7 +8,7 @@ pub enum Scope<'ast> {
         parent: Box<Scope<'ast>>,
     },
     For {
-        // for_stmt: &'ast StmtFor,
+        range: CompiledRange<'ast>,
         parent: Box<Scope<'ast>>,
     },
     Loop {
@@ -20,6 +20,7 @@ pub enum Scope<'ast> {
 #[derive(Debug, Clone)]
 pub enum NameResolution<'ast> {
     Decl(CompiledDecl<'ast>),
+    Range(CompiledRange<'ast>),
 }
 
 impl<'ast> Scope<'ast> {
@@ -28,6 +29,13 @@ impl<'ast> Scope<'ast> {
             Scope::Decl { decl, parent } => {
                 if decl.name == name {
                     Some(NameResolution::Decl(decl.clone()))
+                } else {
+                    parent.resolve(name)
+                }
+            },
+            Scope::For { range, parent } => {
+                if range.index_name == name {
+                    Some(NameResolution::Range(range.clone()))
                 } else {
                     parent.resolve(name)
                 }

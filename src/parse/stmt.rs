@@ -24,7 +24,7 @@ pub enum ParsedStmt {
         for_token: syn::Token![for],
         index_name: ParsedIdent,
         upto: kw::upto,
-        range: ParsedExpr,
+        bound: ParsedExpr,
         body_brace: syn::token::Brace,
         body: ParsedBlock,
     },
@@ -65,7 +65,7 @@ impl Parse for ParsedStmt {
                 for_token: input.parse()?,
                 index_name: input.parse()?,
                 upto: input.parse()?,
-                range: input.parse()?,
+                bound: input.parse()?,
                 body_brace: syn::braced!(body_input in input),
                 body: body_input.parse()?,
             })
