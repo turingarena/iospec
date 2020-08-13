@@ -14,11 +14,10 @@ pub enum CompiledExpr<'ast> {
 }
 
 impl CompiledExpr<'_> {
-    // TODO: array types
-    pub fn ty(self: &Self) -> ScalarType {
+    pub fn ty(self: &Self) -> VariableType {
         match self {
-            CompiledExpr::Var { decl, .. } => decl.scalar_type_expr.ty.clone(),
-            CompiledExpr::Index { .. } => unimplemented!(),
+            CompiledExpr::Var { decl, .. } => VariableType::Scalar { scalar_type: decl.scalar_type_expr.ty.clone() },
+            CompiledExpr::Index { array, index, .. } => VariableType::Array { array_type: Box::new(array.ty()) },
         }
     }
 }

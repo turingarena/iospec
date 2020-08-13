@@ -32,7 +32,7 @@ impl<'ast> Scope<'ast> {
                 } else {
                     parent.resolve(name)
                 }
-            },
+            }
             Scope::For { range, parent } => {
                 if range.index_name == name {
                     Some(NameResolution::Range(range.clone()))

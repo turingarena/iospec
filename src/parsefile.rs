@@ -3,16 +3,16 @@ extern crate codemap;
 extern crate proc_macro2;
 extern crate syn;
 
-use crate::parse::ParsedSpec;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+use std::fs::read_to_string;
 use std::path::Path;
 
 use annotate_snippets::display_list::{DisplayList, FormatOptions};
 use annotate_snippets::snippet::*;
 
-use crate::compile::{compile_spec, CompiledSpec};
-use std::error::Error;
-use std::fmt::{Display, Formatter};
-use std::fs::read_to_string;
+use crate::compile::compile_spec;
+use crate::parse::ParsedSpec;
 
 #[derive(Debug)]
 pub struct ParseError;
