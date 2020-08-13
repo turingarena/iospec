@@ -77,10 +77,7 @@ pub struct CompiledDecl<'ast> {
 impl CompiledDecl<'_> {
     pub fn expr(self: &Self) -> CompiledExpr {
         CompiledExpr::Var(CompiledExprVar {
-            ast: match &self.ast.expr {
-                ParsedExpr::Var(ast) => ast,
-                _ => unreachable!(),
-            },
+            ast: &self.ast.expr,
             decl: self.clone(),
         })
     }
@@ -89,9 +86,9 @@ impl CompiledDecl<'_> {
 impl<'ast> Compile<'ast, ParsedDecl> for CompiledDecl<'ast> {
     fn compile(ast: &'ast ParsedDecl, scope: &Scope<'ast>) -> CompileResult<Self> {
         let name = match &ast.expr {
-            ParsedExpr::Var(ParsedExprVar {
+            ParsedExpr::Var {
                 ident: ParsedIdent { sym },
-            }) => sym,
+            } => sym,
             _ => Err("unsupported expression in declaration")?,
         };
 
@@ -121,13 +118,13 @@ impl CompiledExpr<'_> {
 
 #[derive(Debug, Clone)]
 pub struct CompiledExprVar<'ast> {
-    pub ast: &'ast ParsedExprVar,
+    pub ast: &'ast ParsedExpr,
     pub decl: CompiledDecl<'ast>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CompiledExprIndex<'ast> {
-    pub ast: &'ast ParsedExprIndex,
+    pub ast: &'ast ParsedExpr,
     pub array: Box<CompiledExpr<'ast>>,
     pub index: Box<CompiledExpr<'ast>>,
 }
@@ -135,17 +132,17 @@ pub struct CompiledExprIndex<'ast> {
 impl<'ast> Compile<'ast, ParsedExpr> for CompiledExpr<'ast> {
     fn compile(ast: &'ast ParsedExpr, scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(match ast {
-            ParsedExpr::Var(ast) => CompiledExpr::Var(CompiledExprVar {
+            ParsedExpr::Var { ident } => CompiledExpr::Var(CompiledExprVar {
                 ast,
-                decl: match scope.resolve(&ast.ident.sym) {
+                decl: match scope.resolve(&ident.sym) {
                     Some(NameResolution::Decl(decl)) => decl,
                     _ => panic!("undefined variable"),
                 },
             }),
-            ParsedExpr::Index(ast) => CompiledExpr::Index(CompiledExprIndex {
+            ParsedExpr::Index { array, index, .. } => CompiledExpr::Index(CompiledExprIndex {
                 ast,
-                array: Box::new(compile(ast.array.as_ref(), scope)?),
-                index: Box::new(compile(ast.index.as_ref(), scope)?),
+                array: Box::new(compile(array.as_ref(), scope)?),
+                index: Box::new(compile(index.as_ref(), scope)?),
             }),
         })
     }

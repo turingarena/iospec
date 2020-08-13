@@ -35,57 +35,8 @@ impl Parse for ParsedScalarTypeExpr {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum ParsedExpr {
-    Var(ParsedExprVar),
-    Index(ParsedExprIndex),
-}
-
-impl Parse for ParsedExpr {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let mut current = ParsedExpr::Var(input.parse()?);
-        while input.peek(syn::token::Bracket) {
-            let index_input;
-            current = ParsedExpr::Index(ParsedExprIndex {
-                array: Box::new(current),
-                bracket: syn::bracketed!(index_input in input),
-                index: index_input.parse()?,
-            });
-        }
-        Ok(current)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ParsedExprVar {
-    pub ident: ParsedIdent,
-}
-
-impl Parse for ParsedExprVar {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Ok(Self {
-            ident: input.parse()?,
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ParsedExprIndex {
-    pub array: Box<ParsedExpr>,
-    pub bracket: syn::token::Bracket,
-    pub index: Box<ParsedExpr>,
-}
-
-impl Parse for ParsedExprIndex {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let index_input;
-        Ok(Self {
-            array: input.parse()?,
-            bracket: syn::bracketed!(index_input in input),
-            index: index_input.parse()?,
-        })
-    }
-}
+mod expr;
+pub use expr::*;
 
 #[derive(Debug, Clone)]
 pub struct ParsedDecl {
