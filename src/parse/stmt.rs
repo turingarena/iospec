@@ -9,7 +9,7 @@ pub enum ParsedStmt {
     },
     Read {
         inst: kw::read,
-        args: Punctuated<ParsedDecl, syn::Token![,]>,
+        args: Punctuated<ParsedDef, syn::Token![,]>,
         semi: syn::Token![;],
     },
     Call {
@@ -17,7 +17,7 @@ pub enum ParsedStmt {
         name: ParsedIdent,
         args_paren: syn::token::Paren,
         args: Punctuated<ParsedExpr, syn::Token![,]>,
-        return_value: Option<(syn::Token![->], ParsedDecl)>,
+        return_value: Option<(syn::Token![->], ParsedDef)>,
         semi: syn::Token![;],
     },
     For {

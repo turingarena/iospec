@@ -3,8 +3,8 @@ use super::*;
 #[derive(Debug, Clone)]
 pub enum Scope<'ast> {
     Root,
-    Decl {
-        decl: CompiledDecl<'ast>,
+    Def {
+        def: CompiledDef<'ast>,
         parent: Box<Scope<'ast>>,
     },
     For {
@@ -19,16 +19,16 @@ pub enum Scope<'ast> {
 
 #[derive(Debug, Clone)]
 pub enum NameResolution<'ast> {
-    Decl(CompiledDecl<'ast>),
+    Def(CompiledDef<'ast>),
     Range(CompiledRange<'ast>),
 }
 
 impl<'ast> Scope<'ast> {
     pub fn resolve(self: &Self, name: &str) -> Option<NameResolution<'ast>> {
         match self {
-            Scope::Decl { decl, parent } => {
-                if decl.name == name {
-                    Some(NameResolution::Decl(decl.clone()))
+            Scope::Def { def, parent } => {
+                if def.name == name {
+                    Some(NameResolution::Def(def.clone()))
                 } else {
                     parent.resolve(name)
                 }

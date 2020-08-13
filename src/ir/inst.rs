@@ -2,8 +2,8 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub enum IrInst<'a> {
-    Decl { inner: &'a CompiledDecl<'a> },
-    Read { decl: &'a CompiledDecl<'a> },
+    Decl { def: &'a CompiledDef<'a> },
+    Read { def: &'a CompiledDef<'a> },
     Write { expr: &'a CompiledExpr<'a> },
     Call { inner: &'a CompiledStmt<'a> },
     For { inner: &'a CompiledStmt<'a> },
@@ -16,7 +16,7 @@ impl<'a> CompiledStmt<'a> {
         match self {
             CompiledStmt::Read { args, .. } => args
                 .iter()
-                .flat_map(|decl| vec![IrInst::Decl { inner: decl }, IrInst::Read { decl }])
+                .flat_map(|def| vec![IrInst::Decl { def }, IrInst::Read { def }])
                 .collect(),
             CompiledStmt::Write { args, .. } => {
                 args.iter().map(|expr| IrInst::Write { expr }).collect()
@@ -24,7 +24,7 @@ impl<'a> CompiledStmt<'a> {
             CompiledStmt::Call { return_value, .. } => vec![
                 return_value
                     .iter()
-                    .map(|decl| IrInst::Decl { inner: decl })
+                    .map(|def| IrInst::Decl { def: def })
                     .collect(),
                 vec![IrInst::Call { inner: stmt }],
             ]

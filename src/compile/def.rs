@@ -1,24 +1,24 @@
 use super::*;
 
 #[derive(Debug, Clone)]
-pub struct CompiledDecl<'ast> {
-    pub ast: &'ast ParsedDecl,
+pub struct CompiledDef<'ast> {
+    pub ast: &'ast ParsedDef,
     pub name: &'ast str,
     // TODO: support array types
     pub scalar_type_expr: CompiledScalarTypeExpr<'ast>,
 }
 
-impl CompiledDecl<'_> {
+impl CompiledDef<'_> {
     pub fn expr(self: &Self) -> CompiledExpr {
         CompiledExpr::Var {
             ast: &self.ast.expr,
-            decl: self.clone(),
+            def: self.clone(),
         }
     }
 }
 
-impl<'ast> Compile<'ast, ParsedDecl> for CompiledDecl<'ast> {
-    fn compile(ast: &'ast ParsedDecl, scope: &Scope<'ast>) -> CompileResult<Self> {
+impl<'ast> Compile<'ast, ParsedDef> for CompiledDef<'ast> {
+    fn compile(ast: &'ast ParsedDef, scope: &Scope<'ast>) -> CompileResult<Self> {
         let name = match &ast.expr {
             ParsedExpr::Var {
                 ident: ParsedIdent { sym },

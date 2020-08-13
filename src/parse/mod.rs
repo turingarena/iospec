@@ -7,7 +7,7 @@ use syn::punctuated::Punctuated;
 use syn::Error;
 
 pub use block::*;
-pub use decl::*;
+pub use def::*;
 pub use expr::*;
 pub use ident::*;
 pub use spec::*;
@@ -22,7 +22,7 @@ mod kw {
 }
 
 mod block;
-mod decl;
+mod def;
 mod expr;
 mod ident;
 mod spec;

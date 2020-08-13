@@ -39,7 +39,7 @@ impl Gen for Skeleton<&CompiledExpr<'_>> {
         let Self(expr) = self;
         Ok(match expr {
             CompiledExpr::Var {
-                decl: CompiledDecl { name, .. },
+                def: CompiledDef { name, .. },
                 ..
             } => quote!(#(name.to_owned())),
             _ => quote!(unsupported_expression),
@@ -87,14 +87,14 @@ impl Gen for Skeleton<&IrInst<'_>> {
     fn gen(self: &Self) -> GenResult {
         let Self(inst) = self;
         Ok(match inst {
-            IrInst::Decl { inner, .. } => quote! {
-                #(LeftHandType(inner.scalar_type_expr.ty).gen()?) #(inner.name);
+            IrInst::Decl { def, .. } => quote! {
+                #(LeftHandType(def.scalar_type_expr.ty).gen()?) #(def.name);
             },
             IrInst::Write { expr, .. } => quote! {
                 printf(#(PrintfFormat(expr.ty().scalar_type()).gen()?), #(Skeleton(*expr).gen()?));
             },
-            IrInst::Read { decl, .. } => quote! {
-                scanf(#(ScanfFormat(decl.scalar_type_expr.ty).gen()?), &#(decl.name));
+            IrInst::Read { def, .. } => quote! {
+                scanf(#(ScanfFormat(def.scalar_type_expr.ty).gen()?), &#(def.name));
             },
             IrInst::Call {
                 inner:

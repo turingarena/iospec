@@ -1,6 +1,7 @@
 pub use block::*;
-pub use decl::*;
+pub use def::*;
 pub use expr::*;
+pub use range::*;
 use scope::*;
 pub use spec::*;
 pub use stmt::*;
@@ -27,11 +28,9 @@ where
 }
 
 mod block;
-mod decl;
+mod def;
 mod expr;
 mod spec;
 mod stmt;
 mod ty;
-
 mod range;
-pub use range::*;

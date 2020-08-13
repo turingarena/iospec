@@ -4,7 +4,7 @@ use super::*;
 pub enum CompiledExpr<'ast> {
     Var {
         ast: &'ast ParsedExpr,
-        decl: CompiledDecl<'ast>,
+        def: CompiledDef<'ast>,
     },
     Index {
         ast: &'ast ParsedExpr,
@@ -16,7 +16,7 @@ pub enum CompiledExpr<'ast> {
 impl CompiledExpr<'_> {
     pub fn ty(self: &Self) -> VariableType {
         match self {
-            CompiledExpr::Var { decl, .. } => VariableType::Scalar { scalar_type: decl.scalar_type_expr.ty.clone() },
+            CompiledExpr::Var { def, .. } => VariableType::Scalar { scalar_type: def.scalar_type_expr.ty.clone() },
             CompiledExpr::Index { array, .. } => VariableType::Array { array_type: Box::new(array.ty()),  },
         }
     }
@@ -27,8 +27,8 @@ impl<'ast> Compile<'ast, ParsedExpr> for CompiledExpr<'ast> {
         Ok(match ast {
             ParsedExpr::Var { ident } => CompiledExpr::Var {
                 ast,
-                decl: match scope.resolve(&ident.sym) {
-                    Some(NameResolution::Decl(decl)) => decl,
+                def: match scope.resolve(&ident.sym) {
+                    Some(NameResolution::Def(def)) => def,
                     _ => panic!("undefined variable"),
                 },
             },

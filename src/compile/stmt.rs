@@ -4,7 +4,7 @@ use super::*;
 pub enum CompiledStmt<'ast> {
     Read {
         ast: &'ast ParsedStmt,
-        args: Vec<CompiledDecl<'ast>>,
+        args: Vec<CompiledDef<'ast>>,
     },
     Write {
         ast: &'ast ParsedStmt,
@@ -14,7 +14,7 @@ pub enum CompiledStmt<'ast> {
         ast: &'ast ParsedStmt,
         name: &'ast str,
         args: Vec<CompiledExpr<'ast>>,
-        return_value: Option<CompiledDecl<'ast>>,
+        return_value: Option<CompiledDef<'ast>>,
     },
     For {
         ast: &'ast ParsedStmt,
@@ -28,9 +28,9 @@ impl<'ast> CompiledStmt<'ast> {
         match self {
             CompiledStmt::Read { args, .. } => {
                 let mut current = scope;
-                for decl in args {
-                    current = Scope::Decl {
-                        decl: decl.clone(),
+                for def in args {
+                    current = Scope::Def {
+                        def: def.clone(),
                         parent: Box::new(current.clone()),
                     }
                 }
@@ -39,8 +39,8 @@ impl<'ast> CompiledStmt<'ast> {
             CompiledStmt::Call {
                 return_value: Some(return_value),
                 ..
-            } => Scope::Decl {
-                decl: return_value.clone(),
+            } => Scope::Def {
+                def: return_value.clone(),
                 parent: Box::new(scope.clone()),
             },
             _ => scope,
@@ -78,7 +78,7 @@ impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
                     .map(|i| compile(i, scope))
                     .collect::<CompileResult<Vec<_>>>()?,
                 return_value: match &return_value {
-                    Some((_, decl)) => Some(compile(decl, scope)?),
+                    Some((_, def)) => Some(compile(def, scope)?),
                     None => None,
                 },
             },
