@@ -10,10 +10,10 @@ pub struct CompiledDecl<'ast> {
 
 impl CompiledDecl<'_> {
     pub fn expr(self: &Self) -> CompiledExpr {
-        CompiledExpr::Var(CompiledExprVar {
+        CompiledExpr::Var {
             ast: &self.ast.expr,
             decl: self.clone(),
-        })
+        }
     }
 }
 

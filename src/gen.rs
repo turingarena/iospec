@@ -38,10 +38,10 @@ impl Gen for Skeleton<&CompiledExpr<'_>> {
     fn gen(self: &Self) -> GenResult {
         let Self(expr) = self;
         Ok(match expr {
-            CompiledExpr::Var(CompiledExprVar {
+            CompiledExpr::Var {
                 decl: CompiledDecl { name, .. },
                 ..
-            }) => quote!(#(name.to_owned())),
+            } => quote!(#(name.to_owned())),
             _ => quote!(unsupported_expression),
         })
     }
