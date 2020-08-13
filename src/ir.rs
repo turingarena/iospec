@@ -6,14 +6,13 @@
 
 use crate::compile::*;
 
-type CompileResult<T> = Result<T, String>;
-
 #[derive(Debug, Clone)]
 pub enum IrInst<'a> {
     Decl(IrInstDecl<'a>),
     Read(IrInstRead<'a>),
     Write(IrInstWrite<'a>),
     Call(IrInstCall<'a>),
+    For(IrInstFor<'a>),
     // TODO: Alloc, Free, control structures
 }
 
@@ -35,6 +34,11 @@ pub struct IrInstWrite<'a> {
 #[derive(Debug, Clone)]
 pub struct IrInstCall<'a> {
     pub inner: &'a CompiledStmtCall<'a>,
+}
+
+#[derive(Debug, Clone)]
+pub struct IrInstFor<'a> {
+    pub inner: &'a CompiledStmtFor<'a>,
 }
 
 pub type IrBlock<'a> = Vec<IrInst<'a>>;
@@ -71,6 +75,9 @@ impl<'a> CompiledStmt<'a> {
             .into_iter()
             .flatten()
             .collect(),
+            CompiledStmt::For(stmt) => vec![
+                IrInst::For(IrInstFor { inner: stmt }),
+            ],
         }
     }
 }

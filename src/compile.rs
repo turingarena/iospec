@@ -74,13 +74,30 @@ pub enum ScalarType {
 }
 
 #[derive(Debug, Clone)]
+pub enum VariableType {
+    Scalar(ScalarVariableType),
+//    Array(ArrayVariableType),
+}
+
+#[derive(Debug, Clone)]
+pub struct ScalarVariableType {
+    scalar_type: ScalarType,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrayVariableType {
+    array_type: Box<VariableType>,
+//    index_decl:
+}
+
+#[derive(Debug, Clone)]
 pub struct CompiledScalarTypeExpr<'ast> {
     pub ast: &'ast ParsedScalarTypeExpr,
     pub ty: ScalarType,
 }
 
 impl<'ast> Compile<'ast, ParsedScalarTypeExpr> for CompiledScalarTypeExpr<'ast> {
-    fn compile(ast: &'ast ParsedScalarTypeExpr, scope: &Scope<'ast>) -> CompileResult<Self> {
+    fn compile(ast: &'ast ParsedScalarTypeExpr, _scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(Self {
             ast,
             ty: match ast.ident.sym.as_str() {
@@ -99,7 +116,7 @@ pub struct CompiledDecl<'ast> {
     pub ast: &'ast ParsedDecl,
     pub name: &'ast str,
     // TODO: support array types
-    pub ty: CompiledScalarTypeExpr<'ast>,
+    pub scalar_type_expr: CompiledScalarTypeExpr<'ast>,
 }
 
 impl CompiledDecl<'_> {
@@ -126,7 +143,7 @@ impl<'ast> Compile<'ast, ParsedDecl> for CompiledDecl<'ast> {
         Ok(Self {
             ast,
             name,
-            ty: compile(&ast.ty, &scope)?,
+            scalar_type_expr: compile(&ast.ty, &scope)?,
         })
     }
 }
@@ -141,7 +158,7 @@ impl CompiledExpr<'_> {
     // TODO: array types
     pub fn ty(self: &Self) -> ScalarType {
         match self {
-            CompiledExpr::Var(expr) => expr.decl.ty.ty,
+            CompiledExpr::Var(expr) => expr.decl.scalar_type_expr.ty,
             CompiledExpr::Index(expr) => unimplemented!(),
         }
     }
@@ -184,6 +201,7 @@ pub enum CompiledStmt<'ast> {
     Read(CompiledStmtRead<'ast>),
     Write(CompiledStmtWrite<'ast>),
     Call(CompiledStmtCall<'ast>),
+    For(CompiledStmtFor<'ast>),
 }
 
 #[derive(Debug, Clone)]
@@ -204,6 +222,14 @@ pub struct CompiledStmtCall<'ast> {
     pub name: &'ast str,
     pub args: Vec<CompiledExpr<'ast>>,
     pub return_value: Option<CompiledDecl<'ast>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledStmtFor<'ast> {
+    pub ast: &'ast ParsedStmtFor,
+    pub index_name: &'ast str,
+    pub range: CompiledExpr<'ast>,
+    pub body: CompiledBlock<'ast>,
 }
 
 impl<'ast> CompiledStmt<'ast> {
@@ -262,6 +288,13 @@ impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
                     Some((_, decl)) => Some(compile(decl, scope)?),
                     None => None,
                 },
+            }),
+            ParsedStmt::For(ast) => CompiledStmt::For(CompiledStmtFor {
+                ast,
+                index_name: &ast.index_name.sym,
+                range: compile(&ast.range, &scope)?,
+                // TODO: change the scope to include the index
+                body: compile(&ast.body, &scope)?,
             }),
         })
     }

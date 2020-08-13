@@ -87,13 +87,13 @@ impl Gen for Skeleton<&IrInst<'_>> {
         let Self(inst) = self;
         Ok(match inst {
             IrInst::Decl(inst) => quote! {
-                #(LeftHandType(inst.inner.ty.ty).gen()?) #(inst.inner.name);
+                #(LeftHandType(inst.inner.scalar_type_expr.ty).gen()?) #(inst.inner.name);
             },
             IrInst::Write(inst) => quote! {
                 printf(#(PrintfFormat(inst.expr.ty()).gen()?), #(Skeleton(inst.expr).gen()?));
             },
             IrInst::Read(inst) => quote! {
-                scanf(#(ScanfFormat(inst.decl.ty.ty).gen()?), &#(inst.decl.name));
+                scanf(#(ScanfFormat(inst.decl.scalar_type_expr.ty).gen()?), &#(inst.decl.name));
             },
             IrInst::Call(IrInstCall {
                 inner:

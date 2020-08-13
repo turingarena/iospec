@@ -108,6 +108,7 @@ mod kw {
     syn::custom_keyword!(read);
     syn::custom_keyword!(write);
     syn::custom_keyword!(call);
+    syn::custom_keyword!(upto);
 }
 
 #[derive(Debug, Clone)]
@@ -115,6 +116,7 @@ pub enum ParsedStmt {
     Write(ParsedStmtWrite),
     Read(ParsedStmtRead),
     Call(ParsedStmtCall),
+    For(ParsedStmtFor),
 }
 
 impl Parse for ParsedStmt {
@@ -125,6 +127,8 @@ impl Parse for ParsedStmt {
             Ok(ParsedStmt::Write(input.parse()?))
         } else if input.peek(kw::call) {
             Ok(ParsedStmt::Call(input.parse()?))
+        } else if input.peek(syn::Token![for]) {
+            Ok(ParsedStmt::For(input.parse()?))
         } else {
             Err(Error::new(input.span(), "statement expected"))
         }
@@ -189,6 +193,30 @@ impl Parse for ParsedStmtCall {
                 None
             },
             semi: input.parse()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedStmtFor {
+    pub for_token: syn::Token![for],
+    pub index_name: ParsedIdent,
+    pub upto: kw::upto,
+    pub range: ParsedExpr,
+    pub body_brace: syn::token::Brace,
+    pub body: ParsedBlock,
+}
+
+impl Parse for ParsedStmtFor {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let body_input;
+        Ok(Self {
+            for_token: input.parse()?,
+            index_name: input.parse()?,
+            upto: input.parse()?,
+            range: input.parse()?,
+            body_brace: syn::braced!(body_input in input),
+            body: body_input.parse()?,
         })
     }
 }
