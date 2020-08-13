@@ -10,19 +10,13 @@ pub enum ScalarType {
 
 #[derive(Debug, Clone)]
 pub enum VariableType {
-    Scalar(ScalarVariableType),
-//    Array(ArrayVariableType),
-}
-
-#[derive(Debug, Clone)]
-pub struct ScalarVariableType {
-    scalar_type: ScalarType,
-}
-
-#[derive(Debug, Clone)]
-pub struct ArrayVariableType {
-    array_type: Box<VariableType>,
-//    index_decl:
+    Scalar {
+        scalar_type: ScalarType,
+    },
+    Array {
+        array_type: Box<VariableType>,
+        // TODO: index_decl
+    },
 }
 
 #[derive(Debug, Clone)]

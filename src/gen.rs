@@ -59,7 +59,6 @@ impl Gen for ScanfFormat<ScalarType> {
         Ok(match ty {
             ScalarType::I32 | ScalarType::N32 => quote!("%d"),
             ScalarType::I64 | ScalarType::N64 => quote!("%lld"),
-            _ => quote!(invalid format),
         })
     }
 }
