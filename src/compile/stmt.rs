@@ -66,7 +66,12 @@ impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
                     .map(|i| compile(i, scope))
                     .collect::<CompileResult<Vec<_>>>()?,
             },
-            ParsedStmt::Call { name, args, return_value, .. } => CompiledStmt::Call {
+            ParsedStmt::Call {
+                name,
+                args,
+                return_value,
+                ..
+            } => CompiledStmt::Call {
                 ast,
                 name: &name.sym,
                 args: args
@@ -78,7 +83,12 @@ impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
                     None => None,
                 },
             },
-            ParsedStmt::For { index_name, range, body, .. } => CompiledStmt::For {
+            ParsedStmt::For {
+                index_name,
+                range,
+                body,
+                ..
+            } => CompiledStmt::For {
                 ast,
                 index_name: &index_name.sym,
                 range: compile(range, &scope)?,

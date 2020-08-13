@@ -1,10 +1,10 @@
 extern crate proc_macro2;
 extern crate syn;
 
-use syn::Error;
 use syn::parse::Parse;
 use syn::parse::ParseBuffer;
 use syn::punctuated::Punctuated;
+use syn::Error;
 
 pub use block::*;
 pub use decl::*;
@@ -21,10 +21,10 @@ mod kw {
     syn::custom_keyword!(upto);
 }
 
-mod ident;
-mod ty;
-mod expr;
-mod decl;
-mod stmt;
 mod block;
+mod decl;
+mod expr;
+mod ident;
 mod spec;
+mod stmt;
+mod ty;

@@ -16,17 +16,11 @@ impl<'a> CompiledStmt<'a> {
         match self {
             CompiledStmt::Read { args, .. } => args
                 .iter()
-                .flat_map(|decl| {
-                    vec![
-                        IrInst::Decl { inner: decl },
-                        IrInst::Read { decl },
-                    ]
-                })
+                .flat_map(|decl| vec![IrInst::Decl { inner: decl }, IrInst::Read { decl }])
                 .collect(),
-            CompiledStmt::Write { args, .. } => args
-                .iter()
-                .map(|expr| IrInst::Write { expr })
-                .collect(),
+            CompiledStmt::Write { args, .. } => {
+                args.iter().map(|expr| IrInst::Write { expr }).collect()
+            }
             CompiledStmt::Call { return_value, .. } => vec![
                 return_value
                     .iter()
@@ -34,12 +28,10 @@ impl<'a> CompiledStmt<'a> {
                     .collect(),
                 vec![IrInst::Call { inner: stmt }],
             ]
-                .into_iter()
-                .flatten()
-                .collect(),
-            CompiledStmt::For { .. } => vec![
-                IrInst::For { inner: stmt },
-            ],
+            .into_iter()
+            .flatten()
+            .collect(),
+            CompiledStmt::For { .. } => vec![IrInst::For { inner: stmt }],
         }
     }
 }

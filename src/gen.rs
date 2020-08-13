@@ -97,24 +97,26 @@ impl Gen for Skeleton<&IrInst<'_>> {
                 scanf(#(ScanfFormat(decl.scalar_type_expr.ty).gen()?), &#(decl.name));
             },
             IrInst::Call {
-                inner: CompiledStmt::Call {
-                    name,
-                    args,
-                    return_value: None,
-                    ..
-                },
+                inner:
+                    CompiledStmt::Call {
+                        name,
+                        args,
+                        return_value: None,
+                        ..
+                    },
             } => quote! {
                 #(*name)(#(
                     for a in args join (, ) => #(Skeleton(a).gen()?)
                 ));
             },
             IrInst::Call {
-                inner: CompiledStmt::Call {
-                    name,
-                    args,
-                    return_value: Some(return_value),
-                    ..
-                },
+                inner:
+                    CompiledStmt::Call {
+                        name,
+                        args,
+                        return_value: Some(return_value),
+                        ..
+                    },
             } => quote! {
                 #(Skeleton(&return_value.expr()).gen()?) = #(*name)(#(
                     for a in args join (, ) => #(Skeleton(a).gen()?)

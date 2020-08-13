@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[derive(Debug, Clone)]
 pub enum ParsedStmt {
     Write {

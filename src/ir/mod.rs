@@ -10,6 +10,6 @@ pub use spec::*;
 
 use crate::compile::*;
 
-mod inst;
 mod block;
+mod inst;
 mod spec;
