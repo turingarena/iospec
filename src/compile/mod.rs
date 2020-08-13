@@ -1,53 +1,8 @@
 use crate::parse::*;
 
-#[derive(Debug, Clone)]
-pub enum Scope<'ast> {
-    Root(ScopeRoot),
-    Decl(ScopeDecl<'ast>),
-    For(ScopeFor<'ast>),
-    Loop(ScopeLoop<'ast>),
-}
+mod scope;
 
-#[derive(Debug, Clone)]
-pub struct ScopeRoot;
-
-#[derive(Debug, Clone)]
-pub struct ScopeDecl<'ast> {
-    pub decl: CompiledDecl<'ast>,
-    pub parent: Box<Scope<'ast>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ScopeFor<'ast> {
-    //    pub for_stmt: &'ast StmtFor,
-    pub parent: Box<Scope<'ast>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ScopeLoop<'ast> {
-    //    pub loop_stmt: &'ast StmtLoop,
-    pub parent: Box<Scope<'ast>>,
-}
-
-#[derive(Debug, Clone)]
-enum NameResolution<'ast> {
-    Decl(CompiledDecl<'ast>),
-}
-
-impl<'ast> Scope<'ast> {
-    fn resolve(self: &Self, name: &str) -> Option<NameResolution<'ast>> {
-        match self {
-            Scope::Decl(ScopeDecl { decl, parent }) => {
-                if decl.name == name {
-                    Some(NameResolution::Decl(decl.clone()))
-                } else {
-                    parent.resolve(name)
-                }
-            }
-            _ => None,
-        }
-    }
-}
+use scope::*;
 
 type CompileResult<T> = Result<T, String>;
 
@@ -238,20 +193,20 @@ impl<'ast> CompiledStmt<'ast> {
             CompiledStmt::Read(CompiledStmtRead { args, .. }) => {
                 let mut current = scope;
                 for decl in args {
-                    current = Scope::Decl(ScopeDecl {
+                    current = Scope::Decl {
                         decl: decl.clone(),
                         parent: Box::new(current.clone()),
-                    })
+                    }
                 }
                 current
             }
             CompiledStmt::Call(CompiledStmtCall {
                 return_value: Some(return_value),
                 ..
-            }) => Scope::Decl(ScopeDecl {
+            }) => Scope::Decl {
                 decl: return_value.clone(),
                 parent: Box::new(scope.clone()),
-            }),
+            },
             _ => scope,
         }
     }
@@ -330,6 +285,6 @@ pub struct CompiledSpec<'ast> {
 pub fn compile_spec(ast: &ParsedSpec) -> CompileResult<CompiledSpec> {
     Ok(CompiledSpec {
         ast,
-        main: compile(&ast.main, &Scope::Root(ScopeRoot))?,
+        main: compile(&ast.main, &Scope::Root)?,
     })
 }
