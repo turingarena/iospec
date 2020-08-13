@@ -6,17 +6,13 @@ use syn::parse::Parse;
 use syn::parse::ParseBuffer;
 use syn::punctuated::Punctuated;
 
+pub use block::*;
 pub use decl::*;
 pub use expr::*;
 pub use ident::*;
+pub use spec::*;
 pub use stmt::*;
-pub use types::*;
-
-mod ident;
-mod types;
-mod expr;
-mod decl;
-mod stmt;
+pub use ty::*;
 
 mod kw {
     syn::custom_keyword!(read);
@@ -25,30 +21,10 @@ mod kw {
     syn::custom_keyword!(upto);
 }
 
-#[derive(Debug, Clone)]
-pub struct ParsedBlock {
-    pub stmts: Vec<ParsedStmt>,
-}
-
-impl Parse for ParsedBlock {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let mut stmts = vec![];
-        while !input.is_empty() {
-            stmts.push(input.parse()?);
-        }
-        Ok(ParsedBlock { stmts })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ParsedSpec {
-    pub main: ParsedBlock,
-}
-
-impl Parse for ParsedSpec {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Ok(ParsedSpec {
-            main: input.parse()?,
-        })
-    }
-}
+mod ident;
+mod ty;
+mod expr;
+mod decl;
+mod stmt;
+mod block;
+mod spec;
