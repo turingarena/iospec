@@ -1,10 +1,4 @@
-//! Intermediate representation (IR)
-//!
-//! Compiled AST is expanded into IR, adding variable declarations,
-//! construction and destruction, array allocations and de-allocations,
-//! and expanding reads and writes.
-
-use crate::compile::*;
+use super::*;
 
 #[derive(Debug, Clone)]
 pub enum IrInst<'a> {
@@ -16,14 +10,8 @@ pub enum IrInst<'a> {
     // TODO: Alloc, Free, control structures
 }
 
-pub type IrBlock<'a> = Vec<IrInst<'a>>;
-
-pub struct IrSpec<'a> {
-    pub main: IrBlock<'a>,
-}
-
 impl<'a> CompiledStmt<'a> {
-    fn build_ir(self: &'a Self) -> Vec<IrInst<'a>> {
+    pub fn build_ir(self: &'a Self) -> Vec<IrInst<'a>> {
         let stmt = self;
         match self {
             CompiledStmt::Read { args, .. } => args
@@ -53,17 +41,5 @@ impl<'a> CompiledStmt<'a> {
                 IrInst::For { inner: stmt },
             ],
         }
-    }
-}
-
-impl<'a> CompiledBlock<'a> {
-    pub fn build_ir(self: &'a Self) -> Vec<IrInst<'a>> {
-        self.stmts.iter().flat_map(|stmt| stmt.build_ir()).collect()
-    }
-}
-
-impl<'a> CompiledSpec<'a> {
-    pub fn build_ir(self: &'a Self) -> Vec<IrInst<'a>> {
-        self.main.build_ir()
     }
 }
