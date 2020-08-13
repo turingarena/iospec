@@ -1,13 +1,13 @@
 use super::*;
 
 #[derive(Debug, Clone)]
-pub struct CompiledSpec<'ast> {
+pub struct Spec<'ast> {
     pub ast: &'ast ParsedSpec,
-    pub main: CompiledBlock<'ast>,
+    pub main: Block<'ast>,
 }
 
-pub fn compile_spec(ast: &ParsedSpec) -> CompileResult<CompiledSpec> {
-    Ok(CompiledSpec {
+pub fn compile_spec(ast: &ParsedSpec) -> CompileResult<Spec> {
+    Ok(Spec {
         ast,
         main: compile(&ast.main, &Scope::Root)?,
     })

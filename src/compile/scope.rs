@@ -4,11 +4,11 @@ use super::*;
 pub enum Scope<'ast> {
     Root,
     Def {
-        def: CompiledDef<'ast>,
+        def: Def<'ast>,
         parent: Box<Scope<'ast>>,
     },
     For {
-        range: CompiledRange<'ast>,
+        range: Range<'ast>,
         parent: Box<Scope<'ast>>,
     },
     Loop {
@@ -19,8 +19,8 @@ pub enum Scope<'ast> {
 
 #[derive(Debug, Clone)]
 pub enum NameResolution<'ast> {
-    Def(CompiledDef<'ast>),
-    Range(CompiledRange<'ast>),
+    Def(Def<'ast>),
+    Range(Range<'ast>),
 }
 
 impl<'ast> Scope<'ast> {

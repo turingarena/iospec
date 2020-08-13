@@ -34,12 +34,12 @@ impl Gen for Skeleton<&IrBlock<'_>> {
     }
 }
 
-impl Gen for Skeleton<&CompiledExpr<'_>> {
+impl Gen for Skeleton<&Expr<'_>> {
     fn gen(self: &Self) -> GenResult {
         let Self(expr) = self;
         Ok(match expr {
-            CompiledExpr::Var {
-                def: CompiledDef { name, .. },
+            Expr::Var {
+                def: Def { name, .. },
                 ..
             } => quote!(#(name.to_owned())),
             _ => quote!(unsupported_expression),
@@ -98,7 +98,7 @@ impl Gen for Skeleton<&IrInst<'_>> {
             },
             IrInst::Call {
                 inner:
-                    CompiledStmt::Call {
+                    Stmt::Call {
                         name,
                         args,
                         return_value: None,
@@ -111,7 +111,7 @@ impl Gen for Skeleton<&IrInst<'_>> {
             },
             IrInst::Call {
                 inner:
-                    CompiledStmt::Call {
+                    Stmt::Call {
                         name,
                         args,
                         return_value: Some(return_value),
@@ -127,6 +127,6 @@ impl Gen for Skeleton<&IrInst<'_>> {
     }
 }
 
-pub fn gen_file(spec: &CompiledSpec<'_>) -> Result<String, Box<dyn std::error::Error>> {
+pub fn gen_file(spec: &Spec<'_>) -> Result<String, Box<dyn std::error::Error>> {
     Ok(Skeleton(&spec.build_ir()).gen()?.to_file_string().unwrap())
 }

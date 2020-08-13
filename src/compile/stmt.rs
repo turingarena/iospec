@@ -1,32 +1,32 @@
 use super::*;
 
 #[derive(Debug, Clone)]
-pub enum CompiledStmt<'ast> {
+pub enum Stmt<'ast> {
     Read {
         ast: &'ast ParsedStmt,
-        args: Vec<CompiledDef<'ast>>,
+        args: Vec<Def<'ast>>,
     },
     Write {
         ast: &'ast ParsedStmt,
-        args: Vec<CompiledExpr<'ast>>,
+        args: Vec<Expr<'ast>>,
     },
     Call {
         ast: &'ast ParsedStmt,
         name: &'ast str,
-        args: Vec<CompiledExpr<'ast>>,
-        return_value: Option<CompiledDef<'ast>>,
+        args: Vec<Expr<'ast>>,
+        return_value: Option<Def<'ast>>,
     },
     For {
         ast: &'ast ParsedStmt,
-        range: CompiledRange<'ast>,
-        body: CompiledBlock<'ast>,
+        range: Range<'ast>,
+        body: Block<'ast>,
     },
 }
 
-impl<'ast> CompiledStmt<'ast> {
+impl<'ast> Stmt<'ast> {
     pub fn extend_scope(self: &Self, scope: Scope<'ast>) -> Scope<'ast> {
         match self {
-            CompiledStmt::Read { args, .. } => {
+            Stmt::Read { args, .. } => {
                 let mut current = scope;
                 for def in args {
                     current = Scope::Def {
@@ -36,7 +36,7 @@ impl<'ast> CompiledStmt<'ast> {
                 }
                 current
             }
-            CompiledStmt::Call {
+            Stmt::Call {
                 return_value: Some(return_value),
                 ..
             } => Scope::Def {
@@ -48,17 +48,17 @@ impl<'ast> CompiledStmt<'ast> {
     }
 }
 
-impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
+impl<'ast> Compile<'ast, ParsedStmt> for Stmt<'ast> {
     fn compile(ast: &'ast ParsedStmt, scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(match ast {
-            ParsedStmt::Read { args, .. } => CompiledStmt::Read {
+            ParsedStmt::Read { args, .. } => Stmt::Read {
                 ast,
                 args: args
                     .iter()
                     .map(|i| compile(i, scope))
                     .collect::<CompileResult<Vec<_>>>()?,
             },
-            ParsedStmt::Write { args, .. } => CompiledStmt::Write {
+            ParsedStmt::Write { args, .. } => Stmt::Write {
                 ast,
                 args: args
                     .iter()
@@ -70,7 +70,7 @@ impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
                 args,
                 return_value,
                 ..
-            } => CompiledStmt::Call {
+            } => Stmt::Call {
                 ast,
                 name: &name.sym,
                 args: args
@@ -87,9 +87,9 @@ impl<'ast> Compile<'ast, ParsedStmt> for CompiledStmt<'ast> {
                 bound,
                 body,
                 ..
-            } => CompiledStmt::For {
+            } => Stmt::For {
                 ast,
-                range: CompiledRange {
+                range: Range {
                     stmt_ast: ast,
                     index_name: &index_name.sym,
                     bound: compile(bound, &scope)?,

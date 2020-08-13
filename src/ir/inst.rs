@@ -2,26 +2,26 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub enum IrInst<'a> {
-    Decl { def: &'a CompiledDef<'a> },
-    Read { def: &'a CompiledDef<'a> },
-    Write { expr: &'a CompiledExpr<'a> },
-    Call { inner: &'a CompiledStmt<'a> },
-    For { inner: &'a CompiledStmt<'a> },
+    Decl { def: &'a Def<'a> },
+    Read { def: &'a Def<'a> },
+    Write { expr: &'a Expr<'a> },
+    Call { inner: &'a Stmt<'a> },
+    For { inner: &'a Stmt<'a> },
     // TODO: Alloc, Free, control structures
 }
 
-impl<'a> CompiledStmt<'a> {
+impl<'a> Stmt<'a> {
     pub fn build_ir(self: &'a Self) -> Vec<IrInst<'a>> {
         let stmt = self;
         match self {
-            CompiledStmt::Read { args, .. } => args
+            Stmt::Read { args, .. } => args
                 .iter()
                 .flat_map(|def| vec![IrInst::Decl { def }, IrInst::Read { def }])
                 .collect(),
-            CompiledStmt::Write { args, .. } => {
+            Stmt::Write { args, .. } => {
                 args.iter().map(|expr| IrInst::Write { expr }).collect()
             }
-            CompiledStmt::Call { return_value, .. } => vec![
+            Stmt::Call { return_value, .. } => vec![
                 return_value
                     .iter()
                     .map(|def| IrInst::Decl { def: def })
@@ -31,7 +31,7 @@ impl<'a> CompiledStmt<'a> {
             .into_iter()
             .flatten()
             .collect(),
-            CompiledStmt::For { .. } => vec![IrInst::For { inner: stmt }],
+            Stmt::For { .. } => vec![IrInst::For { inner: stmt }],
         }
     }
 }

@@ -28,12 +28,12 @@ impl VariableType {
 }
 
 #[derive(Debug, Clone)]
-pub struct CompiledScalarTypeExpr<'ast> {
+pub struct ScalarTypeExpr<'ast> {
     pub ast: &'ast ParsedScalarTypeExpr,
     pub ty: ScalarType,
 }
 
-impl<'ast> Compile<'ast, ParsedScalarTypeExpr> for CompiledScalarTypeExpr<'ast> {
+impl<'ast> Compile<'ast, ParsedScalarTypeExpr> for ScalarTypeExpr<'ast> {
     fn compile(ast: &'ast ParsedScalarTypeExpr, _scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(Self {
             ast,
