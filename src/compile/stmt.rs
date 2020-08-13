@@ -24,26 +24,16 @@ pub enum Stmt<'ast> {
 }
 
 impl<'ast> Stmt<'ast> {
-    pub fn extend_scope(self: &Self, scope: Scope<'ast>) -> Scope<'ast> {
+    pub fn defs(self: &Self) -> Vec<Def<'ast>> {
         match self {
-            Stmt::Read { args, .. } => {
-                let mut current = scope;
-                for def in args {
-                    current = Scope::Def {
-                        def: def.clone(),
-                        parent: Box::new(current.clone()),
-                    }
-                }
-                current
-            }
+            Stmt::Read { args, .. } => args.to_vec(),
             Stmt::Call {
                 return_value: Some(return_value),
                 ..
-            } => Scope::Def {
-                def: return_value.clone(),
-                parent: Box::new(scope.clone()),
-            },
-            _ => scope,
+            } => vec![return_value.clone()],
+            // TODO: make into decls
+            Stmt::For { body, range, .. } => body.defs(),
+            _ => vec![],
         }
     }
 }
@@ -87,16 +77,24 @@ impl<'ast> Compile<'ast, ParsedStmt> for Stmt<'ast> {
                 bound,
                 body,
                 ..
-            } => Stmt::For {
-                ast,
-                range: Range {
+            } => {
+                let range = Range {
                     stmt_ast: ast,
                     index_name: &index_name.sym,
                     bound: compile(bound, &scope)?,
-                },
-                // TODO: change the scope to include the index
-                body: compile(body, &scope)?,
-            },
+                };
+                Stmt::For {
+                    ast,
+                    range: range.clone(),
+                    body: compile(
+                        body,
+                        &Scope::For {
+                            parent: Box::new(scope.clone()),
+                            range,
+                        },
+                    )?,
+                }
+            }
         })
     }
 }

@@ -30,7 +30,7 @@ where
 mod block;
 mod def;
 mod expr;
+mod range;
 mod spec;
 mod stmt;
 mod ty;
-mod range;

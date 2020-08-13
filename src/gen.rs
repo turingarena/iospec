@@ -38,11 +38,23 @@ impl Gen for Skeleton<&Expr<'_>> {
     fn gen(self: &Self) -> GenResult {
         let Self(expr) = self;
         Ok(match expr {
-            Expr::Var {
+            Expr::VarRef {
                 def: Def { name, .. },
                 ..
-            } => quote!(#(name.to_owned())),
-            _ => quote!(unsupported_expression),
+            } => {
+                let n = name.to_owned();
+                quote!(#(n))
+            }
+            Expr::IndexRef { range, .. } => {
+                let i = range.index_name.to_owned();
+                quote!(#(i))
+            }
+            Expr::Subscript { array, index, .. } => {
+                let a = Skeleton(array.as_ref()).gen()?;
+                let i = Skeleton(index.as_ref()).gen()?;
+
+                quote!(#(a)[#(i)])
+            }
         })
     }
 }
@@ -88,16 +100,26 @@ impl Gen for Skeleton<&IrInst<'_>> {
         let Self(inst) = self;
         Ok(match inst {
             IrInst::Decl { def, .. } => quote! {
-                #(LeftHandType(def.scalar_type_expr.ty).gen()?) #(def.name);
+                #(LeftHandType(def.variable_type.inner_scalar_type()).gen()?) #(def.name);
             },
-            IrInst::Write { expr, .. } => quote! {
-                printf(#(PrintfFormat(expr.ty().scalar_type()).gen()?), #(Skeleton(*expr).gen()?));
-            },
-            IrInst::Read { def, .. } => quote! {
-                scanf(#(ScanfFormat(def.scalar_type_expr.ty).gen()?), &#(def.name));
-            },
+            IrInst::Write { expr, .. } => {
+                let f = PrintfFormat(expr.get_type().scalar_type()).gen()?;
+                let x = Skeleton(*expr).gen()?;
+
+                quote! [
+                    printf(#(f), #(x));
+                ]
+            }
+            IrInst::Read { def, .. } => {
+                let f = ScanfFormat(def.value_type_expr.ty).gen()?;
+                let x = Skeleton(&def.expr()).gen()?;
+
+                quote! [
+                    scanf(#(f), &#(x));
+                ]
+            }
             IrInst::Call {
-                inner:
+                stmt:
                     Stmt::Call {
                         name,
                         args,
@@ -110,7 +132,7 @@ impl Gen for Skeleton<&IrInst<'_>> {
                 ));
             },
             IrInst::Call {
-                inner:
+                stmt:
                     Stmt::Call {
                         name,
                         args,
@@ -122,6 +144,16 @@ impl Gen for Skeleton<&IrInst<'_>> {
                     for a in args join (, ) => #(Skeleton(a).gen()?)
                 ));
             },
+            IrInst::For { range, body } => {
+                let i = range.index_name;
+                let n = Skeleton(&range.bound).gen()?;
+
+                quote! [
+                    for(int #(i) = 0; #(i) < #(n); #(i)++) {
+                        #(Skeleton(body).gen()?)
+                    }
+                ]
+            }
             _ => unreachable!(),
         })
     }

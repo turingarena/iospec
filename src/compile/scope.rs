@@ -20,7 +20,7 @@ pub enum Scope<'ast> {
 #[derive(Debug, Clone)]
 pub enum NameResolution<'ast> {
     Def(Def<'ast>),
-    Range(Range<'ast>),
+    Index(Range<'ast>),
 }
 
 impl<'ast> Scope<'ast> {
@@ -35,11 +35,19 @@ impl<'ast> Scope<'ast> {
             }
             Scope::For { range, parent } => {
                 if range.index_name == name {
-                    Some(NameResolution::Range(range.clone()))
+                    Some(NameResolution::Index(range.clone()))
                 } else {
                     parent.resolve(name)
                 }
             }
+            _ => None,
+        }
+    }
+
+    pub fn find_innermost_for(self: &Self) -> Option<(Range<'ast>, Scope<'ast>)> {
+        match self {
+            Scope::For { range, parent } => Some((range.clone(), parent.as_ref().clone())),
+            Scope::Def { parent, .. } => parent.find_innermost_for(),
             _ => None,
         }
     }

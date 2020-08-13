@@ -9,20 +9,53 @@ pub enum ScalarType {
 }
 
 #[derive(Debug, Clone)]
-pub enum VariableType {
+pub enum VariableType<'ast> {
+    Index {
+        range: Box<Range<'ast>>,
+    },
     Scalar {
-        scalar_type: ScalarType,
+        expr: ScalarTypeExpr<'ast>,
     },
     Array {
-        array_type: Box<VariableType>,
+        item: Box<VariableType<'ast>>,
+        range: Box<Range<'ast>>,
     },
 }
 
-impl VariableType {
+impl<'ast> VariableType<'ast> {
     pub fn scalar_type(self: &Self) -> ScalarType {
         match self {
-            VariableType::Scalar { scalar_type } => *scalar_type,
+            VariableType::Index { .. } => ScalarType::N32,
+            VariableType::Scalar { expr } => expr.ty,
             VariableType::Array { .. } => unreachable!(),
+        }
+    }
+
+    pub fn inner_scalar_type(self: &Self) -> ScalarType {
+        match self {
+            VariableType::Array { item, .. } => item.inner_scalar_type(),
+            _ => self.scalar_type(),
+        }
+    }
+
+    pub fn compile_def_expr(self: &Self, def: Def<'ast>, expr: &'ast ParsedExpr) -> Expr {
+        match self {
+            VariableType::Scalar { .. } => Expr::VarRef { ast: expr, def },
+            VariableType::Array { item, range } => {
+                if let ParsedExpr::Subscript { array, index, .. } = expr {
+                    Expr::Subscript {
+                        ast: expr,
+                        array: Box::new(item.compile_def_expr(def, array)),
+                        index: Box::new(Expr::IndexRef {
+                            ast: index,
+                            range: range.clone(),
+                        }),
+                    }
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => unreachable!(),
         }
     }
 }
