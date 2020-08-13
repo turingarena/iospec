@@ -17,7 +17,7 @@ impl CompiledExpr<'_> {
     pub fn ty(self: &Self) -> VariableType {
         match self {
             CompiledExpr::Var { decl, .. } => VariableType::Scalar { scalar_type: decl.scalar_type_expr.ty.clone() },
-            CompiledExpr::Index { array, index, .. } => VariableType::Array { array_type: Box::new(array.ty()) },
+            CompiledExpr::Index { array, .. } => VariableType::Array { array_type: Box::new(array.ty()),  },
         }
     }
 }

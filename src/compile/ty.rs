@@ -15,8 +15,16 @@ pub enum VariableType {
     },
     Array {
         array_type: Box<VariableType>,
-        // TODO: index_decl
     },
+}
+
+impl VariableType {
+    pub fn scalar_type(self: &Self) -> ScalarType {
+        match self {
+            VariableType::Scalar { scalar_type } => *scalar_type,
+            VariableType::Array { .. } => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

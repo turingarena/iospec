@@ -91,7 +91,7 @@ impl Gen for Skeleton<&IrInst<'_>> {
                 #(LeftHandType(inner.scalar_type_expr.ty).gen()?) #(inner.name);
             },
             IrInst::Write { expr, .. } => quote! {
-                printf(#(PrintfFormat(expr.ty()).gen()?), #(Skeleton(*expr).gen()?));
+                printf(#(PrintfFormat(expr.ty().scalar_type()).gen()?), #(Skeleton(*expr).gen()?));
             },
             IrInst::Read { decl, .. } => quote! {
                 scanf(#(ScanfFormat(decl.scalar_type_expr.ty).gen()?), &#(decl.name));
