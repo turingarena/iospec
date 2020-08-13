@@ -6,54 +6,17 @@ use syn::parse::ParseBuffer;
 use syn::punctuated::Punctuated;
 use syn::Error;
 
-#[derive(Debug, Clone)]
-pub struct ParsedIdent {
-    pub sym: String,
-}
+mod ident;
+pub use ident::*;
 
-impl Parse for ParsedIdent {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        // Parsing TokenTree instead of Indent to ignore Rust keywords
-        let token_tree: proc_macro2::TokenTree = input.parse()?;
-        match token_tree {
-            proc_macro2::TokenTree::Ident(x) => Ok(ParsedIdent { sym: x.to_string() }),
-            _ => Err(Error::new(token_tree.span(), "expected identifier")),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ParsedScalarTypeExpr {
-    pub ident: ParsedIdent,
-}
-
-impl Parse for ParsedScalarTypeExpr {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Ok(Self {
-            ident: input.parse()?,
-        })
-    }
-}
+mod types;
+pub use types::*;
 
 mod expr;
 pub use expr::*;
 
-#[derive(Debug, Clone)]
-pub struct ParsedDecl {
-    pub expr: ParsedExpr,
-    pub colon: syn::Token![:],
-    pub ty: ParsedScalarTypeExpr,
-}
-
-impl Parse for ParsedDecl {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Ok(Self {
-            expr: input.parse()?,
-            colon: input.parse()?,
-            ty: input.parse()?,
-        })
-    }
-}
+mod decl;
+pub use decl::*;
 
 mod kw {
     syn::custom_keyword!(read);
