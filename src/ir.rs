@@ -33,12 +33,12 @@ pub struct IrInstWrite<'a> {
 
 #[derive(Debug, Clone)]
 pub struct IrInstCall<'a> {
-    pub inner: &'a CompiledStmtCall<'a>,
+    pub inner: &'a CompiledStmt<'a>,
 }
 
 #[derive(Debug, Clone)]
 pub struct IrInstFor<'a> {
-    pub inner: &'a CompiledStmtFor<'a>,
+    pub inner: &'a CompiledStmt<'a>,
 }
 
 pub type IrBlock<'a> = Vec<IrInst<'a>>;
@@ -49,9 +49,9 @@ pub struct IrSpec<'a> {
 
 impl<'a> CompiledStmt<'a> {
     fn build_ir(self: &'a Self) -> Vec<IrInst<'a>> {
+        let stmt = self;
         match self {
-            CompiledStmt::Read(stmt) => stmt
-                .args
+            CompiledStmt::Read { args, .. } => args
                 .iter()
                 .flat_map(|decl| {
                     vec![
@@ -60,13 +60,12 @@ impl<'a> CompiledStmt<'a> {
                     ]
                 })
                 .collect(),
-            CompiledStmt::Write(stmt) => stmt
-                .args
+            CompiledStmt::Write { args, .. } => args
                 .iter()
                 .map(|expr| IrInst::Write(IrInstWrite { expr }))
                 .collect(),
-            CompiledStmt::Call(stmt) => vec![
-                stmt.return_value
+            CompiledStmt::Call { return_value, .. } => vec![
+                return_value
                     .iter()
                     .map(|decl| IrInst::Decl(IrInstDecl { inner: decl }))
                     .collect(),
@@ -75,7 +74,7 @@ impl<'a> CompiledStmt<'a> {
             .into_iter()
             .flatten()
             .collect(),
-            CompiledStmt::For(stmt) => vec![
+            CompiledStmt::For { .. } => vec![
                 IrInst::For(IrInstFor { inner: stmt }),
             ],
         }

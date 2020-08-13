@@ -97,7 +97,7 @@ impl Gen for Skeleton<&IrInst<'_>> {
             },
             IrInst::Call(IrInstCall {
                 inner:
-                    CompiledStmtCall {
+                    CompiledStmt::Call {
                         name,
                         args,
                         return_value: None,
@@ -110,7 +110,7 @@ impl Gen for Skeleton<&IrInst<'_>> {
             },
             IrInst::Call(IrInstCall {
                 inner:
-                    CompiledStmtCall {
+                    CompiledStmt::Call {
                         name,
                         args,
                         return_value: Some(return_value),
