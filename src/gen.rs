@@ -48,7 +48,9 @@ impl Gen for Skeleton<&CompiledExpr<'_>> {
 }
 
 struct ScanfFormat<T>(T);
+
 struct PrintfFormat<T>(T);
+
 struct LeftHandType<T>(T);
 
 impl Gen for ScanfFormat<ScalarType> {
@@ -86,44 +88,40 @@ impl Gen for Skeleton<&IrInst<'_>> {
     fn gen(self: &Self) -> GenResult {
         let Self(inst) = self;
         Ok(match inst {
-            IrInst::Decl(inst) => quote! {
-                #(LeftHandType(inst.inner.scalar_type_expr.ty).gen()?) #(inst.inner.name);
+            IrInst::Decl { inner, .. } => quote! {
+                #(LeftHandType(inner.scalar_type_expr.ty).gen()?) #(inner.name);
             },
-            IrInst::Write(inst) => quote! {
-                printf(#(PrintfFormat(inst.expr.ty()).gen()?), #(Skeleton(inst.expr).gen()?));
+            IrInst::Write { expr, .. } => quote! {
+                printf(#(PrintfFormat(expr.ty()).gen()?), #(Skeleton(*expr).gen()?));
             },
-            IrInst::Read(inst) => quote! {
-                scanf(#(ScanfFormat(inst.decl.scalar_type_expr.ty).gen()?), &#(inst.decl.name));
+            IrInst::Read { decl, .. } => quote! {
+                scanf(#(ScanfFormat(decl.scalar_type_expr.ty).gen()?), &#(decl.name));
             },
-            IrInst::Call(IrInstCall {
-                inner:
-                    CompiledStmt::Call {
-                        name,
-                        args,
-                        return_value: None,
-                        ..
-                    },
-            }) => quote! {
+            IrInst::Call {
+                inner: CompiledStmt::Call {
+                    name,
+                    args,
+                    return_value: None,
+                    ..
+                },
+            } => quote! {
                 #(*name)(#(
                     for a in args join (, ) => #(Skeleton(a).gen()?)
                 ));
             },
-            IrInst::Call(IrInstCall {
-                inner:
-                    CompiledStmt::Call {
-                        name,
-                        args,
-                        return_value: Some(return_value),
-                        ..
-                    },
-            }) => quote! {
+            IrInst::Call {
+                inner: CompiledStmt::Call {
+                    name,
+                    args,
+                    return_value: Some(return_value),
+                    ..
+                },
+            } => quote! {
                 #(Skeleton(&return_value.expr()).gen()?) = #(*name)(#(
                     for a in args join (, ) => #(Skeleton(a).gen()?)
                 ));
             },
-            _ => quote! {
-                bad statement
-            },
+            _ => unreachable!(),
         })
     }
 }

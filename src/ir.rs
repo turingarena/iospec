@@ -8,37 +8,12 @@ use crate::compile::*;
 
 #[derive(Debug, Clone)]
 pub enum IrInst<'a> {
-    Decl(IrInstDecl<'a>),
-    Read(IrInstRead<'a>),
-    Write(IrInstWrite<'a>),
-    Call(IrInstCall<'a>),
-    For(IrInstFor<'a>),
+    Decl { inner: &'a CompiledDecl<'a> },
+    Read { decl: &'a CompiledDecl<'a> },
+    Write { expr: &'a CompiledExpr<'a> },
+    Call { inner: &'a CompiledStmt<'a> },
+    For { inner: &'a CompiledStmt<'a> },
     // TODO: Alloc, Free, control structures
-}
-
-#[derive(Debug, Clone)]
-pub struct IrInstDecl<'a> {
-    pub inner: &'a CompiledDecl<'a>,
-}
-
-#[derive(Debug, Clone)]
-pub struct IrInstRead<'a> {
-    pub decl: &'a CompiledDecl<'a>,
-}
-
-#[derive(Debug, Clone)]
-pub struct IrInstWrite<'a> {
-    pub expr: &'a CompiledExpr<'a>,
-}
-
-#[derive(Debug, Clone)]
-pub struct IrInstCall<'a> {
-    pub inner: &'a CompiledStmt<'a>,
-}
-
-#[derive(Debug, Clone)]
-pub struct IrInstFor<'a> {
-    pub inner: &'a CompiledStmt<'a>,
 }
 
 pub type IrBlock<'a> = Vec<IrInst<'a>>;
@@ -55,27 +30,27 @@ impl<'a> CompiledStmt<'a> {
                 .iter()
                 .flat_map(|decl| {
                     vec![
-                        IrInst::Decl(IrInstDecl { inner: decl }),
-                        IrInst::Read(IrInstRead { decl }),
+                        IrInst::Decl { inner: decl },
+                        IrInst::Read { decl },
                     ]
                 })
                 .collect(),
             CompiledStmt::Write { args, .. } => args
                 .iter()
-                .map(|expr| IrInst::Write(IrInstWrite { expr }))
+                .map(|expr| IrInst::Write { expr })
                 .collect(),
             CompiledStmt::Call { return_value, .. } => vec![
                 return_value
                     .iter()
-                    .map(|decl| IrInst::Decl(IrInstDecl { inner: decl }))
+                    .map(|decl| IrInst::Decl { inner: decl })
                     .collect(),
-                vec![IrInst::Call(IrInstCall { inner: stmt })],
+                vec![IrInst::Call { inner: stmt }],
             ]
-            .into_iter()
-            .flatten()
-            .collect(),
+                .into_iter()
+                .flatten()
+                .collect(),
             CompiledStmt::For { .. } => vec![
-                IrInst::For(IrInstFor { inner: stmt }),
+                IrInst::For { inner: stmt },
             ],
         }
     }
