@@ -37,6 +37,8 @@ mod parsefile;
 mod kw;
 mod hir;
 mod hir_compile;
+mod mir;
+mod mir_build;
 
 fn main() {
     let app = App::from_args();

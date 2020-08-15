@@ -173,10 +173,13 @@ impl AstStmt {
                 inst, name, args_paren, args, return_value, semi
             } => {
                 let mut arg_commas = Vec::new();
-                let return_value: Option<(_, HirNode<HirDef>)> = return_value.map(|(arrow, r)| (arrow, r.compile(env)));
+                let (return_value_rarrow, return_value) = match return_value {
+                    Some((a, r)) => (Some(a), Some(r.compile(env))),
+                    None => (None, None),
+                };
 
                 HirStmt {
-                    conses: return_value.iter().map(|(_, r)| HirNode::new(HirCons::Scalar {
+                    conses: return_value.iter().map(|r| HirNode::new(HirCons::Scalar {
                         def: r.clone(),
                     })).collect(),
                     kind: HirStmtKind::Call {
@@ -191,6 +194,7 @@ impl AstStmt {
                             syn::punctuated::Pair::End(a) => a.compile(env),
                         }).collect(),
                         arg_commas,
+                        return_value_rarrow,
                         return_value,
                         semi,
                     }

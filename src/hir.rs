@@ -1,13 +1,29 @@
-extern crate syn;
 extern crate proc_macro2;
+extern crate syn;
 
+use std::ops::Deref;
 use std::rc::Rc;
 
 use syn::punctuated::Punctuated;
 
 use crate::kw::*;
 
-pub type HirNode<T> = Rc<T>;
+#[derive(Debug, Clone)]
+pub struct HirNode<T>(Rc<T>);
+
+impl<T> HirNode<T> {
+    pub fn new(data: T) -> Self {
+        Self(Rc::new(data))
+    }
+}
+
+impl<T> Deref for HirNode<T> {
+    type Target = T;
+
+    fn deref(self: &Self) -> &T {
+        self.0.deref()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct HirBlock {
@@ -94,7 +110,8 @@ pub enum HirStmtKind {
         args_paren: syn::token::Paren,
         args: Vec<HirNode<HirExpr>>,
         arg_commas: Vec<syn::Token![,]>,
-        return_value: Option<(syn::Token![->], HirNode<HirDef>)>,
+        return_value_rarrow: Option<syn::Token![->]>,
+        return_value: Option<HirNode<HirDef>>,
         semi: syn::Token![;],
     },
     For {
