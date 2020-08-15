@@ -13,6 +13,8 @@ use annotate_snippets::snippet::*;
 
 use crate::old_hir_compile::compile_spec;
 use crate::ast::AstSpec;
+use crate::hir::HirSpec;
+use crate::hir_compile::compile_hir;
 
 #[derive(Debug)]
 pub struct ParseError;
@@ -25,7 +27,7 @@ impl Display for ParseError {
 
 impl Error for ParseError {}
 
-pub fn load_spec_file(path: &Path) -> Result<AstSpec, Box<dyn Error>> {
+pub fn load_spec_file(path: &Path) -> Result<HirSpec, Box<dyn Error>> {
     let mut code_map = codemap::CodeMap::new();
 
     let file = code_map.add_file(
@@ -76,7 +78,7 @@ pub fn load_spec_file(path: &Path) -> Result<AstSpec, Box<dyn Error>> {
         }
         Ok(spec) => {
             compile_spec(&spec)?;
-            Ok(spec)
+            Ok(compile_hir(spec))
         }
     }
 }

@@ -19,6 +19,7 @@ enum App {
         #[structopt(long, parse(from_os_str), default_value = "./iospec")]
         spec_file: PathBuf,
     },
+    #[cfg(disable)]
     #[structopt(about = "Generates code (parser, template, etc.)")]
     Gen {
         #[structopt(long, parse(from_os_str), default_value = "./iospec")]
@@ -34,6 +35,8 @@ mod ir;
 mod ast_parse;
 mod parsefile;
 mod kw;
+mod hir;
+mod hir_compile;
 
 fn main() {
     let app = App::from_args();
@@ -49,6 +52,7 @@ fn main() {
             }
         },
 
+        #[cfg(disable)]
         App::Gen { spec_file } => {
             match load_spec_file(&spec_file)
                 .and_then(|spec| gen::gen_file(&compile_spec(&spec).unwrap()))
