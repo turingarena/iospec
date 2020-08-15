@@ -4,7 +4,21 @@ use crate::hir::*;
 
 #[derive(Debug, Clone)]
 pub struct MSpec {
+    pub funs: Vec<MFun>,
     pub main: MBlock,
+}
+
+#[derive(Debug, Clone)]
+pub struct MFun {
+    pub name: String,
+    pub params: Vec<MParam>,
+    pub ret: Option<MAtomTy>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MParam {
+    pub name: String,
+    pub ty: MConsTy,
 }
 
 pub type MBlock = Vec<MInst>;

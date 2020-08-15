@@ -7,24 +7,28 @@ use std::rc::Rc;
 use syn::punctuated::Punctuated;
 
 use crate::kw::*;
+use crate::mir::MFun;
 
 pub type HN<T> = Rc<T>;
 
 #[derive(Debug)]
 pub struct HSpec {
+    pub fun_decls: HN<Vec<HN<HFun>>>,
     pub main: HN<HBlock>,
 }
 
 #[derive(Debug)]
 pub struct HBlock {
-    pub decls: HN<Vec<HN<HDecl>>>,
+    pub fun_decls: HN<Vec<HN<HFun>>>,
+    pub var_decls: HN<Vec<HN<HVarDecl>>>,
     pub defs: HN<Vec<HN<HDefExpr>>>,
     pub stmts: HN<Vec<HN<HStmt>>>,
 }
 
 #[derive(Debug)]
 pub struct HStmt {
-    pub decls: HN<Vec<HN<HDecl>>>,
+    pub fun_decls: HN<Vec<HN<HFun>>>,
+    pub var_decls: HN<Vec<HN<HVarDecl>>>,
     pub defs: HN<Vec<HN<HDefExpr>>>,
     pub kind: HStmtKind,
 }
@@ -45,12 +49,11 @@ pub enum HStmtKind {
     },
     Call {
         inst: kw::call,
-        name: HN<HIdent>,
-        args_paren: syn::token::Paren,
+        fun: HN<HFun>,
         args: HN<Vec<HN<HValExpr>>>,
+        args_paren: syn::token::Paren,
         arg_commas: Vec<syn::Token![,]>,
         ret_rarrow: Option<syn::Token![->]>,
-        ret: Option<HN<HDef>>,
         semi: syn::Token![;],
     },
     For {
@@ -59,6 +62,19 @@ pub enum HStmtKind {
         body_brace: syn::token::Brace,
         body: HN<HBlock>,
     },
+}
+
+#[derive(Debug)]
+pub struct HFun {
+    pub name: HN<HIdent>,
+    pub params: HN<Vec<HN<HParam>>>,
+    pub ret: Option<HN<HDef>>,
+}
+
+#[derive(Debug)]
+pub struct HParam {
+    pub name: HN<HIdent>,
+    pub ty: HN<HExprTy>,
 }
 
 #[derive(Debug)]
@@ -100,7 +116,7 @@ pub struct HValExpr {
 pub enum HValExprKind {
     Ref {
         ident: HN<HIdent>,
-        target: Option<HN<HDecl>>,
+        target: Option<HN<HVarDecl>>,
     },
     Subscript {
         array: HN<HValExpr>,
@@ -141,7 +157,7 @@ pub struct HIdent {
 }
 
 #[derive(Debug)]
-pub struct HDecl {
+pub struct HVarDecl {
     pub ident: HN<HIdent>,
     pub kind: HDeclKind,
 }

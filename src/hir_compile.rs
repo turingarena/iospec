@@ -10,15 +10,22 @@ fn hir_block(ast: ABlock, env: &Env) -> HBlock {
 
     for stmt in ast.stmts {
         let stmt = hir_stmt(stmt, &env);
-        env.refs.extend(stmt.decls.iter().cloned());
+        env.refs.extend(stmt.var_decls.iter().cloned());
         stmts.push(HN::new(stmt));
     }
 
     HBlock {
-        decls: HN::new(
+        fun_decls: HN::new(
             stmts
                 .iter()
-                .flat_map(|stmt| stmt.decls.iter())
+                .flat_map(|stmt| stmt.fun_decls.iter())
+                .cloned()
+                .collect(),
+        ),
+        var_decls: HN::new(
+            stmts
+                .iter()
+                .flat_map(|stmt| stmt.var_decls.iter())
                 .cloned()
                 .collect(),
         ),
@@ -164,7 +171,8 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 .collect();
 
             HStmt {
-                decls: HN::new(args.iter().map(hir_def_decl).map(HN::new).collect()),
+                fun_decls: HN::new(Vec::new()),
+                var_decls: HN::new(args.iter().map(hir_def_decl).map(HN::new).collect()),
                 defs: HN::new(args.iter().map(|def| def.expr.clone()).collect()),
                 kind: HStmtKind::Read {
                     inst,
@@ -178,7 +186,8 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             let mut arg_commas = Vec::new();
 
             HStmt {
-                decls: HN::new(Vec::new()),
+                fun_decls: HN::new(Vec::new()),
+                var_decls: HN::new(Vec::new()),
                 defs: HN::new(Vec::new()),
                 kind: HStmtKind::Write {
                     inst,
@@ -208,33 +217,50 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             semi,
         } => {
             let mut arg_commas = Vec::new();
+
             let (ret_rarrow, ret) = match ret {
                 Some((a, r)) => (Some(a), Some(HN::new(hir_def(r, env)))),
                 None => (None, None),
             };
 
+            let args: Vec<HN<HValExpr>> = args.into_pairs()
+                .map(|a| match a {
+                    syn::punctuated::Pair::Punctuated(a, comma) => {
+                        arg_commas.push(comma);
+                        hir_val_expr(a, env)
+                    }
+                    syn::punctuated::Pair::End(a) => hir_val_expr(a, env),
+                })
+                .map(HN::new)
+                .collect();
+
+            let ret_var = ret.as_ref().map(hir_def_decl).map(HN::new);
+            let ret_def = ret.as_ref().map(|r| r.expr.clone());
+
+            let fun = HFun {
+                name: HN::new(hir_ident(name, env)),
+                params: HN::new(args.iter().map(|a| HParam {
+                    name: match &a.kind {
+                        HValExprKind::Ref { ident, .. } => ident.clone(),
+                        _ => todo!("recover from non-simple-var arg"),
+                    },
+                    ty: a.ty.clone(),
+                }).map(HN::new).collect()),
+                ret,
+            };
+            let fun = HN::new(fun);
+
             HStmt {
-                decls: HN::new(ret.iter().map(hir_def_decl).map(HN::new).collect()),
-                defs: HN::new(ret.iter().map(|r| r.expr.clone()).collect()),
+                fun_decls: HN::new(vec![fun.clone()]),
+                var_decls: HN::new(ret_var.iter().cloned().collect()),
+                defs: HN::new(ret_def.iter().cloned().collect()),
                 kind: HStmtKind::Call {
                     inst,
-                    name: HN::new(hir_ident(name, env)),
+                    fun,
+                    args: HN::new(args),
                     args_paren,
-                    args: HN::new(
-                        args.into_pairs()
-                            .map(|a| match a {
-                                syn::punctuated::Pair::Punctuated(a, comma) => {
-                                    arg_commas.push(comma);
-                                    hir_val_expr(a, env)
-                                }
-                                syn::punctuated::Pair::End(a) => hir_val_expr(a, env),
-                            })
-                            .map(HN::new)
-                            .collect(),
-                    ),
                     arg_commas,
                     ret_rarrow,
-                    ret,
                     semi,
                 },
             }
@@ -255,7 +281,7 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             });
 
             let mut inner_env = Env {
-                refs: vec![HN::new(HDecl {
+                refs: vec![HN::new(HVarDecl {
                     ident: index_name,
                     kind: HDeclKind::Index {
                         range: range.clone(),
@@ -271,13 +297,15 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             let body = hir_block(body, &mut inner_env);
 
             HStmt {
-                decls: body.decls.clone(),
+                fun_decls: body.fun_decls.clone(),
+                var_decls: body.var_decls.clone(),
                 defs: HN::new(
                     body.defs
                         .iter()
-                        .map(|expr| match &expr.kind {
-                            HDefExprKind::Subscript { array, .. } => array.clone(),
-                            _ => todo!("recover"),
+                        .flat_map(|expr| match &expr.kind {
+                            // TODO: check index somewhere?
+                            HDefExprKind::Subscript { array, .. } => Some(array.clone()),
+                            _ => None,
                         })
                         .collect(),
                 ),
@@ -298,8 +326,8 @@ fn hir_atom_ty(ast: ATy, env: &Env) -> HAtomTy {
     }
 }
 
-fn hir_def_decl(def: &HN<HDef>) -> HDecl {
-    HDecl {
+fn hir_def_decl(def: &HN<HDef>) -> HVarDecl {
+    HVarDecl {
         ident: def.ident.clone(),
         kind: HDeclKind::Var { def: def.clone() },
     }
@@ -316,6 +344,7 @@ pub fn compile_hir(ast: ASpec) -> HSpec {
     );
 
     HSpec {
+        fun_decls: main.fun_decls.clone(),
         main: HN::new(main),
     }
 }

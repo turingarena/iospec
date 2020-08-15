@@ -5,6 +5,7 @@ use crate::mir::*;
 
 pub fn build_mir(spec: &HSpec) -> MSpec {
     MSpec {
+        funs: spec.main.fun_decls.iter().map(mir_fun).collect(),
         main: mir_block(&spec.main),
     }
 }
@@ -81,11 +82,11 @@ fn mir_stmt_insts(hir: &HN<HStmt>) -> Vec<MInst> {
             })
             .collect(),
         HStmtKind::Call {
-            name, args, ret, ..
+            fun, args, ..
         } => vec![MInst::Call {
-            name: name.token.to_string(),
+            name: fun.name.token.to_string(),
             args: args.iter().map(mir_val_expr).collect(),
-            ret: ret
+            ret: fun.ret
                 .as_ref()
                 .map(Deref::deref)
                 .map(|HDef { expr, .. }| mir_def_expr(expr)),
@@ -144,5 +145,20 @@ fn mir_expr_ty(hir: &HN<HExprTy>) -> MConsTy {
             item: Box::new(mir_expr_ty(item)),
         },
         HExprTy::Index { .. } => MConsTy::Atom { atom: MAtomTy::N32 },
+    }
+}
+
+fn mir_fun(hir: &HN<HFun>) -> MFun {
+    MFun {
+        name: hir.name.token.to_string(),
+        params: hir.params.iter().map(mir_param).collect(),
+        ret: hir.ret.as_ref().map(|r| mir_atom_ty(&r.atom_ty)),
+    }
+}
+
+fn mir_param(hir: &HN<HParam>) -> MParam {
+    MParam {
+        name: hir.name.token.to_string(),
+        ty: mir_expr_ty(&hir.ty),
     }
 }
