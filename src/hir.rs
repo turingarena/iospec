@@ -9,15 +9,15 @@ use syn::punctuated::Punctuated;
 use crate::kw::*;
 
 #[derive(Debug, Clone)]
-pub struct HirNode<T>(Rc<T>);
+pub struct HN<T>(Rc<T>);
 
-impl<T> HirNode<T> {
+impl<T> HN<T> {
     pub fn new(data: T) -> Self {
         Self(Rc::new(data))
     }
 }
 
-impl<T> Deref for HirNode<T> {
+impl<T> Deref for HN<T> {
     type Target = T;
 
     fn deref(self: &Self) -> &T {
@@ -26,138 +26,128 @@ impl<T> Deref for HirNode<T> {
 }
 
 #[derive(Debug, Clone)]
-pub struct HirBlock {
-    pub conses: Vec<HirNode<HirCons>>,
-    pub stmts: Vec<HirNode<HirStmt>>,
+pub struct HBlock {
+    pub conses: Vec<HN<HCons>>,
+    pub stmts: Vec<HN<HStmt>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct HirDef {
-    pub expr: HirNode<HirDefExpr>,
+pub struct HDef {
+    pub expr: HN<HDefExpr>,
     pub colon: syn::Token![:],
-    pub ty: HirNode<HirScalarTypeExpr>,
+    pub ty: HN<HScalarTypeExpr>,
 }
 
 #[derive(Debug, Clone)]
-pub struct HirDefExpr {
-    pub kind: HirDefExprKind,
-    pub ident: HirNode<HirIdent>,
+pub struct HDefExpr {
+    pub kind: HDefExprKind,
+    pub ident: HN<HIdent>,
 }
 
 #[derive(Debug, Clone)]
-pub enum HirDefExprKind {
+pub enum HDefExprKind {
     Var {
-        ident: HirNode<HirIdent>,
+        ident: HN<HIdent>,
     },
     Subscript {
-        array: HirNode<HirDefExpr>,
+        array: HN<HDefExpr>,
         bracket: syn::token::Bracket,
-        index: HirNode<HirExpr>,
+        index: HN<HExpr>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct HirExpr {
-    pub kind: HirExprKind,
+pub struct HExpr {
+    pub kind: HExprKind,
 }
 
 #[derive(Debug, Clone)]
-pub enum HirExprKind {
+pub enum HExprKind {
     Ref {
-        ident: HirNode<HirIdent>,
-        target: Option<HirNode<HirRef>>,
+        ident: HN<HIdent>,
+        target: Option<HN<HRef>>,
     },
     Subscript {
-        array: HirNode<HirExpr>,
+        array: HN<HExpr>,
         bracket: syn::token::Bracket,
-        index: HirNode<HirExpr>,
+        index: HN<HExpr>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct HirIdent {
+pub struct HIdent {
     pub token: proc_macro2::Ident,
 }
 
 #[derive(Debug, Clone)]
-pub struct HirSpec {
-    pub main: HirNode<HirBlock>,
+pub struct HSpec {
+    pub main: HN<HBlock>,
 }
 
 #[derive(Debug, Clone)]
-pub struct HirStmt {
-    pub conses: Vec<HirNode<HirCons>>,
-    pub kind: HirStmtKind,
+pub struct HStmt {
+    pub conses: Vec<HN<HCons>>,
+    pub kind: HStmtKind,
 }
 
 #[derive(Debug, Clone)]
-pub enum HirStmtKind {
+pub enum HStmtKind {
     Write {
         inst: kw::write,
-        args: Vec<HirNode<HirExpr>>,
+        args: Vec<HN<HExpr>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
     Read {
         inst: kw::read,
-        args: Vec<HirNode<HirDef>>,
+        args: Vec<HN<HDef>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
     Call {
         inst: kw::call,
-        name: HirNode<HirIdent>,
+        name: HN<HIdent>,
         args_paren: syn::token::Paren,
-        args: Vec<HirNode<HirExpr>>,
+        args: Vec<HN<HExpr>>,
         arg_commas: Vec<syn::Token![,]>,
-        return_value_rarrow: Option<syn::Token![->]>,
-        return_value: Option<HirNode<HirDef>>,
+        ret_rarrow: Option<syn::Token![->]>,
+        ret: Option<HN<HDef>>,
         semi: syn::Token![;],
     },
     For {
         for_token: syn::Token![for],
-        range: HirNode<HirRange>,
+        range: HN<HRange>,
         body_brace: syn::token::Brace,
-        body: HirNode<HirBlock>,
+        body: HN<HBlock>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct HirRange {
-    pub index_name: HirNode<HirIdent>,
+pub struct HRange {
+    pub index_name: HN<HIdent>,
     pub upto: kw::upto,
-    pub bound: HirNode<HirExpr>,
+    pub bound: HN<HExpr>,
 }
 
 #[derive(Debug, Clone)]
-pub struct HirScalarTypeExpr {
-    pub ident: HirNode<HirIdent>,
+pub struct HScalarTypeExpr {
+    pub ident: HN<HIdent>,
 }
 
 #[derive(Debug, Clone)]
-pub struct HirRef {
-    pub ident: HirNode<HirIdent>,
-    pub kind: HirRefKind,
+pub struct HRef {
+    pub ident: HN<HIdent>,
+    pub kind: HRefKind,
 }
 
 #[derive(Debug, Clone)]
-pub enum HirRefKind {
-    Var {
-        def: HirNode<HirDef>,
-        cons: HirNode<HirCons>,
-    },
-    Index {
-        range: HirNode<HirRange>,
-    },
+pub enum HRefKind {
+    Var { def: HN<HDef>, cons: HN<HCons> },
+    Index { range: HN<HRange> },
 }
 
 #[derive(Debug, Clone)]
-pub enum HirCons {
-    Scalar {
-        def: HirNode<HirDef>,
-    },
-    Array {
-        item: HirNode<HirCons>,
-        range: HirNode<HirRange>,
-    },
+pub enum HCons {
+    Scalar { def: HN<HDef> },
+    Array { item: HN<HCons>, range: HN<HRange> },
 }

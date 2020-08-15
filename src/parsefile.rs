@@ -11,7 +11,7 @@ use std::path::Path;
 use annotate_snippets::display_list::{DisplayList, FormatOptions};
 use annotate_snippets::snippet::*;
 
-use crate::ast::AstSpec;
+use crate::ast::ASpec;
 
 #[derive(Debug)]
 pub struct ParseError;
@@ -24,7 +24,7 @@ impl Display for ParseError {
 
 impl Error for ParseError {}
 
-pub fn parse_file(path: &Path) -> Result<AstSpec, Box<dyn Error>> {
+pub fn parse_file(path: &Path) -> Result<ASpec, Box<dyn Error>> {
     let mut code_map = codemap::CodeMap::new();
 
     let file = code_map.add_file(
@@ -32,7 +32,7 @@ pub fn parse_file(path: &Path) -> Result<AstSpec, Box<dyn Error>> {
         read_to_string(path)?,
     );
 
-    let res = syn::parse_str::<AstSpec>(file.source());
+    let res = syn::parse_str::<ASpec>(file.source());
 
     match res {
         Err(e) => {
@@ -73,6 +73,6 @@ pub fn parse_file(path: &Path) -> Result<AstSpec, Box<dyn Error>> {
 
             Err(Box::new(ParseError))
         }
-        Ok(spec) => Ok(spec)
+        Ok(spec) => Ok(spec),
     }
 }

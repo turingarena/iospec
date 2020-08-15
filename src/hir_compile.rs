@@ -5,28 +5,27 @@ use crate::hir::*;
 
 #[derive(Debug, Clone)]
 struct Env {
-    refs: Vec<HirNode<HirRef>>,
+    refs: Vec<HN<HRef>>,
     outer: Option<Scope>,
 }
 
 impl Env {
-    fn resolve(self: &Self, ident: HirNode<HirIdent>) -> Option<HirNode<HirRef>> {
-        self.refs.iter().find(|r| r.ident.token == ident.token).map(|r| r.clone()).or(
-            self.outer.as_ref().and_then(|s| s.resolve(ident))
-        )
+    fn resolve(self: &Self, ident: HN<HIdent>) -> Option<HN<HRef>> {
+        self.refs
+            .iter()
+            .find(|r| r.ident.token == ident.token)
+            .map(|r| r.clone())
+            .or(self.outer.as_ref().and_then(|s| s.resolve(ident)))
     }
 }
 
 #[derive(Debug, Clone)]
 enum Scope {
-    For {
-        range: HirNode<HirRange>,
-        env: Box<Env>,
-    },
+    For { range: HN<HRange>, env: Box<Env> },
 }
 
 impl Scope {
-    fn resolve(self: &Self, ident: HirNode<HirIdent>) -> Option<HirNode<HirRef>> {
+    fn resolve(self: &Self, ident: HN<HIdent>) -> Option<HN<HRef>> {
         match self {
             Scope::For { range, env } => {
                 // TODO: resolve index
@@ -36,219 +35,246 @@ impl Scope {
     }
 }
 
-impl AstBlock {
-    fn compile(self: Self, env: &mut Env) -> HirNode<HirBlock> {
-        let stmts: Vec<HirNode<HirStmt>> = self.stmts.into_iter().map(|stmt| stmt.compile(env)).collect();
-        HirNode::new(HirBlock {
-            conses: stmts.iter().flat_map(|stmt| stmt.conses.iter()).map(Clone::clone).collect(),
-            stmts,
-        })
-    }
+fn hir_block(ast: ABlock, env: &mut Env) -> HN<HBlock> {
+    let stmts: Vec<HN<HStmt>> = ast
+        .stmts
+        .into_iter()
+        .map(|stmt| hir_stmt(stmt, env))
+        .collect();
+    HN::new(HBlock {
+        conses: stmts
+            .iter()
+            .flat_map(|stmt| stmt.conses.iter())
+            .cloned()
+            .collect(),
+        stmts,
+    })
 }
 
-impl AstDef {
-    fn compile(self: Self, env: &mut Env) -> HirNode<HirDef> {
-        let AstDef { expr, colon, ty } = self;
-        let def = HirNode::new(HirDef {
-            expr: expr.compile_def(env),
-            colon,
-            ty: ty.compile(env),
-        });
-        env.refs.push(HirNode::new(HirRef {
-            ident: def.expr.ident.clone(),
-            kind: HirRefKind::Var {
-                def: def.clone(),
-                cons: HirNode::new(HirCons::Scalar {
-                    def: def.clone(),
-                }),
-            },
-        }));
-        def
-    }
+fn hir_def(ast: ADef, env: &mut Env) -> HN<HDef> {
+    let ADef { expr, colon, ty } = ast;
+    let def = HN::new(HDef {
+        expr: hir_def_expr(expr, env),
+        colon,
+        ty: hir_scalar_type_expr(ty, env),
+    });
+    env.refs.push(HN::new(HRef {
+        ident: def.expr.ident.clone(),
+        kind: HRefKind::Var {
+            def: def.clone(),
+            cons: HN::new(HCons::Scalar { def: def.clone() }),
+        },
+    }));
+    def
 }
 
-impl AstExpr {
-    fn compile(self: Self, env: &mut Env) -> HirNode<HirExpr> {
-        HirNode::new(match self {
-            AstExpr::Ref { ident } => {
-                let ident = ident.compile(env);
-                HirExpr {
-                    kind: HirExprKind::Ref {
-                        target: env.resolve(ident.clone()),
-                        ident,
-                    }
-                }
+fn hir_expr(ast: AExpr, env: &mut Env) -> HN<HExpr> {
+    HN::new(match ast {
+        AExpr::Ref { ident } => {
+            let ident = hir_ident(ident, env);
+            HExpr {
+                kind: HExprKind::Ref {
+                    target: env.resolve(ident.clone()),
+                    ident,
+                },
             }
-            AstExpr::Subscript { array, bracket, index } => HirExpr {
-                kind: HirExprKind::Subscript {
-                    array: array.compile(env),
-                    index: index.compile(env),
+        }
+        AExpr::Subscript {
+            array,
+            bracket,
+            index,
+        } => HExpr {
+            kind: HExprKind::Subscript {
+                array: hir_expr(*array, env),
+                index: hir_expr(*index, env),
+                bracket,
+            },
+        },
+    })
+}
+
+fn hir_def_expr(ast: AExpr, env: &mut Env) -> HN<HDefExpr> {
+    HN::new(match ast {
+        AExpr::Ref { ident } => {
+            let ident = hir_ident(ident, env);
+            HDefExpr {
+                ident: ident.clone(),
+                kind: HDefExprKind::Var { ident },
+            }
+        }
+        AExpr::Subscript {
+            array,
+            bracket,
+            index,
+        } => {
+            let array = hir_def_expr(*array, env);
+            HDefExpr {
+                ident: array.ident.clone(),
+                kind: HDefExprKind::Subscript {
+                    array,
+                    index: hir_expr(*index, env),
                     bracket,
-                }
-            },
-        })
-    }
-
-    fn compile_def(self: AstExpr, env: &mut Env) -> HirNode<HirDefExpr> {
-        HirNode::new(match self {
-            AstExpr::Ref { ident } => {
-                let ident = ident.compile(env);
-                HirDefExpr {
-                    ident: ident.clone(),
-                    kind: HirDefExprKind::Var {
-                        ident,
-                    },
-                }
+                },
             }
-            AstExpr::Subscript { array, bracket, index } => {
-                let array = array.compile_def(env);
-                HirDefExpr {
-                    ident: array.ident.clone(),
-                    kind: HirDefExprKind::Subscript {
-                        array,
-                        index: index.compile(env),
-                        bracket,
-                    },
-                }},
-        })
-    }
+        }
+    })
 }
 
-impl AstIdent {
-    fn compile(self: Self, env: &mut Env) -> HirNode<HirIdent> {
-        let AstIdent { token } = self;
-        HirNode::new(HirIdent { token })
-    }
+fn hir_ident(ast: AIdent, env: &mut Env) -> HN<HIdent> {
+    let AIdent { token } = ast;
+    HN::new(HIdent { token })
 }
 
-impl AstStmt {
-    fn compile(self: Self, env: &mut Env) -> HirNode<HirStmt> {
-        HirNode::new(match self {
-            AstStmt::Read {
-                inst, args, semi,
-            } => {
-                let mut arg_commas = Vec::new();
+fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
+    HN::new(match ast {
+        AStmt::Read { inst, args, semi } => {
+            let mut arg_commas = Vec::new();
 
-                let args: Vec<HirNode<HirDef>> = args.into_pairs().map(|a| match a {
+            let args: Vec<HN<HDef>> = args
+                .into_pairs()
+                .map(|a| match a {
                     syn::punctuated::Pair::Punctuated(a, comma) => {
                         arg_commas.push(comma);
-                        a.compile(env)
+                        hir_def(a, env)
                     }
-                    syn::punctuated::Pair::End(a) => a.compile(env),
-                }).collect();
+                    syn::punctuated::Pair::End(a) => hir_def(a, env),
+                })
+                .collect();
 
-                HirStmt {
-                    conses: args.iter().map(|def| HirNode::new(HirCons::Scalar {
-                        def: def.clone(),
-                    })).collect(),
-                    kind: HirStmtKind::Read {
-                        inst,
-                        args,
-                        arg_commas,
-                        semi,
-                    }
-                }
+            HStmt {
+                conses: args
+                    .iter()
+                    .map(|def| HN::new(HCons::Scalar { def: def.clone() }))
+                    .collect(),
+                kind: HStmtKind::Read {
+                    inst,
+                    args,
+                    arg_commas,
+                    semi,
+                },
             }
-            AstStmt::Write {
-                inst, args, semi,
-            } => {
-                let mut arg_commas = Vec::new();
+        }
+        AStmt::Write { inst, args, semi } => {
+            let mut arg_commas = Vec::new();
 
-                HirStmt {
-                    conses: Vec::new(),
-                    kind: HirStmtKind::Write {
-                        inst,
-                        args: args.into_pairs().map(|a| match a {
+            HStmt {
+                conses: Vec::new(),
+                kind: HStmtKind::Write {
+                    inst,
+                    args: args
+                        .into_pairs()
+                        .map(|a| match a {
                             syn::punctuated::Pair::Punctuated(a, comma) => {
                                 arg_commas.push(comma);
-                                a.compile(env)
+                                hir_expr(a, env)
                             }
-                            syn::punctuated::Pair::End(a) => a.compile(env),
-                        }).collect(),
-                        arg_commas,
-                        semi,
-                    }
-                }
+                            syn::punctuated::Pair::End(a) => hir_expr(a, env),
+                        })
+                        .collect(),
+                    arg_commas,
+                    semi,
+                },
             }
-            AstStmt::Call {
-                inst, name, args_paren, args, return_value, semi
-            } => {
-                let mut arg_commas = Vec::new();
-                let (return_value_rarrow, return_value) = match return_value {
-                    Some((a, r)) => (Some(a), Some(r.compile(env))),
-                    None => (None, None),
-                };
+        }
+        AStmt::Call {
+            inst,
+            name,
+            args_paren,
+            args,
+            ret,
+            semi,
+        } => {
+            let mut arg_commas = Vec::new();
+            let (ret_rarrow, ret) = match ret {
+                Some((a, r)) => (Some(a), Some(hir_def(r, env))),
+                None => (None, None),
+            };
 
-                HirStmt {
-                    conses: return_value.iter().map(|r| HirNode::new(HirCons::Scalar {
-                        def: r.clone(),
-                    })).collect(),
-                    kind: HirStmtKind::Call {
-                        inst,
-                        name: name.compile(env),
-                        args_paren,
-                        args: args.into_pairs().map(|a| match a {
+            HStmt {
+                conses: ret
+                    .iter()
+                    .map(|r| HN::new(HCons::Scalar { def: r.clone() }))
+                    .collect(),
+                kind: HStmtKind::Call {
+                    inst,
+                    name: hir_ident(name, env),
+                    args_paren,
+                    args: args
+                        .into_pairs()
+                        .map(|a| match a {
                             syn::punctuated::Pair::Punctuated(a, comma) => {
                                 arg_commas.push(comma);
-                                a.compile(env)
+                                hir_expr(a, env)
                             }
-                            syn::punctuated::Pair::End(a) => a.compile(env),
-                        }).collect(),
-                        arg_commas,
-                        return_value_rarrow,
-                        return_value,
-                        semi,
-                    }
-                }
+                            syn::punctuated::Pair::End(a) => hir_expr(a, env),
+                        })
+                        .collect(),
+                    arg_commas,
+                    ret_rarrow,
+                    ret,
+                    semi,
+                },
             }
-            AstStmt::For {
-                for_token, index_name, upto, bound, body_brace, body
-            } => {
-                let range = HirNode::new(HirRange {
-                    bound: bound.compile(env),
-                    upto,
-                    index_name: index_name.compile(env),
-                });
+        }
+        AStmt::For {
+            for_token,
+            index_name,
+            upto,
+            bound,
+            body_brace,
+            body,
+        } => {
+            let range = HN::new(HRange {
+                bound: hir_expr(bound, env),
+                upto,
+                index_name: hir_ident(index_name, env),
+            });
 
-                let mut inner_env = Env {
-                    refs: Vec::new(),
-                    outer: Some(Scope::For {
-                        range: range.clone(),
-                        env: Box::new((*env).clone()),
-                    }),
-                };
-                let body = body.compile(&mut inner_env);
+            let mut inner_env = Env {
+                refs: Vec::new(),
+                outer: Some(Scope::For {
+                    range: range.clone(),
+                    env: Box::new((*env).clone()),
+                }),
+            };
+            let body = hir_block(body, &mut inner_env);
 
-                HirStmt {
-                    conses: body.conses.iter().map(|c| HirNode::new(HirCons::Array {
-                        item: c.clone(),
-                        range: range.clone(),
-                    })).collect(),
-                    kind: HirStmtKind::For {
-                        for_token,
-                        range,
-                        body_brace,
-                        body,
-                    }
-                }
+            HStmt {
+                conses: body
+                    .conses
+                    .iter()
+                    .map(|c| {
+                        HN::new(HCons::Array {
+                            item: c.clone(),
+                            range: range.clone(),
+                        })
+                    })
+                    .collect(),
+                kind: HStmtKind::For {
+                    for_token,
+                    range,
+                    body_brace,
+                    body,
+                },
             }
-        })
-    }
+        }
+    })
 }
 
-impl AstScalarTypeExpr {
-    fn compile(self: Self, env: &mut Env) -> HirNode<HirScalarTypeExpr> {
-        HirNode::new(HirScalarTypeExpr {
-            ident: self.ident.compile(env),
-        })
-    }
+fn hir_scalar_type_expr(ast: ATy, env: &mut Env) -> HN<HScalarTypeExpr> {
+    HN::new(HScalarTypeExpr {
+        ident: hir_ident(ast.ident, env),
+    })
 }
 
-pub fn compile_hir(ast: AstSpec) -> HirSpec {
-    HirSpec {
-        main: ast.main.compile(&mut Env {
-            refs: Vec::new(),
-            outer: None,
-        })
+pub fn compile_hir(ast: ASpec) -> HSpec {
+    HSpec {
+        main: hir_block(
+            ast.main,
+            &mut Env {
+                refs: Vec::new(),
+                outer: None,
+            },
+        ),
     }
 }

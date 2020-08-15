@@ -3,62 +3,58 @@ use std::rc::Rc;
 use crate::hir::*;
 
 #[derive(Debug, Clone)]
-pub struct MirSpec {
-    pub main: MirBlock,
+pub struct MSpec {
+    pub main: MBlock,
 }
 
-pub type MirBlock = Vec<MirInst>;
+pub type MBlock = Vec<MInst>;
 
 #[derive(Debug, Clone)]
-pub enum MirInst {
+pub enum MInst {
     Decl {
         name: String,
-        ty: MirConsTy,
+        ty: MConsTy,
     },
     Read {
-        arg: MirExpr,
-        ty: MirDefTy,
+        arg: MExpr,
+        ty: MDefTy,
     },
     Write {
-        arg: MirExpr,
-        ty: MirDefTy,
+        arg: MExpr,
+        ty: MDefTy,
     },
     Call {
         name: String,
-        args: Vec<MirExpr>,
-        ret: Option<MirExpr>,
+        args: Vec<MExpr>,
+        ret: Option<MExpr>,
     },
     For {
         index_name: String,
-        bound: MirExpr,
-        body: Box<MirBlock>,
+        bound: MExpr,
+        body: Box<MBlock>,
     },
     // TODO: Alloc, Free, control structures
 }
 
 #[derive(Debug, Clone)]
-pub enum MirExpr {
+pub enum MExpr {
     Var {
         name: String,
     },
     Subscript {
-        array: Box<MirExpr>,
-        index: Box<MirExpr>,
+        array: Box<MExpr>,
+        index: Box<MExpr>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub enum MirConsTy {
-    Scalar {
-        def: MirDefTy,
-    },
-    Array {
-        item: Box<MirConsTy>,
-    },
+pub enum MConsTy {
+    Scalar { def: MDefTy },
+    Array { item: Box<MConsTy> },
 }
 
 #[derive(Debug, Clone)]
-pub enum MirDefTy {
+pub enum MDefTy {
     N32,
     I32,
     N64,

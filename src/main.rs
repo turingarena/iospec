@@ -2,12 +2,12 @@
 
 extern crate structopt;
 
+use crate::hir_compile::compile_hir;
+use crate::mir_build::build_mir;
 use crate::parsefile::parse_file;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
-use crate::hir_compile::compile_hir;
-use crate::mir_build::build_mir;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -28,14 +28,14 @@ enum App {
 }
 
 mod ast;
-mod gen;
 mod ast_parse;
-mod parsefile;
-mod kw;
+mod gen;
 mod hir;
 mod hir_compile;
+mod kw;
 mod mir;
 mod mir_build;
+mod parsefile;
 
 fn main() {
     let app = App::from_args();

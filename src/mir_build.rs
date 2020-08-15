@@ -1,156 +1,142 @@
+use std::ops::Deref;
+
 use crate::hir::*;
 use crate::mir::*;
 
-impl HirNode<HirBlock> {
-    fn build_mir(self: &Self) -> Vec<MirInst> {
-        self.stmts.iter().flat_map(|s| s.build_mir()).collect()
+fn mir_block(hir: &HN<HBlock>) -> Vec<MInst> {
+    hir.stmts.iter().flat_map(mir_stmt_insts).collect()
+}
+
+fn mir_stmt_insts(hir: &HN<HStmt>) -> Vec<MInst> {
+    let mut insts = vec![];
+
+    insts.extend(hir.conses.iter().flat_map(|c| match (*c).deref() {
+        HCons::Scalar { def } => vec![mir_inst_decl(def)],
+        _ => vec![],
+    }));
+
+    let stmt_insts = match &hir.kind {
+        HStmtKind::Read { args, .. } => args
+            .iter()
+            .map(Deref::deref)
+            .map(|HDef { ty, expr, .. }| MInst::Read {
+                ty: mir_def_ty(ty),
+                arg: mir_def_expr(expr),
+            })
+            .collect(),
+        HStmtKind::Write { args, .. } => args
+            .iter()
+            .map(|expr| MInst::Write {
+                ty: mir_expr_def_ty(expr),
+                arg: mir_expr(expr),
+            })
+            .collect(),
+        HStmtKind::Call {
+            name, args, ret, ..
+        } => vec![MInst::Call {
+            name: name.token.to_string(),
+            args: args.iter().map(mir_expr).collect(),
+            ret: ret
+                .as_ref()
+                .map(Deref::deref)
+                .map(|HDef { expr, .. }| mir_def_expr(expr)),
+        }],
+        HStmtKind::For { range, body, .. } => vec![MInst::For {
+            index_name: range.index_name.token.to_string(),
+            bound: mir_expr(&range.bound),
+            body: Box::new(mir_block(body)),
+        }],
+    };
+
+    insts.extend(stmt_insts);
+
+    insts
+}
+
+fn mir_inst_decl(hir: &HN<HDef>) -> MInst {
+    MInst::Decl {
+        name: hir.expr.ident.token.to_string(),
+        ty: MConsTy::Scalar {
+            def: mir_def_ty(&hir.ty),
+        },
     }
 }
 
-impl HirNode<HirStmt> {
-    fn build_mir(self: &Self) -> Vec<MirInst> {
-        match &self.kind {
-            HirStmtKind::Read { args, .. } => args
-                .iter()
-                .flat_map(|def| vec![
-                    def.build_decl_mir(),
-                    MirInst::Read {
-                        ty: def.ty.build_mir(),
-                        arg: def.expr.build_mir(),
-                    },
-                ])
-                .collect(),
-            HirStmtKind::Write { args, .. } => args.iter().map(|expr| MirInst::Write {
-                ty: expr.build_def_ty_mir(),
-                arg: expr.build_mir(),
-            }).collect(),
-            HirStmtKind::Call { name, args, return_value, .. } => {
-                let call = MirInst::Call {
-                    name: name.token.to_string(),
-                    args: args.iter().map(|a| a.build_mir()).collect(),
-                    ret: return_value.as_ref().map(|r| r.expr.build_mir()),
-                };
+fn mir_cons_ty(hir: &HN<HDef>) -> MConsTy {
+    mir_def_expr_cons_ty(&hir.expr, &mir_def_ty(&hir.ty))
+}
 
-                if let Some(return_value) = return_value {
-                    vec![
-                        return_value.build_decl_mir(),
-                        call,
-                    ]
-                } else {
-                    vec![
-                        call,
-                    ]
-                }
-            }
-            HirStmtKind::For { range, body, .. } => vec![
-                MirInst::For {
-                    index_name: range.index_name.token.to_string(),
-                    bound: range.bound.build_mir(),
-                    body: Box::new(body.build_mir()),
-                }
-            ],
-        }
+fn mir_def_ty(hir: &HN<HScalarTypeExpr>) -> MDefTy {
+    // TODO: exploit interning of identifiers
+    match hir.ident.token.to_string().as_str() {
+        "n32" => MDefTy::N32,
+        "i32" => MDefTy::I32,
+        "n64" => MDefTy::N64,
+        "i64" => MDefTy::I64,
+        _ => unreachable!(), // TODO: recover
     }
 }
 
-impl HirNode<HirDef> {
-    fn build_decl_mir(self: &Self) -> MirInst {
-        MirInst::Decl {
-            name: self.expr.ident.token.to_string(),
-            ty: MirConsTy::Scalar {
-                def: self.ty.build_mir(),
-            },
-        }
-    }
-
-    fn build_var_ty_mir(self: &Self) -> MirConsTy {
-        self.expr.build_ty_mir(&self.ty.build_mir())
+fn mir_expr(hir: &HN<HExpr>) -> MExpr {
+    match &hir.kind {
+        HExprKind::Ref { ident, .. } => MExpr::Var {
+            name: ident.token.to_string(),
+        },
+        HExprKind::Subscript { array, index, .. } => MExpr::Subscript {
+            array: Box::new(mir_expr(array)),
+            index: Box::new(mir_expr(index)),
+        },
     }
 }
 
-impl HirNode<HirScalarTypeExpr> {
-    fn build_mir(self: &Self) -> MirDefTy {
-        // TODO: exploit interning of identifiers
-        match self.ident.token.to_string().as_str() {
-            "n32" => MirDefTy::N32,
-            "i32" => MirDefTy::I32,
-            "n64" => MirDefTy::N64,
-            "i64" => MirDefTy::I64,
-            _ => unreachable!(), // TODO: recover
-        }
-    }
-}
-
-impl HirNode<HirExpr> {
-    fn build_mir(self: &Self) -> MirExpr {
-        match &self.kind {
-            HirExprKind::Ref {
-                ident, ..
-            } => MirExpr::Var {
-                name: ident.token.to_string(),
-            },
-            HirExprKind::Subscript { array, index, .. } => MirExpr::Subscript {
-                array: Box::new(array.build_mir()),
-                index: Box::new(index.build_mir()),
-            }
-        }
-    }
-
-    fn build_ty_mir(self: &Self) -> MirConsTy {
-        match &self.kind {
-            HirExprKind::Ref {
-                target: Some(target),
-                ..
-            } => match &target.kind {
-                HirRefKind::Var { def, .. } => def.build_var_ty_mir(),
-                HirRefKind::Index { .. } => MirConsTy::Scalar { def: MirDefTy::N32 },
-                _ => todo!("recover"),
-            },
-            HirExprKind::Subscript { array, .. } => match array.build_ty_mir() {
-                MirConsTy::Array { item, .. } => *item,
-                _ => todo!("recover"),
-            },
+fn mir_expr_ty(hir: &HN<HExpr>) -> MConsTy {
+    match &hir.kind {
+        HExprKind::Ref {
+            target: Some(target),
+            ..
+        } => match &target.kind {
+            HRefKind::Var { def, .. } => mir_cons_ty(def),
+            HRefKind::Index { .. } => MConsTy::Scalar { def: MDefTy::N32 },
             _ => todo!("recover"),
-        }
-    }
-
-    fn build_def_ty_mir(self: &Self) -> MirDefTy {
-        match self.build_ty_mir() {
-            MirConsTy::Scalar { def } => def,
+        },
+        HExprKind::Subscript { array, .. } => match mir_expr_ty(array) {
+            MConsTy::Array { item, .. } => *item,
             _ => todo!("recover"),
-        }
+        },
+        _ => todo!("recover"),
     }
 }
 
-impl HirNode<HirDefExpr> {
-    fn build_mir(self: &Self) -> MirExpr {
-        match &self.kind {
-            HirDefExprKind::Var {
-                ident, ..
-            } => MirExpr::Var {
-                name: ident.token.to_string(),
-            },
-            HirDefExprKind::Subscript { array, index, .. } => MirExpr::Subscript {
-                array: Box::new(array.build_mir()),
-                index: Box::new(index.build_mir()),
-            }
-        }
-    }
-
-    fn build_ty_mir(self: &Self, def: &MirDefTy) -> MirConsTy {
-        match &self.kind {
-            HirDefExprKind::Var { .. } => MirConsTy::Scalar {
-                def: def.clone(),
-            },
-            HirDefExprKind::Subscript { array, .. } => MirConsTy::Array {
-                item: Box::new(array.build_ty_mir(def)),
-            }
-        }
+fn mir_expr_def_ty(hir: &HN<HExpr>) -> MDefTy {
+    match mir_expr_ty(hir) {
+        MConsTy::Scalar { def } => def,
+        _ => todo!("recover"),
     }
 }
 
-pub fn build_mir(spec: &HirSpec) -> MirSpec {
-    MirSpec {
-        main: spec.main.build_mir(),
+fn mir_def_expr(hir: &HN<HDefExpr>) -> MExpr {
+    match &hir.kind {
+        HDefExprKind::Var { ident, .. } => MExpr::Var {
+            name: ident.token.to_string(),
+        },
+        HDefExprKind::Subscript { array, index, .. } => MExpr::Subscript {
+            array: Box::new(mir_def_expr(array)),
+            index: Box::new(mir_expr(index)),
+        },
+    }
+}
+
+fn mir_def_expr_cons_ty(hir: &HN<HDefExpr>, def: &MDefTy) -> MConsTy {
+    match &hir.kind {
+        HDefExprKind::Var { .. } => MConsTy::Scalar { def: def.clone() },
+        HDefExprKind::Subscript { array, .. } => MConsTy::Array {
+            item: Box::new(mir_def_expr_cons_ty(array, def)),
+        },
+    }
+}
+
+pub fn build_mir(spec: &HSpec) -> MSpec {
+    MSpec {
+        main: mir_block(&spec.main),
     }
 }

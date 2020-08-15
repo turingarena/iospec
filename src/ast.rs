@@ -6,70 +6,70 @@ use syn::punctuated::Punctuated;
 use crate::kw::*;
 
 #[derive(Debug, Clone)]
-pub struct AstBlock {
-    pub stmts: Vec<AstStmt>,
+pub struct ABlock {
+    pub stmts: Vec<AStmt>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AstDef {
-    pub expr: AstExpr,
+pub struct ADef {
+    pub expr: AExpr,
     pub colon: syn::Token![:],
-    pub ty: AstScalarTypeExpr,
+    pub ty: ATy,
 }
 
 #[derive(Debug, Clone)]
-pub enum AstExpr {
+pub enum AExpr {
     Ref {
-        ident: AstIdent,
+        ident: AIdent,
     },
     Subscript {
-        array: Box<AstExpr>,
+        array: Box<AExpr>,
         bracket: syn::token::Bracket,
-        index: Box<AstExpr>,
+        index: Box<AExpr>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct AstIdent {
+pub struct AIdent {
     pub token: proc_macro2::Ident,
 }
 
 #[derive(Debug, Clone)]
-pub struct AstSpec {
-    pub main: AstBlock,
+pub struct ASpec {
+    pub main: ABlock,
 }
 
 #[derive(Debug, Clone)]
-pub enum AstStmt {
+pub enum AStmt {
     Write {
         inst: kw::write,
-        args: Punctuated<AstExpr, syn::Token![,]>,
+        args: Punctuated<AExpr, syn::Token![,]>,
         semi: syn::Token![;],
     },
     Read {
         inst: kw::read,
-        args: Punctuated<AstDef, syn::Token![,]>,
+        args: Punctuated<ADef, syn::Token![,]>,
         semi: syn::Token![;],
     },
     Call {
         inst: kw::call,
-        name: AstIdent,
+        name: AIdent,
         args_paren: syn::token::Paren,
-        args: Punctuated<AstExpr, syn::Token![,]>,
-        return_value: Option<(syn::Token![->], AstDef)>,
+        args: Punctuated<AExpr, syn::Token![,]>,
+        ret: Option<(syn::Token![->], ADef)>,
         semi: syn::Token![;],
     },
     For {
         for_token: syn::Token![for],
-        index_name: AstIdent,
+        index_name: AIdent,
         upto: kw::upto,
-        bound: AstExpr,
+        bound: AExpr,
         body_brace: syn::token::Brace,
-        body: AstBlock,
+        body: ABlock,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct AstScalarTypeExpr {
-    pub ident: AstIdent,
+pub struct ATy {
+    pub ident: AIdent,
 }
