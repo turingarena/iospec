@@ -110,7 +110,8 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 None => (None, None),
             };
 
-            let args: Vec<HN<HValExpr>> = args.into_pairs()
+            let args: Vec<HN<HValExpr>> = args
+                .into_pairs()
                 .map(|a| match a {
                     syn::punctuated::Pair::Punctuated(a, comma) => {
                         arg_commas.push(comma);
@@ -126,13 +127,18 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
 
             let fun = HFun {
                 name: HN::new(hir_ident(name, env)),
-                params: HN::new(args.iter().map(|a| HParam {
-                    name: match &a.kind {
-                        HValExprKind::Ref { ident, .. } => ident.clone(),
-                        _ => todo!("recover from non-simple-var arg"),
-                    },
-                    ty: a.ty.clone(),
-                }).map(HN::new).collect()),
+                params: HN::new(
+                    args.iter()
+                        .map(|a| HParam {
+                            name: match &a.kind {
+                                HValExprKind::Ref { ident, .. } => ident.clone(),
+                                _ => todo!("recover from non-simple-var arg"),
+                            },
+                            ty: a.ty.clone(),
+                        })
+                        .map(HN::new)
+                        .collect(),
+                ),
                 ret,
             };
             let fun = HN::new(fun);
@@ -167,19 +173,22 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 index_name: index_name.clone(),
             });
 
-            let body = hir_block(body, &Env {
-                refs: vec![HN::new(HVarDecl {
-                    ident: index_name,
-                    kind: HDeclKind::Index {
+            let body = hir_block(
+                body,
+                &Env {
+                    refs: vec![HN::new(HVarDecl {
+                        ident: index_name,
+                        kind: HDeclKind::Index {
+                            range: range.clone(),
+                        },
+                    })],
+                    outer: Some(Box::new((*env).clone())),
+                    cons_path: ConsPath::For {
                         range: range.clone(),
+                        parent: Box::new(env.cons_path.clone()),
                     },
-                })],
-                outer: Some(Box::new((*env).clone())),
-                cons_path: ConsPath::For {
-                    range: range.clone(),
-                    parent: Box::new(env.cons_path.clone()),
                 },
-            });
+            );
 
             HStmt {
                 fun_decls: body.fun_decls.clone(),
@@ -273,7 +282,11 @@ fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
             let ident = hir_ident(ident, env);
             let target = env.resolve(&ident);
 
-            let ty = match &target.as_ref().unwrap_or_else(|| todo!("recover from undefined var")).kind {
+            let ty = match &target
+                .as_ref()
+                .unwrap_or_else(|| todo!("recover from undefined var"))
+                .kind
+            {
                 HDeclKind::Var { def } => def.var_ty.clone(),
                 HDeclKind::Index { range } => HN::new(HExprTy::Index {
                     range: range.clone(),

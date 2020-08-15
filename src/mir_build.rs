@@ -81,12 +81,11 @@ fn mir_stmt_insts(hir: &HN<HStmt>) -> Vec<MInst> {
                 arg: mir_val_expr(expr),
             })
             .collect(),
-        HStmtKind::Call {
-            fun, args, ..
-        } => vec![MInst::Call {
+        HStmtKind::Call { fun, args, .. } => vec![MInst::Call {
             name: fun.name.token.to_string(),
             args: args.iter().map(mir_val_expr).collect(),
-            ret: fun.ret
+            ret: fun
+                .ret
                 .as_ref()
                 .map(Deref::deref)
                 .map(|HDef { expr, .. }| mir_def_expr(expr)),
