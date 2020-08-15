@@ -2,38 +2,7 @@ use std::ops::Deref;
 
 use crate::ast::*;
 use crate::hir::*;
-
-#[derive(Debug, Clone)]
-struct Env {
-    refs: Vec<HN<HRef>>,
-    outer: Option<Scope>,
-}
-
-impl Env {
-    fn resolve(self: &Self, ident: HN<HIdent>) -> Option<HN<HRef>> {
-        self.refs
-            .iter()
-            .find(|r| r.ident.token == ident.token)
-            .map(|r| r.clone())
-            .or(self.outer.as_ref().and_then(|s| s.resolve(ident)))
-    }
-}
-
-#[derive(Debug, Clone)]
-enum Scope {
-    For { range: HN<HRange>, env: Box<Env> },
-}
-
-impl Scope {
-    fn resolve(self: &Self, ident: HN<HIdent>) -> Option<HN<HRef>> {
-        match self {
-            Scope::For { range, env } => {
-                // TODO: resolve index
-                env.resolve(ident)
-            }
-        }
-    }
-}
+use crate::hir_env::*;
 
 fn hir_block(ast: ABlock, env: &mut Env) -> HN<HBlock> {
     let stmts: Vec<HN<HStmt>> = ast
@@ -42,9 +11,9 @@ fn hir_block(ast: ABlock, env: &mut Env) -> HN<HBlock> {
         .map(|stmt| hir_stmt(stmt, env))
         .collect();
     HN::new(HBlock {
-        conses: stmts
+        defs: stmts
             .iter()
-            .flat_map(|stmt| stmt.conses.iter())
+            .flat_map(|stmt| stmt.defs.iter())
             .cloned()
             .collect(),
         stmts,
@@ -53,17 +22,27 @@ fn hir_block(ast: ABlock, env: &mut Env) -> HN<HBlock> {
 
 fn hir_def(ast: ADef, env: &mut Env) -> HN<HDef> {
     let ADef { expr, colon, ty } = ast;
+    let atom_ty = hir_atom_ty(ty, env);
+
+    let expr = hir_def_expr(
+        expr,
+        env,
+        &HN::new(HExprTy::Atom {
+            atom: atom_ty.clone(),
+        }),
+        &env.cons_path.clone(),
+    );
+
     let def = HN::new(HDef {
-        expr: hir_def_expr(expr, env),
         colon,
-        ty: hir_atom_ty(ty, env),
+        atom_ty,
+        var_ty: expr.expr_ty.clone(),
+        expr,
     });
+
     env.refs.push(HN::new(HRef {
         ident: def.expr.ident.clone(),
-        kind: HRefKind::Var {
-            def: def.clone(),
-            cons: HN::new(HCons::Scalar { def: def.clone() }),
-        },
+        kind: HRefKind::Var { def: def.clone() },
     }));
     def
 }
@@ -72,34 +51,18 @@ fn hir_val_expr(ast: AExpr, env: &mut Env) -> HN<HValExpr> {
     HN::new(match ast {
         AExpr::Ref { ident } => {
             let ident = hir_ident(ident, env);
-            HValExpr {
-                kind: HValExprKind::Ref {
-                    target: env.resolve(ident.clone()),
-                    ident,
-                },
-            }
-        }
-        AExpr::Subscript {
-            array,
-            bracket,
-            index,
-        } => HValExpr {
-            kind: HValExprKind::Subscript {
-                array: hir_val_expr(*array, env),
-                index: hir_val_expr(*index, env),
-                bracket,
-            },
-        },
-    })
-}
+            let target = env.resolve(ident.clone());
 
-fn hir_def_expr(ast: AExpr, env: &mut Env) -> HN<HDefExpr> {
-    HN::new(match ast {
-        AExpr::Ref { ident } => {
-            let ident = hir_ident(ident, env);
-            HDefExpr {
-                ident: ident.clone(),
-                kind: HDefExprKind::Var { ident },
+            let ty = match &target.as_ref().unwrap_or_else(|| todo!("recover")).kind {
+                HRefKind::Var { def } => def.var_ty.clone(),
+                HRefKind::Index { range } => HN::new(HExprTy::Index {
+                    range: range.clone(),
+                }),
+            };
+
+            HValExpr {
+                ty,
+                kind: HValExprKind::Ref { target, ident },
             }
         }
         AExpr::Subscript {
@@ -107,16 +70,63 @@ fn hir_def_expr(ast: AExpr, env: &mut Env) -> HN<HDefExpr> {
             bracket,
             index,
         } => {
-            let array = hir_def_expr(*array, env);
-            HDefExpr {
-                ident: array.ident.clone(),
-                kind: HDefExprKind::Subscript {
+            let array = hir_val_expr(*array, env);
+            let index = hir_val_expr(*index, env);
+
+            let ty = match array.ty.deref() {
+                HExprTy::Array { item, .. } => item.clone(),
+                _ => todo!("recover"),
+            };
+
+            HValExpr {
+                ty,
+                kind: HValExprKind::Subscript {
                     array,
-                    index: hir_val_expr(*index, env),
+                    index,
                     bracket,
                 },
             }
         }
+    })
+}
+
+fn hir_def_expr(ast: AExpr, env: &mut Env, ty: &HN<HExprTy>, cons_path: &ConsPath) -> HN<HDefExpr> {
+    HN::new(match ast {
+        AExpr::Ref { ident } => {
+            let ident = hir_ident(ident, env);
+            HDefExpr {
+                ident: ident.clone(),
+                kind: HDefExprKind::Var { ident },
+                expr_ty: ty.clone(),
+                var_ty: ty.clone(),
+            }
+        }
+        AExpr::Subscript {
+            array,
+            bracket,
+            index,
+        } => match cons_path {
+            ConsPath::For { range, parent } => {
+                let ty = HN::new(HExprTy::Array {
+                    item: ty.clone(),
+                    range: range.clone(),
+                });
+
+                let array = hir_def_expr(*array, env, &ty, parent);
+
+                HDefExpr {
+                    ident: array.ident.clone(),
+                    var_ty: array.var_ty.clone(),
+                    expr_ty: ty,
+                    kind: HDefExprKind::Subscript {
+                        array,
+                        index: hir_val_expr(*index, env),
+                        bracket,
+                    },
+                }
+            }
+            _ => todo!("recover"),
+        },
     })
 }
 
@@ -142,10 +152,7 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
                 .collect();
 
             HStmt {
-                conses: args
-                    .iter()
-                    .map(|def| HN::new(HCons::Scalar { def: def.clone() }))
-                    .collect(),
+                defs: args.iter().map(|def| def.expr.clone()).collect(),
                 kind: HStmtKind::Read {
                     inst,
                     args,
@@ -158,7 +165,7 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
             let mut arg_commas = Vec::new();
 
             HStmt {
-                conses: Vec::new(),
+                defs: Vec::new(),
                 kind: HStmtKind::Write {
                     inst,
                     args: args
@@ -191,10 +198,7 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
             };
 
             HStmt {
-                conses: ret
-                    .iter()
-                    .map(|r| HN::new(HCons::Scalar { def: r.clone() }))
-                    .collect(),
+                defs: ret.iter().map(|r| r.expr.clone()).collect(),
                 kind: HStmtKind::Call {
                     inst,
                     name: hir_ident(name, env),
@@ -224,30 +228,36 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
             body_brace,
             body,
         } => {
+            let index_name = hir_ident(index_name, env);
             let range = HN::new(HRange {
                 bound: hir_val_expr(bound, env),
                 upto,
-                index_name: hir_ident(index_name, env),
+                index_name: index_name.clone(),
             });
 
             let mut inner_env = Env {
-                refs: Vec::new(),
-                outer: Some(Scope::For {
+                refs: vec![HN::new(HRef {
+                    ident: index_name,
+                    kind: HRefKind::Index {
+                        range: range.clone(),
+                    },
+                })],
+                outer: Some(Box::new((*env).clone())),
+                cons_path: ConsPath::For {
                     range: range.clone(),
-                    env: Box::new((*env).clone()),
-                }),
+                    parent: Box::new(env.cons_path.clone()),
+                },
             };
+
             let body = hir_block(body, &mut inner_env);
 
             HStmt {
-                conses: body
-                    .conses
+                defs: body
+                    .defs
                     .iter()
-                    .map(|c| {
-                        HN::new(HCons::Array {
-                            item: c.clone(),
-                            range: range.clone(),
-                        })
+                    .map(|expr| match &expr.kind {
+                        HDefExprKind::Subscript { array, .. } => array.clone(),
+                        _ => todo!("recover"),
                     })
                     .collect(),
                 kind: HStmtKind::For {
@@ -274,6 +284,7 @@ pub fn compile_hir(ast: ASpec) -> HSpec {
             &mut Env {
                 refs: Vec::new(),
                 outer: None,
+                cons_path: ConsPath::Root,
             },
         ),
     }
