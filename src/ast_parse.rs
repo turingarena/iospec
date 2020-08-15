@@ -6,17 +6,17 @@ use syn::punctuated::Punctuated;
 use crate::kw::*;
 use crate::ast::*;
 
-impl Parse for ParsedBlock {
+impl Parse for AstBlock {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
         let mut stmts = vec![];
         while !input.is_empty() {
             stmts.push(input.parse()?);
         }
-        Ok(ParsedBlock { stmts })
+        Ok(AstBlock { stmts })
     }
 }
 
-impl Parse for ParsedDef {
+impl Parse for AstDef {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
         Ok(Self {
             expr: input.parse()?,
@@ -26,15 +26,15 @@ impl Parse for ParsedDef {
     }
 }
 
-impl Parse for ParsedExpr {
+impl Parse for AstExpr {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let mut current = ParsedExpr::Ref {
+        let mut current = AstExpr::Ref {
             ident: input.parse()?,
         };
 
         while input.peek(syn::token::Bracket) {
             let index_input;
-            current = ParsedExpr::Subscript {
+            current = AstExpr::Subscript {
                 array: Box::new(current),
                 bracket: syn::bracketed!(index_input in input),
                 index: index_input.parse()?,
@@ -44,35 +44,35 @@ impl Parse for ParsedExpr {
     }
 }
 
-impl Parse for ParsedIdent {
+impl Parse for AstIdent {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
         // Parsing TokenTree instead of Indent to ignore Rust keywords
         let token_tree: proc_macro2::TokenTree = input.parse()?;
         match token_tree {
-            proc_macro2::TokenTree::Ident(x) => Ok(ParsedIdent { sym: x.to_string() }),
+            proc_macro2::TokenTree::Ident(x) => Ok(AstIdent { sym: x.to_string() }),
             _ => Err(Error::new(token_tree.span(), "expected identifier")),
         }
     }
 }
 
-impl Parse for ParsedSpec {
+impl Parse for AstSpec {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Ok(ParsedSpec {
+        Ok(AstSpec {
             main: input.parse()?,
         })
     }
 }
 
-impl Parse for ParsedStmt {
+impl Parse for AstStmt {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
         if input.peek(kw::read) {
-            Ok(ParsedStmt::Read {
+            Ok(AstStmt::Read {
                 inst: input.parse()?,
                 args: Punctuated::parse_separated_nonempty(input)?,
                 semi: input.parse()?,
             })
         } else if input.peek(kw::write) {
-            Ok(ParsedStmt::Write {
+            Ok(AstStmt::Write {
                 inst: input.parse()?,
                 args: Punctuated::parse_separated_nonempty(input)?,
                 semi: input.parse()?,
@@ -80,7 +80,7 @@ impl Parse for ParsedStmt {
         } else if input.peek(kw::call) {
             let args_input;
 
-            Ok(ParsedStmt::Call {
+            Ok(AstStmt::Call {
                 inst: input.parse()?,
                 name: input.parse()?,
                 args_paren: syn::parenthesized!(args_input in input),
@@ -94,7 +94,7 @@ impl Parse for ParsedStmt {
             })
         } else if input.peek(syn::Token![for]) {
             let body_input;
-            Ok(ParsedStmt::For {
+            Ok(AstStmt::For {
                 for_token: input.parse()?,
                 index_name: input.parse()?,
                 upto: input.parse()?,
@@ -108,7 +108,7 @@ impl Parse for ParsedStmt {
     }
 }
 
-impl Parse for ParsedScalarTypeExpr {
+impl Parse for AstScalarTypeExpr {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
         Ok(Self {
             ident: input.parse()?,

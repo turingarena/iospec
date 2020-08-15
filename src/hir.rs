@@ -2,7 +2,7 @@ use crate::ast::*;
 
 #[derive(Debug, Clone)]
 pub struct Block<'ast> {
-    pub ast: &'ast ParsedBlock,
+    pub ast: &'ast AstBlock,
     pub stmts: Vec<Stmt<'ast>>,
 }
 
@@ -14,7 +14,7 @@ impl<'ast> Block<'ast> {
 
 #[derive(Debug, Clone)]
 pub struct Def<'ast> {
-    pub ast: &'ast ParsedDef,
+    pub ast: &'ast AstDef,
     pub name: &'ast str,
     pub value_type_expr: ScalarTypeExpr<'ast>,
     pub variable_type: VariableType<'ast>,
@@ -31,15 +31,15 @@ impl Def<'_> {
 #[derive(Debug, Clone)]
 pub enum Expr<'ast> {
     VarRef {
-        ast: &'ast ParsedExpr,
+        ast: &'ast AstExpr,
         def: Def<'ast>,
     },
     IndexRef {
-        ast: &'ast ParsedExpr,
+        ast: &'ast AstExpr,
         range: Box<Range<'ast>>,
     },
     Subscript {
-        ast: &'ast ParsedExpr,
+        ast: &'ast AstExpr,
         array: Box<Expr<'ast>>,
         index: Box<Expr<'ast>>,
     },
@@ -66,7 +66,7 @@ impl Expr<'_> {
 
 #[derive(Debug, Clone)]
 pub struct Range<'ast> {
-    pub stmt_ast: &'ast ParsedStmt,
+    pub stmt_ast: &'ast AstStmt,
     pub index_name: &'ast str,
     pub bound: Expr<'ast>,
 }
@@ -74,7 +74,7 @@ pub struct Range<'ast> {
 
 #[derive(Debug, Clone)]
 pub struct Spec<'ast> {
-    pub ast: &'ast ParsedSpec,
+    pub ast: &'ast AstSpec,
     pub main: Block<'ast>,
 }
 
@@ -82,21 +82,21 @@ pub struct Spec<'ast> {
 #[derive(Debug, Clone)]
 pub enum Stmt<'ast> {
     Read {
-        ast: &'ast ParsedStmt,
+        ast: &'ast AstStmt,
         args: Vec<Def<'ast>>,
     },
     Write {
-        ast: &'ast ParsedStmt,
+        ast: &'ast AstStmt,
         args: Vec<Expr<'ast>>,
     },
     Call {
-        ast: &'ast ParsedStmt,
+        ast: &'ast AstStmt,
         name: &'ast str,
         args: Vec<Expr<'ast>>,
         return_value: Option<Def<'ast>>,
     },
     For {
-        ast: &'ast ParsedStmt,
+        ast: &'ast AstStmt,
         range: Range<'ast>,
         body: Block<'ast>,
     },
@@ -155,11 +155,11 @@ impl<'ast> VariableType<'ast> {
         }
     }
 
-    pub fn compile_def_expr(self: &Self, def: Def<'ast>, expr: &'ast ParsedExpr) -> Expr {
+    pub fn compile_def_expr(self: &Self, def: Def<'ast>, expr: &'ast AstExpr) -> Expr {
         match self {
             VariableType::Scalar { .. } => Expr::VarRef { ast: expr, def },
             VariableType::Array { item, range } => {
-                if let ParsedExpr::Subscript { array, index, .. } = expr {
+                if let AstExpr::Subscript { array, index, .. } = expr {
                     Expr::Subscript {
                         ast: expr,
                         array: Box::new(item.compile_def_expr(def, array)),
@@ -179,6 +179,6 @@ impl<'ast> VariableType<'ast> {
 
 #[derive(Debug, Clone)]
 pub struct ScalarTypeExpr<'ast> {
-    pub ast: &'ast ParsedScalarTypeExpr,
+    pub ast: &'ast AstScalarTypeExpr,
     pub ty: ScalarType,
 }

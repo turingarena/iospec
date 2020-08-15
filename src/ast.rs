@@ -6,70 +6,70 @@ use syn::punctuated::Punctuated;
 use crate::kw::*;
 
 #[derive(Debug, Clone)]
-pub struct ParsedBlock {
-    pub stmts: Vec<ParsedStmt>,
+pub struct AstBlock {
+    pub stmts: Vec<AstStmt>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ParsedDef {
-    pub expr: ParsedExpr,
+pub struct AstDef {
+    pub expr: AstExpr,
     pub colon: syn::Token![:],
-    pub ty: ParsedScalarTypeExpr,
+    pub ty: AstScalarTypeExpr,
 }
 
 #[derive(Debug, Clone)]
-pub enum ParsedExpr {
+pub enum AstExpr {
     Ref {
-        ident: ParsedIdent,
+        ident: AstIdent,
     },
     Subscript {
-        array: Box<ParsedExpr>,
+        array: Box<AstExpr>,
         bracket: syn::token::Bracket,
-        index: Box<ParsedExpr>,
+        index: Box<AstExpr>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct ParsedIdent {
+pub struct AstIdent {
     pub sym: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct ParsedSpec {
-    pub main: ParsedBlock,
+pub struct AstSpec {
+    pub main: AstBlock,
 }
 
 #[derive(Debug, Clone)]
-pub enum ParsedStmt {
+pub enum AstStmt {
     Write {
         inst: kw::write,
-        args: Punctuated<ParsedExpr, syn::Token![,]>,
+        args: Punctuated<AstExpr, syn::Token![,]>,
         semi: syn::Token![;],
     },
     Read {
         inst: kw::read,
-        args: Punctuated<ParsedDef, syn::Token![,]>,
+        args: Punctuated<AstDef, syn::Token![,]>,
         semi: syn::Token![;],
     },
     Call {
         inst: kw::call,
-        name: ParsedIdent,
+        name: AstIdent,
         args_paren: syn::token::Paren,
-        args: Punctuated<ParsedExpr, syn::Token![,]>,
-        return_value: Option<(syn::Token![->], ParsedDef)>,
+        args: Punctuated<AstExpr, syn::Token![,]>,
+        return_value: Option<(syn::Token![->], AstDef)>,
         semi: syn::Token![;],
     },
     For {
         for_token: syn::Token![for],
-        index_name: ParsedIdent,
+        index_name: AstIdent,
         upto: kw::upto,
-        bound: ParsedExpr,
+        bound: AstExpr,
         body_brace: syn::token::Brace,
-        body: ParsedBlock,
+        body: AstBlock,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct ParsedScalarTypeExpr {
-    pub ident: ParsedIdent,
+pub struct AstScalarTypeExpr {
+    pub ident: AstIdent,
 }

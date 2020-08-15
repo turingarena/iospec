@@ -70,8 +70,8 @@ fn compile<'ast, T, U>(ast: &'ast T, scope: &Scope<'ast>) -> CompileResult<U>
     U::compile(ast, scope)
 }
 
-impl<'ast> Compile<'ast, ParsedBlock> for Block<'ast> {
-    fn compile(ast: &'ast ParsedBlock, scope: &Scope<'ast>) -> CompileResult<Self> {
+impl<'ast> Compile<'ast, AstBlock> for Block<'ast> {
+    fn compile(ast: &'ast AstBlock, scope: &Scope<'ast>) -> CompileResult<Self> {
         let mut stmts = vec![];
         let mut scope = scope.clone();
 
@@ -92,8 +92,8 @@ impl<'ast> Compile<'ast, ParsedBlock> for Block<'ast> {
 }
 
 
-impl<'ast> Compile<'ast, ParsedDef> for Def<'ast> {
-    fn compile(ast: &'ast ParsedDef, scope: &Scope<'ast>) -> CompileResult<Self> {
+impl<'ast> Compile<'ast, AstDef> for Def<'ast> {
+    fn compile(ast: &'ast AstDef, scope: &Scope<'ast>) -> CompileResult<Self> {
         let value_type_expr: ScalarTypeExpr = compile(&ast.ty, &scope)?;
 
         let mut variable_type = VariableType::Scalar {
@@ -103,8 +103,8 @@ impl<'ast> Compile<'ast, ParsedDef> for Def<'ast> {
         let mut expr = &ast.expr;
         let mut scope = scope.clone();
 
-        while let ParsedExpr::Subscript { array, index, .. } = expr {
-            let index_name = if let ParsedExpr::Ref { ident } = index.as_ref() {
+        while let AstExpr::Subscript { array, index, .. } = expr {
+            let index_name = if let AstExpr::Ref { ident } = index.as_ref() {
                 &ident.sym
             } else {
                 Err("invalid index in definition: only `for` indexes are supported ")?
@@ -127,8 +127,8 @@ impl<'ast> Compile<'ast, ParsedDef> for Def<'ast> {
         }
 
         let name = match expr {
-            ParsedExpr::Ref {
-                ident: ParsedIdent { sym },
+            AstExpr::Ref {
+                ident: AstIdent { sym },
             } => sym,
             _ => Err("unsupported expression in declaration")?,
         };
@@ -143,10 +143,10 @@ impl<'ast> Compile<'ast, ParsedDef> for Def<'ast> {
 }
 
 
-impl<'ast> Compile<'ast, ParsedExpr> for Expr<'ast> {
-    fn compile(ast: &'ast ParsedExpr, scope: &Scope<'ast>) -> CompileResult<Self> {
+impl<'ast> Compile<'ast, AstExpr> for Expr<'ast> {
+    fn compile(ast: &'ast AstExpr, scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(match ast {
-            ParsedExpr::Ref { ident } => match scope.resolve(&ident.sym) {
+            AstExpr::Ref { ident } => match scope.resolve(&ident.sym) {
                 Some(NameResolution::Def(def)) => Expr::VarRef { ast, def },
                 Some(NameResolution::Index(range)) => Expr::IndexRef {
                     ast,
@@ -154,7 +154,7 @@ impl<'ast> Compile<'ast, ParsedExpr> for Expr<'ast> {
                 },
                 _ => panic!("undefined variable"),
             },
-            ParsedExpr::Subscript { array, index, .. } => Expr::Subscript {
+            AstExpr::Subscript { array, index, .. } => Expr::Subscript {
                 ast,
                 array: Box::new(compile(array.as_ref(), scope)?),
                 index: Box::new(compile(index.as_ref(), scope)?),
@@ -164,24 +164,24 @@ impl<'ast> Compile<'ast, ParsedExpr> for Expr<'ast> {
 }
 
 
-impl<'ast> Compile<'ast, ParsedStmt> for Stmt<'ast> {
-    fn compile(ast: &'ast ParsedStmt, scope: &Scope<'ast>) -> CompileResult<Self> {
+impl<'ast> Compile<'ast, AstStmt> for Stmt<'ast> {
+    fn compile(ast: &'ast AstStmt, scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(match ast {
-            ParsedStmt::Read { args, .. } => Stmt::Read {
+            AstStmt::Read { args, .. } => Stmt::Read {
                 ast,
                 args: args
                     .iter()
                     .map(|i| compile(i, scope))
                     .collect::<CompileResult<Vec<_>>>()?,
             },
-            ParsedStmt::Write { args, .. } => Stmt::Write {
+            AstStmt::Write { args, .. } => Stmt::Write {
                 ast,
                 args: args
                     .iter()
                     .map(|i| compile(i, scope))
                     .collect::<CompileResult<Vec<_>>>()?,
             },
-            ParsedStmt::Call {
+            AstStmt::Call {
                 name,
                 args,
                 return_value,
@@ -198,7 +198,7 @@ impl<'ast> Compile<'ast, ParsedStmt> for Stmt<'ast> {
                     None => None,
                 },
             },
-            ParsedStmt::For {
+            AstStmt::For {
                 index_name,
                 bound,
                 body,
@@ -226,8 +226,8 @@ impl<'ast> Compile<'ast, ParsedStmt> for Stmt<'ast> {
 }
 
 
-impl<'ast> Compile<'ast, ParsedScalarTypeExpr> for ScalarTypeExpr<'ast> {
-    fn compile(ast: &'ast ParsedScalarTypeExpr, _scope: &Scope<'ast>) -> CompileResult<Self> {
+impl<'ast> Compile<'ast, AstScalarTypeExpr> for ScalarTypeExpr<'ast> {
+    fn compile(ast: &'ast AstScalarTypeExpr, _scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(Self {
             ast,
             ty: match ast.ident.sym.as_str() {
@@ -241,7 +241,7 @@ impl<'ast> Compile<'ast, ParsedScalarTypeExpr> for ScalarTypeExpr<'ast> {
     }
 }
 
-pub fn compile_spec(ast: &ParsedSpec) -> CompileResult<Spec> {
+pub fn compile_spec(ast: &AstSpec) -> CompileResult<Spec> {
     Ok(Spec {
         ast,
         main: compile(&ast.main, &Scope::Root)?,
