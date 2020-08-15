@@ -5,17 +5,17 @@ use syn::punctuated::Punctuated;
 
 use crate::kw::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ASpec {
     pub main: ABlock,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ABlock {
     pub stmts: Vec<AStmt>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum AStmt {
     Write {
         inst: kw::write,
@@ -45,19 +45,19 @@ pub enum AStmt {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ADef {
     pub expr: AExpr,
     pub colon: syn::Token![:],
     pub ty: ATy,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ATy {
     pub ident: AIdent,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum AExpr {
     Ref {
         ident: AIdent,
@@ -69,7 +69,7 @@ pub enum AExpr {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AIdent {
     pub token: proc_macro2::Ident,
 }

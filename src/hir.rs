@@ -8,43 +8,28 @@ use syn::punctuated::Punctuated;
 
 use crate::kw::*;
 
-#[derive(Debug, Clone)]
-pub struct HN<T>(Rc<T>);
+pub type HN<T> = Rc<T>;
 
-impl<T> HN<T> {
-    pub fn new(data: T) -> Self {
-        Self(Rc::new(data))
-    }
-}
-
-impl<T> Deref for HN<T> {
-    type Target = T;
-
-    fn deref(self: &Self) -> &T {
-        self.0.deref()
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HSpec {
     pub main: HN<HBlock>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HBlock {
     pub decls: Vec<HN<HDecl>>,
     pub defs: Vec<HN<HDefExpr>>,
     pub stmts: Vec<HN<HStmt>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HStmt {
     pub decls: Vec<HN<HDecl>>,
     pub defs: Vec<HN<HDefExpr>>,
     pub kind: HStmtKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum HStmtKind {
     Write {
         inst: kw::write,
@@ -76,7 +61,7 @@ pub enum HStmtKind {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HDef {
     pub expr: HN<HDefExpr>,
     pub colon: syn::Token![:],
@@ -85,7 +70,7 @@ pub struct HDef {
     pub ident: HN<HIdent>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HDefExpr {
     pub kind: HDefExprKind,
     pub ident: HN<HIdent>,
@@ -93,7 +78,7 @@ pub struct HDefExpr {
     pub var_ty: HN<HExprTy>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum HDefExprKind {
     Var {
         ident: HN<HIdent>,
@@ -105,13 +90,13 @@ pub enum HDefExprKind {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HValExpr {
     pub ty: HN<HExprTy>,
     pub kind: HValExprKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum HValExprKind {
     Ref {
         ident: HN<HIdent>,
@@ -124,14 +109,14 @@ pub enum HValExprKind {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HRange {
     pub index_name: HN<HIdent>,
     pub upto: kw::upto,
     pub bound: HN<HValExpr>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum HExprTy {
     Atom {
         atom: HN<HAtomTy>,
@@ -145,23 +130,23 @@ pub enum HExprTy {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HAtomTy {
     pub ident: HN<HIdent>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HIdent {
     pub token: proc_macro2::Ident,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HDecl {
     pub ident: HN<HIdent>,
     pub kind: HDeclKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum HDeclKind {
     Var { def: HN<HDef> },
     Index { range: HN<HRange> },
