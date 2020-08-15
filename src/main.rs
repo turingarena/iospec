@@ -33,6 +33,7 @@ mod gen;
 mod ir;
 mod ast_parse;
 mod parsefile;
+mod kw;
 
 fn main() {
     let app = App::from_args();

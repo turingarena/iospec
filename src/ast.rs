@@ -3,12 +3,7 @@ extern crate syn;
 
 use syn::punctuated::Punctuated;
 
-pub mod kw {
-    syn::custom_keyword!(read);
-    syn::custom_keyword!(write);
-    syn::custom_keyword!(call);
-    syn::custom_keyword!(upto);
-}
+use crate::kw::*;
 
 #[derive(Debug, Clone)]
 pub struct ParsedBlock {
