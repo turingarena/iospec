@@ -65,18 +65,3 @@ pub struct ScalarTypeExpr<'ast> {
     pub ast: &'ast ParsedScalarTypeExpr,
     pub ty: ScalarType,
 }
-
-impl<'ast> Compile<'ast, ParsedScalarTypeExpr> for ScalarTypeExpr<'ast> {
-    fn compile(ast: &'ast ParsedScalarTypeExpr, _scope: &Scope<'ast>) -> CompileResult<Self> {
-        Ok(Self {
-            ast,
-            ty: match ast.ident.sym.as_str() {
-                "i32" => ScalarType::I32,
-                "n32" => ScalarType::N32,
-                "i64" => ScalarType::I64,
-                "n64" => ScalarType::N64,
-                _ => Err("invalid type")?,
-            },
-        })
-    }
-}

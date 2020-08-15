@@ -11,7 +11,7 @@ use std::path::Path;
 use annotate_snippets::display_list::{DisplayList, FormatOptions};
 use annotate_snippets::snippet::*;
 
-use crate::hir::compile_spec;
+use crate::hir_compile::compile_spec;
 use crate::ast::ParsedSpec;
 
 #[derive(Debug)]
