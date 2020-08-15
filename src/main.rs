@@ -30,6 +30,7 @@ mod ast;
 mod compile;
 mod gen;
 mod ir;
+mod parse;
 mod parsefile;
 
 fn main() {

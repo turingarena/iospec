@@ -4,11 +4,3 @@ pub use super::*;
 pub struct ParsedSpec {
     pub main: ParsedBlock,
 }
-
-impl Parse for ParsedSpec {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Ok(ParsedSpec {
-            main: input.parse()?,
-        })
-    }
-}
