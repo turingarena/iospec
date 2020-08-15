@@ -50,14 +50,13 @@ fn gen_left_type(ty: &MConsTy) -> Tokens {
             MAtomTy::I32 | MAtomTy::N32 => quote!(int),
             MAtomTy::I64 | MAtomTy::N64 => quote!(int64_t),
         },
-        MConsTy::Array { item } => gen_left_type(item),
+        MConsTy::Array { item } => quote!(#(gen_left_type(item))*),
     }
 }
 
 fn gen_inst(inst: &MInst) -> Tokens {
     match inst {
         MInst::Decl { name, ty } => quote! {
-            // TODO: array types
             #(gen_left_type(ty)) #(name);
         },
         MInst::Write { arg, ty } => quote! {

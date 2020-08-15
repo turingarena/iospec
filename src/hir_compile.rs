@@ -4,13 +4,22 @@ use crate::ast::*;
 use crate::hir::*;
 use crate::hir_env::*;
 
-fn hir_block(ast: ABlock, env: &mut Env) -> HN<HBlock> {
-    let stmts: Vec<HN<HStmt>> = ast
-        .stmts
-        .into_iter()
-        .map(|stmt| hir_stmt(stmt, env))
-        .collect();
+fn hir_block(ast: ABlock, env: &Env) -> HN<HBlock> {
+    let mut env = env.clone();
+    let mut stmts = Vec::new();
+
+    for stmt in ast.stmts {
+        let stmt = hir_stmt(stmt, &env);
+        env.refs.extend(stmt.decls.iter().cloned());
+        stmts.push(stmt);
+    }
+
     HN::new(HBlock {
+        decls: stmts
+            .iter()
+            .flat_map(|stmt| stmt.decls.iter())
+            .cloned()
+            .collect(),
         defs: stmts
             .iter()
             .flat_map(|stmt| stmt.defs.iter())
@@ -20,7 +29,7 @@ fn hir_block(ast: ABlock, env: &mut Env) -> HN<HBlock> {
     })
 }
 
-fn hir_def(ast: ADef, env: &mut Env) -> HN<HDef> {
+fn hir_def(ast: ADef, env: &Env) -> HN<HDef> {
     let ADef { expr, colon, ty } = ast;
     let atom_ty = hir_atom_ty(ty, env);
 
@@ -33,29 +42,24 @@ fn hir_def(ast: ADef, env: &mut Env) -> HN<HDef> {
         &env.cons_path.clone(),
     );
 
-    let def = HN::new(HDef {
+    HN::new(HDef {
         colon,
         atom_ty,
+        ident: expr.ident.clone(),
         var_ty: expr.expr_ty.clone(),
         expr,
-    });
-
-    env.refs.push(HN::new(HRef {
-        ident: def.expr.ident.clone(),
-        kind: HRefKind::Var { def: def.clone() },
-    }));
-    def
+    })
 }
 
-fn hir_val_expr(ast: AExpr, env: &mut Env) -> HN<HValExpr> {
+fn hir_val_expr(ast: AExpr, env: &Env) -> HN<HValExpr> {
     HN::new(match ast {
         AExpr::Ref { ident } => {
             let ident = hir_ident(ident, env);
             let target = env.resolve(ident.clone());
 
             let ty = match &target.as_ref().unwrap_or_else(|| todo!("recover")).kind {
-                HRefKind::Var { def } => def.var_ty.clone(),
-                HRefKind::Index { range } => HN::new(HExprTy::Index {
+                HDeclKind::Var { def } => def.var_ty.clone(),
+                HDeclKind::Index { range } => HN::new(HExprTy::Index {
                     range: range.clone(),
                 }),
             };
@@ -90,7 +94,7 @@ fn hir_val_expr(ast: AExpr, env: &mut Env) -> HN<HValExpr> {
     })
 }
 
-fn hir_def_expr(ast: AExpr, env: &mut Env, ty: &HN<HExprTy>, cons_path: &ConsPath) -> HN<HDefExpr> {
+fn hir_def_expr(ast: AExpr, env: &Env, ty: &HN<HExprTy>, cons_path: &ConsPath) -> HN<HDefExpr> {
     HN::new(match ast {
         AExpr::Ref { ident } => {
             let ident = hir_ident(ident, env);
@@ -130,12 +134,12 @@ fn hir_def_expr(ast: AExpr, env: &mut Env, ty: &HN<HExprTy>, cons_path: &ConsPat
     })
 }
 
-fn hir_ident(ast: AIdent, env: &mut Env) -> HN<HIdent> {
+fn hir_ident(ast: AIdent, env: &Env) -> HN<HIdent> {
     let AIdent { token } = ast;
     HN::new(HIdent { token })
 }
 
-fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
+fn hir_stmt(ast: AStmt, env: &Env) -> HN<HStmt> {
     HN::new(match ast {
         AStmt::Read { inst, args, semi } => {
             let mut arg_commas = Vec::new();
@@ -152,6 +156,7 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
                 .collect();
 
             HStmt {
+                decls: args.iter().map(hir_def_decl).collect(),
                 defs: args.iter().map(|def| def.expr.clone()).collect(),
                 kind: HStmtKind::Read {
                     inst,
@@ -165,6 +170,7 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
             let mut arg_commas = Vec::new();
 
             HStmt {
+                decls: Vec::new(),
                 defs: Vec::new(),
                 kind: HStmtKind::Write {
                     inst,
@@ -198,6 +204,7 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
             };
 
             HStmt {
+                decls: ret.iter().map(hir_def_decl).collect(),
                 defs: ret.iter().map(|r| r.expr.clone()).collect(),
                 kind: HStmtKind::Call {
                     inst,
@@ -236,9 +243,9 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
             });
 
             let mut inner_env = Env {
-                refs: vec![HN::new(HRef {
+                refs: vec![HN::new(HDecl {
                     ident: index_name,
-                    kind: HRefKind::Index {
+                    kind: HDeclKind::Index {
                         range: range.clone(),
                     },
                 })],
@@ -252,6 +259,7 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
             let body = hir_block(body, &mut inner_env);
 
             HStmt {
+                decls: body.decls.clone(),
                 defs: body
                     .defs
                     .iter()
@@ -271,9 +279,16 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
     })
 }
 
-fn hir_atom_ty(ast: ATy, env: &mut Env) -> HN<HAtomTy> {
+fn hir_atom_ty(ast: ATy, env: &Env) -> HN<HAtomTy> {
     HN::new(HAtomTy {
         ident: hir_ident(ast.ident, env),
+    })
+}
+
+fn hir_def_decl(def: &HN<HDef>) -> HN<HDecl> {
+    HN::new(HDecl {
+        ident: def.ident.clone(),
+        kind: HDeclKind::Var { def: def.clone() },
     })
 }
 
@@ -281,7 +296,7 @@ pub fn compile_hir(ast: ASpec) -> HSpec {
     HSpec {
         main: hir_block(
             ast.main,
-            &mut Env {
+            &Env {
                 refs: Vec::new(),
                 outer: None,
                 cons_path: ConsPath::Root,

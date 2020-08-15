@@ -32,12 +32,14 @@ pub struct HSpec {
 
 #[derive(Debug, Clone)]
 pub struct HBlock {
+    pub decls: Vec<HN<HDecl>>,
     pub defs: Vec<HN<HDefExpr>>,
     pub stmts: Vec<HN<HStmt>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct HStmt {
+    pub decls: Vec<HN<HDecl>>,
     pub defs: Vec<HN<HDefExpr>>,
     pub kind: HStmtKind,
 }
@@ -80,6 +82,7 @@ pub struct HDef {
     pub colon: syn::Token![:],
     pub atom_ty: HN<HAtomTy>,
     pub var_ty: HN<HExprTy>,
+    pub ident: HN<HIdent>,
 }
 
 #[derive(Debug, Clone)]
@@ -112,7 +115,7 @@ pub struct HValExpr {
 pub enum HValExprKind {
     Ref {
         ident: HN<HIdent>,
-        target: Option<HN<HRef>>,
+        target: Option<HN<HDecl>>,
     },
     Subscript {
         array: HN<HValExpr>,
@@ -153,13 +156,13 @@ pub struct HIdent {
 }
 
 #[derive(Debug, Clone)]
-pub struct HRef {
+pub struct HDecl {
     pub ident: HN<HIdent>,
-    pub kind: HRefKind,
+    pub kind: HDeclKind,
 }
 
 #[derive(Debug, Clone)]
-pub enum HRefKind {
+pub enum HDeclKind {
     Var { def: HN<HDef> },
     Index { range: HN<HRange> },
 }

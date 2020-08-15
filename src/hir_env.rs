@@ -2,13 +2,13 @@ use crate::hir::*;
 
 #[derive(Debug, Clone)]
 pub struct Env {
-    pub refs: Vec<HN<HRef>>,
+    pub refs: Vec<HN<HDecl>>,
     pub outer: Option<Box<Env>>,
     pub cons_path: ConsPath,
 }
 
 impl Env {
-    pub fn resolve(self: &Self, ident: HN<HIdent>) -> Option<HN<HRef>> {
+    pub fn resolve(self: &Self, ident: HN<HIdent>) -> Option<HN<HDecl>> {
         self.refs
             .iter()
             .find(|r| r.ident.token == ident.token)
