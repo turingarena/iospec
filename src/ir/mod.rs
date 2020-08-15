@@ -8,7 +8,7 @@ pub use block::*;
 pub use inst::*;
 pub use spec::*;
 
-use crate::compile::*;
+use crate::hir::*;
 
 mod block;
 mod inst;

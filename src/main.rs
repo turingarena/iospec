@@ -2,7 +2,7 @@
 
 extern crate structopt;
 
-use crate::compile::compile_spec;
+use crate::hir::compile_spec;
 use crate::parsefile::load_spec_file;
 use std::path::PathBuf;
 use std::process::exit;
@@ -27,7 +27,7 @@ enum App {
 }
 
 mod ast;
-mod compile;
+mod hir;
 mod gen;
 mod ir;
 mod parse;
