@@ -49,7 +49,7 @@ pub struct HirExpr {
 pub enum HirExprKind {
     Ref {
         ident: HirNode<HirIdent>,
-        binding: Option<HirNode<HirRef>>,
+        target: Option<HirNode<HirRef>>,
     },
     Subscript {
         array: HirNode<HirExpr>,

@@ -73,7 +73,7 @@ impl AstExpr {
                 let ident = ident.compile(env);
                 HirExpr {
                     kind: HirExprKind::Ref {
-                        binding: env.resolve(ident.clone()),
+                        target: env.resolve(ident.clone()),
                         ident,
                     }
                 }
