@@ -49,7 +49,7 @@ impl Parse for AstIdent {
         // Parsing TokenTree instead of Indent to ignore Rust keywords
         let token_tree: proc_macro2::TokenTree = input.parse()?;
         match token_tree {
-            proc_macro2::TokenTree::Ident(x) => Ok(AstIdent { sym: x.to_string() }),
+            proc_macro2::TokenTree::Ident(token) => Ok(AstIdent { token }),
             _ => Err(Error::new(token_tree.span(), "expected identifier")),
         }
     }

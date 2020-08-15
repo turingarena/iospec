@@ -15,7 +15,7 @@ impl<'ast> Block<'ast> {
 #[derive(Debug, Clone)]
 pub struct Def<'ast> {
     pub ast: &'ast AstDef,
-    pub name: &'ast str,
+    pub name: String,
     pub value_type_expr: ScalarTypeExpr<'ast>,
     pub variable_type: VariableType<'ast>,
 }
@@ -67,7 +67,7 @@ impl Expr<'_> {
 #[derive(Debug, Clone)]
 pub struct Range<'ast> {
     pub stmt_ast: &'ast AstStmt,
-    pub index_name: &'ast str,
+    pub index_name: String,
     pub bound: Expr<'ast>,
 }
 
@@ -91,7 +91,7 @@ pub enum Stmt<'ast> {
     },
     Call {
         ast: &'ast AstStmt,
-        name: &'ast str,
+        name: String,
         args: Vec<Expr<'ast>>,
         return_value: Option<Def<'ast>>,
     },

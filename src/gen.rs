@@ -100,7 +100,7 @@ impl Gen for Skeleton<&IrInst<'_>> {
         let Self(inst) = self;
         Ok(match inst {
             IrInst::Decl { def, .. } => quote! {
-                #(LeftHandType(def.variable_type.inner_scalar_type()).gen()?) #(def.name);
+                #(LeftHandType(def.variable_type.inner_scalar_type()).gen()?) #(&def.name);
             },
             IrInst::Write { expr, .. } => {
                 let f = PrintfFormat(expr.get_type().scalar_type()).gen()?;
@@ -127,7 +127,7 @@ impl Gen for Skeleton<&IrInst<'_>> {
                         ..
                     },
             } => quote! {
-                #(*name)(#(
+                #(name)(#(
                     for a in args join (, ) => #(Skeleton(a).gen()?)
                 ));
             },
@@ -140,12 +140,12 @@ impl Gen for Skeleton<&IrInst<'_>> {
                         ..
                     },
             } => quote! {
-                #(Skeleton(&return_value.expr()).gen()?) = #(*name)(#(
+                #(Skeleton(&return_value.expr()).gen()?) = #(name)(#(
                     for a in args join (, ) => #(Skeleton(a).gen()?)
                 ));
             },
             IrInst::For { range, body } => {
-                let i = range.index_name;
+                let i = &range.index_name;
                 let n = Skeleton(&range.bound).gen()?;
 
                 quote! [

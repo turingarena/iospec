@@ -61,8 +61,8 @@ impl HirCompile<AstDef> for HirDef {
 
 impl HirCompile<AstIdent> for HirIdent {
     fn compile(ast: AstIdent, env: &mut Env) -> HirNode<Self> {
-        let AstIdent { sym } = ast;
-        HirNode::new(HirIdent { sym })
+        let AstIdent { token } = ast;
+        HirNode::new(HirIdent { token })
     }
 }
 

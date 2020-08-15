@@ -105,7 +105,7 @@ impl<'ast> Compile<'ast, AstDef> for Def<'ast> {
 
         while let AstExpr::Subscript { array, index, .. } = expr {
             let index_name = if let AstExpr::Ref { ident } = index.as_ref() {
-                &ident.sym
+                ident.token.to_string()
             } else {
                 Err("invalid index in definition: only `for` indexes are supported ")?
             };
@@ -128,8 +128,8 @@ impl<'ast> Compile<'ast, AstDef> for Def<'ast> {
 
         let name = match expr {
             AstExpr::Ref {
-                ident: AstIdent { sym },
-            } => sym,
+                ident,
+            } => ident.token.to_string(),
             _ => Err("unsupported expression in declaration")?,
         };
 
@@ -146,7 +146,7 @@ impl<'ast> Compile<'ast, AstDef> for Def<'ast> {
 impl<'ast> Compile<'ast, AstExpr> for Expr<'ast> {
     fn compile(ast: &'ast AstExpr, scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(match ast {
-            AstExpr::Ref { ident } => match scope.resolve(&ident.sym) {
+            AstExpr::Ref { ident } => match scope.resolve(&ident.token.to_string()) {
                 Some(NameResolution::Def(def)) => Expr::VarRef { ast, def },
                 Some(NameResolution::Index(range)) => Expr::IndexRef {
                     ast,
@@ -188,7 +188,7 @@ impl<'ast> Compile<'ast, AstStmt> for Stmt<'ast> {
                 ..
             } => Stmt::Call {
                 ast,
-                name: &name.sym,
+                name: name.token.to_string(),
                 args: args
                     .iter()
                     .map(|i| compile(i, scope))
@@ -206,7 +206,7 @@ impl<'ast> Compile<'ast, AstStmt> for Stmt<'ast> {
             } => {
                 let range = Range {
                     stmt_ast: ast,
-                    index_name: &index_name.sym,
+                    index_name: index_name.token.to_string(),
                     bound: compile(bound, &scope)?,
                 };
                 Stmt::For {
@@ -230,7 +230,7 @@ impl<'ast> Compile<'ast, AstScalarTypeExpr> for ScalarTypeExpr<'ast> {
     fn compile(ast: &'ast AstScalarTypeExpr, _scope: &Scope<'ast>) -> CompileResult<Self> {
         Ok(Self {
             ast,
-            ty: match ast.ident.sym.as_str() {
+            ty: match ast.ident.token.to_string().as_str() {
                 "i32" => ScalarType::I32,
                 "n32" => ScalarType::N32,
                 "i64" => ScalarType::I64,

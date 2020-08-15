@@ -1,4 +1,5 @@
 extern crate syn;
+extern crate proc_macro2;
 
 use std::rc::Rc;
 
@@ -39,7 +40,7 @@ pub enum HirExprKind {
 
 #[derive(Debug, Clone)]
 pub struct HirIdent {
-    pub sym: String,
+    pub token: proc_macro2::Ident,
 }
 
 #[derive(Debug, Clone)]

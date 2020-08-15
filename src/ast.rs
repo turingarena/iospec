@@ -31,7 +31,7 @@ pub enum AstExpr {
 
 #[derive(Debug, Clone)]
 pub struct AstIdent {
-    pub sym: String,
+    pub token: proc_macro2::Ident,
 }
 
 #[derive(Debug, Clone)]
