@@ -56,8 +56,8 @@ fn mir_stmt_insts(hir: &HN<HStmt>) -> Vec<MInst> {
 fn mir_inst_decl(hir: &HN<HDef>) -> MInst {
     MInst::Decl {
         name: hir.expr.ident.token.to_string(),
-        ty: MConsTy::Scalar {
-            def: mir_def_ty(&hir.ty),
+        ty: MConsTy::Atom {
+            atom: mir_def_ty(&hir.ty),
         },
     }
 }
@@ -66,40 +66,40 @@ fn mir_cons_ty(hir: &HN<HDef>) -> MConsTy {
     mir_def_expr_cons_ty(&hir.expr, &mir_def_ty(&hir.ty))
 }
 
-fn mir_def_ty(hir: &HN<HScalarTypeExpr>) -> MDefTy {
+fn mir_def_ty(hir: &HN<HAtomTy>) -> MAtomTy {
     // TODO: exploit interning of identifiers
     match hir.ident.token.to_string().as_str() {
-        "n32" => MDefTy::N32,
-        "i32" => MDefTy::I32,
-        "n64" => MDefTy::N64,
-        "i64" => MDefTy::I64,
+        "n32" => MAtomTy::N32,
+        "i32" => MAtomTy::I32,
+        "n64" => MAtomTy::N64,
+        "i64" => MAtomTy::I64,
         _ => unreachable!(), // TODO: recover
     }
 }
 
-fn mir_expr(hir: &HN<HExpr>) -> MExpr {
+fn mir_expr(hir: &HN<HValExpr>) -> MExpr {
     match &hir.kind {
-        HExprKind::Ref { ident, .. } => MExpr::Var {
+        HValExprKind::Ref { ident, .. } => MExpr::Var {
             name: ident.token.to_string(),
         },
-        HExprKind::Subscript { array, index, .. } => MExpr::Subscript {
+        HValExprKind::Subscript { array, index, .. } => MExpr::Subscript {
             array: Box::new(mir_expr(array)),
             index: Box::new(mir_expr(index)),
         },
     }
 }
 
-fn mir_expr_ty(hir: &HN<HExpr>) -> MConsTy {
+fn mir_expr_ty(hir: &HN<HValExpr>) -> MConsTy {
     match &hir.kind {
-        HExprKind::Ref {
+        HValExprKind::Ref {
             target: Some(target),
             ..
         } => match &target.kind {
             HRefKind::Var { def, .. } => mir_cons_ty(def),
-            HRefKind::Index { .. } => MConsTy::Scalar { def: MDefTy::N32 },
+            HRefKind::Index { .. } => MConsTy::Atom { def: MAtomTy::N32 },
             _ => todo!("recover"),
         },
-        HExprKind::Subscript { array, .. } => match mir_expr_ty(array) {
+        HValExprKind::Subscript { array, .. } => match mir_expr_ty(array) {
             MConsTy::Array { item, .. } => *item,
             _ => todo!("recover"),
         },
@@ -107,9 +107,9 @@ fn mir_expr_ty(hir: &HN<HExpr>) -> MConsTy {
     }
 }
 
-fn mir_expr_def_ty(hir: &HN<HExpr>) -> MDefTy {
+fn mir_expr_def_ty(hir: &HN<HValExpr>) -> MAtomTy {
     match mir_expr_ty(hir) {
-        MConsTy::Scalar { def } => def,
+        MConsTy::Atom { def } => def,
         _ => todo!("recover"),
     }
 }
@@ -126,9 +126,9 @@ fn mir_def_expr(hir: &HN<HDefExpr>) -> MExpr {
     }
 }
 
-fn mir_def_expr_cons_ty(hir: &HN<HDefExpr>, def: &MDefTy) -> MConsTy {
+fn mir_def_expr_cons_ty(hir: &HN<HDefExpr>, def: &MAtomTy) -> MConsTy {
     match &hir.kind {
-        HDefExprKind::Var { .. } => MConsTy::Scalar { def: def.clone() },
+        HDefExprKind::Var { .. } => MConsTy::Atom { def: def.clone() },
         HDefExprKind::Subscript { array, .. } => MConsTy::Array {
             item: Box::new(mir_def_expr_cons_ty(array, def)),
         },

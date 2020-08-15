@@ -56,7 +56,7 @@ fn hir_def(ast: ADef, env: &mut Env) -> HN<HDef> {
     let def = HN::new(HDef {
         expr: hir_def_expr(expr, env),
         colon,
-        ty: hir_scalar_type_expr(ty, env),
+        ty: hir_atom_ty(ty, env),
     });
     env.refs.push(HN::new(HRef {
         ident: def.expr.ident.clone(),
@@ -68,12 +68,12 @@ fn hir_def(ast: ADef, env: &mut Env) -> HN<HDef> {
     def
 }
 
-fn hir_expr(ast: AExpr, env: &mut Env) -> HN<HExpr> {
+fn hir_val_expr(ast: AExpr, env: &mut Env) -> HN<HValExpr> {
     HN::new(match ast {
         AExpr::Ref { ident } => {
             let ident = hir_ident(ident, env);
-            HExpr {
-                kind: HExprKind::Ref {
+            HValExpr {
+                kind: HValExprKind::Ref {
                     target: env.resolve(ident.clone()),
                     ident,
                 },
@@ -83,10 +83,10 @@ fn hir_expr(ast: AExpr, env: &mut Env) -> HN<HExpr> {
             array,
             bracket,
             index,
-        } => HExpr {
-            kind: HExprKind::Subscript {
-                array: hir_expr(*array, env),
-                index: hir_expr(*index, env),
+        } => HValExpr {
+            kind: HValExprKind::Subscript {
+                array: hir_val_expr(*array, env),
+                index: hir_val_expr(*index, env),
                 bracket,
             },
         },
@@ -112,7 +112,7 @@ fn hir_def_expr(ast: AExpr, env: &mut Env) -> HN<HDefExpr> {
                 ident: array.ident.clone(),
                 kind: HDefExprKind::Subscript {
                     array,
-                    index: hir_expr(*index, env),
+                    index: hir_val_expr(*index, env),
                     bracket,
                 },
             }
@@ -166,9 +166,9 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
                         .map(|a| match a {
                             syn::punctuated::Pair::Punctuated(a, comma) => {
                                 arg_commas.push(comma);
-                                hir_expr(a, env)
+                                hir_val_expr(a, env)
                             }
-                            syn::punctuated::Pair::End(a) => hir_expr(a, env),
+                            syn::punctuated::Pair::End(a) => hir_val_expr(a, env),
                         })
                         .collect(),
                     arg_commas,
@@ -204,9 +204,9 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
                         .map(|a| match a {
                             syn::punctuated::Pair::Punctuated(a, comma) => {
                                 arg_commas.push(comma);
-                                hir_expr(a, env)
+                                hir_val_expr(a, env)
                             }
-                            syn::punctuated::Pair::End(a) => hir_expr(a, env),
+                            syn::punctuated::Pair::End(a) => hir_val_expr(a, env),
                         })
                         .collect(),
                     arg_commas,
@@ -225,7 +225,7 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
             body,
         } => {
             let range = HN::new(HRange {
-                bound: hir_expr(bound, env),
+                bound: hir_val_expr(bound, env),
                 upto,
                 index_name: hir_ident(index_name, env),
             });
@@ -261,8 +261,8 @@ fn hir_stmt(ast: AStmt, env: &mut Env) -> HN<HStmt> {
     })
 }
 
-fn hir_scalar_type_expr(ast: ATy, env: &mut Env) -> HN<HScalarTypeExpr> {
-    HN::new(HScalarTypeExpr {
+fn hir_atom_ty(ast: ATy, env: &mut Env) -> HN<HAtomTy> {
+    HN::new(HAtomTy {
         ident: hir_ident(ast.ident, env),
     })
 }

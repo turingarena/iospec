@@ -26,16 +26,59 @@ impl<T> Deref for HN<T> {
 }
 
 #[derive(Debug, Clone)]
+pub struct HSpec {
+    pub main: HN<HBlock>,
+}
+
+#[derive(Debug, Clone)]
 pub struct HBlock {
     pub conses: Vec<HN<HCons>>,
     pub stmts: Vec<HN<HStmt>>,
 }
 
 #[derive(Debug, Clone)]
+pub struct HStmt {
+    pub conses: Vec<HN<HCons>>,
+    pub kind: HStmtKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum HStmtKind {
+    Write {
+        inst: kw::write,
+        args: Vec<HN<HValExpr>>,
+        arg_commas: Vec<syn::Token![,]>,
+        semi: syn::Token![;],
+    },
+    Read {
+        inst: kw::read,
+        args: Vec<HN<HDef>>,
+        arg_commas: Vec<syn::Token![,]>,
+        semi: syn::Token![;],
+    },
+    Call {
+        inst: kw::call,
+        name: HN<HIdent>,
+        args_paren: syn::token::Paren,
+        args: Vec<HN<HValExpr>>,
+        arg_commas: Vec<syn::Token![,]>,
+        ret_rarrow: Option<syn::Token![->]>,
+        ret: Option<HN<HDef>>,
+        semi: syn::Token![;],
+    },
+    For {
+        for_token: syn::Token![for],
+        range: HN<HRange>,
+        body_brace: syn::token::Brace,
+        body: HN<HBlock>,
+    },
+}
+
+#[derive(Debug, Clone)]
 pub struct HDef {
     pub expr: HN<HDefExpr>,
     pub colon: syn::Token![:],
-    pub ty: HN<HScalarTypeExpr>,
+    pub ty: HN<HAtomTy>,
 }
 
 #[derive(Debug, Clone)]
@@ -52,73 +95,25 @@ pub enum HDefExprKind {
     Subscript {
         array: HN<HDefExpr>,
         bracket: syn::token::Bracket,
-        index: HN<HExpr>,
+        index: HN<HValExpr>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct HExpr {
-    pub kind: HExprKind,
+pub struct HValExpr {
+    pub kind: HValExprKind,
 }
 
 #[derive(Debug, Clone)]
-pub enum HExprKind {
+pub enum HValExprKind {
     Ref {
         ident: HN<HIdent>,
         target: Option<HN<HRef>>,
     },
     Subscript {
-        array: HN<HExpr>,
+        array: HN<HValExpr>,
         bracket: syn::token::Bracket,
-        index: HN<HExpr>,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct HIdent {
-    pub token: proc_macro2::Ident,
-}
-
-#[derive(Debug, Clone)]
-pub struct HSpec {
-    pub main: HN<HBlock>,
-}
-
-#[derive(Debug, Clone)]
-pub struct HStmt {
-    pub conses: Vec<HN<HCons>>,
-    pub kind: HStmtKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum HStmtKind {
-    Write {
-        inst: kw::write,
-        args: Vec<HN<HExpr>>,
-        arg_commas: Vec<syn::Token![,]>,
-        semi: syn::Token![;],
-    },
-    Read {
-        inst: kw::read,
-        args: Vec<HN<HDef>>,
-        arg_commas: Vec<syn::Token![,]>,
-        semi: syn::Token![;],
-    },
-    Call {
-        inst: kw::call,
-        name: HN<HIdent>,
-        args_paren: syn::token::Paren,
-        args: Vec<HN<HExpr>>,
-        arg_commas: Vec<syn::Token![,]>,
-        ret_rarrow: Option<syn::Token![->]>,
-        ret: Option<HN<HDef>>,
-        semi: syn::Token![;],
-    },
-    For {
-        for_token: syn::Token![for],
-        range: HN<HRange>,
-        body_brace: syn::token::Brace,
-        body: HN<HBlock>,
+        index: HN<HValExpr>,
     },
 }
 
@@ -126,12 +121,17 @@ pub enum HStmtKind {
 pub struct HRange {
     pub index_name: HN<HIdent>,
     pub upto: kw::upto,
-    pub bound: HN<HExpr>,
+    pub bound: HN<HValExpr>,
 }
 
 #[derive(Debug, Clone)]
-pub struct HScalarTypeExpr {
+pub struct HAtomTy {
     pub ident: HN<HIdent>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HIdent {
+    pub token: proc_macro2::Ident,
 }
 
 #[derive(Debug, Clone)]

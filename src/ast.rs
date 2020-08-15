@@ -6,37 +6,13 @@ use syn::punctuated::Punctuated;
 use crate::kw::*;
 
 #[derive(Debug, Clone)]
-pub struct ABlock {
-    pub stmts: Vec<AStmt>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ADef {
-    pub expr: AExpr,
-    pub colon: syn::Token![:],
-    pub ty: ATy,
-}
-
-#[derive(Debug, Clone)]
-pub enum AExpr {
-    Ref {
-        ident: AIdent,
-    },
-    Subscript {
-        array: Box<AExpr>,
-        bracket: syn::token::Bracket,
-        index: Box<AExpr>,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct AIdent {
-    pub token: proc_macro2::Ident,
-}
-
-#[derive(Debug, Clone)]
 pub struct ASpec {
     pub main: ABlock,
+}
+
+#[derive(Debug, Clone)]
+pub struct ABlock {
+    pub stmts: Vec<AStmt>,
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +46,30 @@ pub enum AStmt {
 }
 
 #[derive(Debug, Clone)]
+pub struct ADef {
+    pub expr: AExpr,
+    pub colon: syn::Token![:],
+    pub ty: ATy,
+}
+
+#[derive(Debug, Clone)]
 pub struct ATy {
     pub ident: AIdent,
+}
+
+#[derive(Debug, Clone)]
+pub enum AExpr {
+    Ref {
+        ident: AIdent,
+    },
+    Subscript {
+        array: Box<AExpr>,
+        bracket: syn::token::Bracket,
+        index: Box<AExpr>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct AIdent {
+    pub token: proc_macro2::Ident,
 }

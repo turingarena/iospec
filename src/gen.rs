@@ -30,25 +30,25 @@ fn gen_expr(expr: &MExpr) -> Tokens {
     }
 }
 
-fn gen_scanf_format(ty: &MDefTy) -> Tokens {
+fn gen_scanf_format(ty: &MAtomTy) -> Tokens {
     match ty {
-        MDefTy::I32 | MDefTy::N32 => quote!("%d"),
-        MDefTy::I64 | MDefTy::N64 => quote!("%lld"),
+        MAtomTy::I32 | MAtomTy::N32 => quote!("%d"),
+        MAtomTy::I64 | MAtomTy::N64 => quote!("%lld"),
     }
 }
 
-fn gen_printf_format(ty: &MDefTy) -> Tokens {
+fn gen_printf_format(ty: &MAtomTy) -> Tokens {
     match ty {
-        MDefTy::I32 | MDefTy::N32 => quote!("%d "),
-        MDefTy::I64 | MDefTy::N64 => quote!("%lld "),
+        MAtomTy::I32 | MAtomTy::N32 => quote!("%d "),
+        MAtomTy::I64 | MAtomTy::N64 => quote!("%lld "),
     }
 }
 
 fn gen_left_type(ty: &MConsTy) -> Tokens {
     match ty {
-        MConsTy::Scalar { def } => match def {
-            MDefTy::I32 | MDefTy::N32 => quote!(int),
-            MDefTy::I64 | MDefTy::N64 => quote!(int64_t),
+        MConsTy::Atom { atom } => match atom {
+            MAtomTy::I32 | MAtomTy::N32 => quote!(int),
+            MAtomTy::I64 | MAtomTy::N64 => quote!(int64_t),
         },
         MConsTy::Array { item } => gen_left_type(item),
     }

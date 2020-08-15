@@ -17,11 +17,11 @@ pub enum MInst {
     },
     Read {
         arg: MExpr,
-        ty: MDefTy,
+        ty: MAtomTy,
     },
     Write {
         arg: MExpr,
-        ty: MDefTy,
+        ty: MAtomTy,
     },
     Call {
         name: String,
@@ -49,12 +49,12 @@ pub enum MExpr {
 
 #[derive(Debug, Clone)]
 pub enum MConsTy {
-    Scalar { def: MDefTy },
+    Atom { atom: MAtomTy },
     Array { item: Box<MConsTy> },
 }
 
 #[derive(Debug, Clone)]
-pub enum MDefTy {
+pub enum MAtomTy {
     N32,
     I32,
     N64,

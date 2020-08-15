@@ -6,6 +6,14 @@ use syn::Error;
 use crate::ast::*;
 use crate::kw::*;
 
+impl Parse for ASpec {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Ok(ASpec {
+            main: input.parse()?,
+        })
+    }
+}
+
 impl Parse for ABlock {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
         let mut stmts = vec![];
@@ -13,53 +21,6 @@ impl Parse for ABlock {
             stmts.push(input.parse()?);
         }
         Ok(ABlock { stmts })
-    }
-}
-
-impl Parse for ADef {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Ok(Self {
-            expr: input.parse()?,
-            colon: input.parse()?,
-            ty: input.parse()?,
-        })
-    }
-}
-
-impl Parse for AExpr {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let mut current = AExpr::Ref {
-            ident: input.parse()?,
-        };
-
-        while input.peek(syn::token::Bracket) {
-            let index_input;
-            current = AExpr::Subscript {
-                array: Box::new(current),
-                bracket: syn::bracketed!(index_input in input),
-                index: index_input.parse()?,
-            };
-        }
-        Ok(current)
-    }
-}
-
-impl Parse for AIdent {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        // Parsing TokenTree instead of Indent to ignore Rust keywords
-        let token_tree: proc_macro2::TokenTree = input.parse()?;
-        match token_tree {
-            proc_macro2::TokenTree::Ident(token) => Ok(AIdent { token }),
-            _ => Err(Error::new(token_tree.span(), "expected identifier")),
-        }
-    }
-}
-
-impl Parse for ASpec {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Ok(ASpec {
-            main: input.parse()?,
-        })
     }
 }
 
@@ -108,10 +69,49 @@ impl Parse for AStmt {
     }
 }
 
+impl Parse for AExpr {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let mut current = AExpr::Ref {
+            ident: input.parse()?,
+        };
+
+        while input.peek(syn::token::Bracket) {
+            let index_input;
+            current = AExpr::Subscript {
+                array: Box::new(current),
+                bracket: syn::bracketed!(index_input in input),
+                index: index_input.parse()?,
+            };
+        }
+        Ok(current)
+    }
+}
+
+impl Parse for ADef {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Ok(Self {
+            expr: input.parse()?,
+            colon: input.parse()?,
+            ty: input.parse()?,
+        })
+    }
+}
+
 impl Parse for ATy {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
         Ok(Self {
             ident: input.parse()?,
         })
+    }
+}
+
+impl Parse for AIdent {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        // Parsing TokenTree instead of Indent to ignore Rust keywords
+        let token_tree: proc_macro2::TokenTree = input.parse()?;
+        match token_tree {
+            proc_macro2::TokenTree::Ident(token) => Ok(AIdent { token }),
+            _ => Err(Error::new(token_tree.span(), "expected identifier")),
+        }
     }
 }
