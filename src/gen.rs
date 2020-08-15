@@ -2,163 +2,96 @@ extern crate genco;
 
 use genco::prelude::*;
 
-use crate::old_hir::*;
-use crate::ir::*;
+use crate::mir::*;
 
-type GenResult = std::result::Result<Tokens, Box<dyn std::error::Error>>;
-
-trait Gen {
-    fn gen(self: &Self) -> GenResult;
-}
-
-struct Skeleton<T>(T);
-
-impl Gen for Skeleton<&IrSpec<'_>> {
-    fn gen(self: &Self) -> GenResult {
-        let Self(IrSpec { main }) = self;
-        Ok(quote! {
-            int main() {
-                #(Skeleton(main).gen()?)
-            }
-        })
+fn gen_spec(spec: &MirSpec) -> Tokens {
+    quote! {
+        int main() {
+            #(gen_block(&spec.main))
+        }
     }
 }
 
-impl Gen for Skeleton<&IrBlock<'_>> {
-    fn gen(self: &Self) -> GenResult {
-        let Self(insts) = self;
-
-        Ok(quote! {
-            #(for s in insts.iter() join (#<push>) => #(Skeleton(s).gen()?))
-        })
+fn gen_block(block: &MirBlock) -> Tokens {
+    quote! {
+        #(for i in block.iter() join (#<push>) => #(gen_inst(i)))
     }
 }
 
-impl Gen for Skeleton<&Expr<'_>> {
-    fn gen(self: &Self) -> GenResult {
-        let Self(expr) = self;
-        Ok(match expr {
-            Expr::VarRef {
-                def: Def { name, .. },
-                ..
-            } => {
-                let n = name.to_owned();
-                quote!(#(n))
-            }
-            Expr::IndexRef { range, .. } => {
-                let i = range.index_name.to_owned();
-                quote!(#(i))
-            }
-            Expr::Subscript { array, index, .. } => {
-                let a = Skeleton(array.as_ref()).gen()?;
-                let i = Skeleton(index.as_ref()).gen()?;
+fn gen_expr(expr: &MirExpr) -> Tokens {
+    match expr {
+        MirExpr::Var { name } => {
+            quote!(#(name))
+        }
+        MirExpr::Subscript { array, index } => {
+            let a = gen_expr(array);
+            let i = gen_expr(index);
 
-                quote!(#(a)[#(i)])
-            }
-        })
+            quote!(#(a)[#(i)])
+        }
     }
 }
 
-struct ScanfFormat<T>(T);
-
-struct PrintfFormat<T>(T);
-
-struct LeftHandType<T>(T);
-
-impl Gen for ScanfFormat<ScalarType> {
-    fn gen(self: &Self) -> GenResult {
-        let Self(ty) = self;
-        Ok(match ty {
-            ScalarType::I32 | ScalarType::N32 => quote!("%d"),
-            ScalarType::I64 | ScalarType::N64 => quote!("%lld"),
-        })
+fn gen_scanf_format(ty: &MirDefTy) -> Tokens {
+    match ty {
+        MirDefTy::I32 | MirDefTy::N32 => quote!("%d"),
+        MirDefTy::I64 | MirDefTy::N64 => quote!("%lld"),
     }
 }
 
-impl Gen for PrintfFormat<ScalarType> {
-    fn gen(self: &Self) -> GenResult {
-        let Self(ty) = self;
-        Ok(match ty {
-            ScalarType::I32 | ScalarType::N32 => quote!("%d "),
-            ScalarType::I64 | ScalarType::N64 => quote!("%lld "),
-        })
+fn gen_printf_format(ty: &MirDefTy) -> Tokens {
+    match ty {
+        MirDefTy::I32 | MirDefTy::N32 => quote!("%d "),
+        MirDefTy::I64 | MirDefTy::N64 => quote!("%lld "),
     }
 }
 
-impl Gen for LeftHandType<ScalarType> {
-    fn gen(self: &Self) -> GenResult {
-        let Self(ty) = self;
-        Ok(match ty {
-            ScalarType::I32 | ScalarType::N32 => quote!(int),
-            ScalarType::I64 | ScalarType::N64 => quote!(int64_t),
-        })
+fn gen_left_type(ty: &MirConsTy) -> Tokens {
+    match ty {
+        MirConsTy::Scalar { def } => match def {
+            MirDefTy::I32 | MirDefTy::N32 => quote!(int),
+            MirDefTy::I64 | MirDefTy::N64 => quote!(int64_t),
+        },
+        MirConsTy::Array { item } => gen_left_type(item),
     }
 }
 
-impl Gen for Skeleton<&IrInst<'_>> {
-    fn gen(self: &Self) -> GenResult {
-        let Self(inst) = self;
-        Ok(match inst {
-            IrInst::Decl { def, .. } => quote! {
-                #(LeftHandType(def.variable_type.inner_scalar_type()).gen()?) #(&def.name);
-            },
-            IrInst::Write { expr, .. } => {
-                let f = PrintfFormat(expr.get_type().scalar_type()).gen()?;
-                let x = Skeleton(*expr).gen()?;
+fn gen_inst(inst: &MirInst) -> Tokens {
+    match inst {
+        MirInst::Decl { name, ty } => quote! {
+            // TODO: array types
+            #(gen_left_type(ty)) #(name);
+        },
+        MirInst::Write { arg, ty } => quote! {
+            printf(#(gen_printf_format(ty)), #(gen_expr(arg)));
+        },
+        MirInst::Read { arg, ty } => quote! {
+            printf(#(gen_scanf_format(ty)), &#(gen_expr(arg)));
+        },
+        MirInst::Call { name, args, ret: None } => quote! {
+            #(name)(#(
+                for a in args join (, ) => #(gen_expr(a))
+            ));
+        },
+        MirInst::Call { name, args, ret: Some(ret) } => quote! {
+            #(gen_expr(ret)) = #(name)(#(
+                for a in args join (, ) => #(gen_expr(a))
+            ));
+        },
+        MirInst::For { index_name, bound, body } => {
+            let i = index_name;
+            let n = gen_expr(bound);
 
-                quote! [
-                    printf(#(f), #(x));
-                ]
-            }
-            IrInst::Read { def, .. } => {
-                let f = ScanfFormat(def.value_type_expr.ty).gen()?;
-                let x = Skeleton(&def.expr()).gen()?;
-
-                quote! [
-                    scanf(#(f), &#(x));
-                ]
-            }
-            IrInst::Call {
-                stmt:
-                    Stmt::Call {
-                        name,
-                        args,
-                        return_value: None,
-                        ..
-                    },
-            } => quote! {
-                #(name)(#(
-                    for a in args join (, ) => #(Skeleton(a).gen()?)
-                ));
-            },
-            IrInst::Call {
-                stmt:
-                    Stmt::Call {
-                        name,
-                        args,
-                        return_value: Some(return_value),
-                        ..
-                    },
-            } => quote! {
-                #(Skeleton(&return_value.expr()).gen()?) = #(name)(#(
-                    for a in args join (, ) => #(Skeleton(a).gen()?)
-                ));
-            },
-            IrInst::For { range, body } => {
-                let i = &range.index_name;
-                let n = Skeleton(&range.bound).gen()?;
-
-                quote! [
-                    for(int #(i) = 0; #(i) < #(n); #(i)++) {
-                        #(Skeleton(body).gen()?)
-                    }
-                ]
-            }
-            _ => unreachable!(),
-        })
+            quote! [
+                for(int #(i) = 0; #(i) < #(n); #(i)++) {
+                    #(gen_block(body))
+                }
+            ]
+        }
+        _ => unreachable!(),
     }
 }
 
-pub fn gen_file(spec: &Spec<'_>) -> Result<String, Box<dyn std::error::Error>> {
-    Ok(Skeleton(&spec.build_ir()).gen()?.to_file_string().unwrap())
+pub fn gen_file(spec: &MirSpec) -> String {
+    gen_spec(spec).to_file_string().unwrap()
 }

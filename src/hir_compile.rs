@@ -57,6 +57,7 @@ impl AstDef {
         env.refs.push(HirNode::new(HirRef {
             ident: def.expr.ident.clone(),
             kind: HirRefKind::Var {
+                def: def.clone(),
                 cons: HirNode::new(HirCons::Scalar {
                     def: def.clone(),
                 }),

@@ -21,6 +21,7 @@ impl HirNode<HirStmt> {
                 ])
                 .collect(),
             HirStmtKind::Write { args, .. } => args.iter().map(|expr| MirInst::Write {
+                ty: expr.build_def_ty_mir(),
                 arg: expr.build_mir(),
             }).collect(),
             HirStmtKind::Call { name, args, return_value, .. } => {
@@ -65,7 +66,14 @@ impl HirNode<HirDef> {
 
 impl HirNode<HirScalarTypeExpr> {
     fn build_mir(self: &Self) -> MirDefTy {
-        todo!()
+        // TODO: exploit interning of identifiers
+        match self.ident.token.to_string().as_str() {
+            "n32" => MirDefTy::N32,
+            "i32" => MirDefTy::I32,
+            "n64" => MirDefTy::N64,
+            "i64" => MirDefTy::I64,
+            _ => unreachable!(), // TODO: recover
+        }
     }
 }
 
@@ -83,6 +91,31 @@ impl HirNode<HirExpr> {
             }
         }
     }
+
+    fn build_ty_mir(self: &Self) -> MirConsTy {
+        match &self.kind {
+            HirExprKind::Ref {
+                target: Some(target),
+                ..
+            } => match &target.kind {
+                HirRefKind::Var { def, .. } => todo!(),
+                HirRefKind::Index { .. } => MirConsTy::Scalar { def: MirDefTy::N32 },
+                _ => todo!("recover"),
+            },
+            HirExprKind::Subscript { array, .. } => match array.build_ty_mir() {
+                MirConsTy::Array { item, .. } => *item,
+                _ => todo!("recover"),
+            },
+            _ => todo!("recover"),
+        }
+    }
+
+    fn build_def_ty_mir(self: &Self) -> MirDefTy {
+        match self.build_ty_mir() {
+            MirConsTy::Scalar { def } => def,
+            _ => todo!("recover"),
+        }
+    }
 }
 
 impl HirNode<HirDefExpr> {
@@ -98,5 +131,22 @@ impl HirNode<HirDefExpr> {
                 index: Box::new(index.build_mir()),
             }
         }
+    }
+
+    fn build_ty_mir(self: &Self, def: &MirDefTy) -> MirConsTy {
+        match &self.kind {
+            HirDefExprKind::Var { .. } => MirConsTy::Scalar {
+                def: def.clone(),
+            },
+            HirDefExprKind::Subscript { array, .. } => MirConsTy::Array {
+                item: Box::new(array.build_ty_mir(def)),
+            }
+        }
+    }
+}
+
+pub fn build_mir(spec: &HirSpec) -> MirSpec {
+    MirSpec {
+        main: spec.main.build_mir(),
     }
 }

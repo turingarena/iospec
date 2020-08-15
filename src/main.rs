@@ -2,11 +2,12 @@
 
 extern crate structopt;
 
-use crate::old_hir_compile::compile_spec;
-use crate::parsefile::load_spec_file;
+use crate::parsefile::parse_file;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
+use crate::hir_compile::compile_hir;
+use crate::mir_build::build_mir;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -19,7 +20,6 @@ enum App {
         #[structopt(long, parse(from_os_str), default_value = "./iospec")]
         spec_file: PathBuf,
     },
-    #[cfg(disable)]
     #[structopt(about = "Generates code (parser, template, etc.)")]
     Gen {
         #[structopt(long, parse(from_os_str), default_value = "./iospec")]
@@ -28,10 +28,7 @@ enum App {
 }
 
 mod ast;
-mod old_hir;
-mod old_hir_compile;
 mod gen;
-mod ir;
 mod ast_parse;
 mod parsefile;
 mod kw;
@@ -44,7 +41,7 @@ fn main() {
     let app = App::from_args();
 
     match app {
-        App::Lint { spec_file } => match load_spec_file(&spec_file) {
+        App::Lint { spec_file } => match parse_file(&spec_file) {
             Ok(spec) => {
                 println!("Parsed {:?}", spec);
             }
@@ -54,19 +51,13 @@ fn main() {
             }
         },
 
-        #[cfg(disable)]
         App::Gen { spec_file } => {
-            match load_spec_file(&spec_file)
-                .and_then(|spec| gen::gen_file(&compile_spec(&spec).unwrap()))
-            {
-                Ok(content) => {
-                    print!("{}", content);
-                }
-                Err(e) => {
-                    println!("{}", e);
-                    exit(1)
-                }
-            }
+            let spec = parse_file(&spec_file).unwrap();
+            let spec = compile_hir(spec);
+            let spec = build_mir(&spec);
+            let spec = gen::gen_file(&spec);
+
+            print!("{}", spec);
         }
     }
 }

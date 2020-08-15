@@ -143,6 +143,7 @@ pub struct HirRef {
 #[derive(Debug, Clone)]
 pub enum HirRefKind {
     Var {
+        def: HirNode<HirDef>,
         cons: HirNode<HirCons>,
     },
     Index {

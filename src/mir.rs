@@ -2,6 +2,11 @@ use std::rc::Rc;
 
 use crate::hir::*;
 
+#[derive(Debug, Clone)]
+pub struct MirSpec {
+    pub main: MirBlock,
+}
+
 pub type MirBlock = Vec<MirInst>;
 
 #[derive(Debug, Clone)]
@@ -16,6 +21,7 @@ pub enum MirInst {
     },
     Write {
         arg: MirExpr,
+        ty: MirDefTy,
     },
     Call {
         name: String,
