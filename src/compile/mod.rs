@@ -7,7 +7,7 @@ pub use spec::*;
 pub use stmt::*;
 pub use ty::*;
 
-use crate::parse::*;
+use crate::ast::*;
 
 mod scope;
 

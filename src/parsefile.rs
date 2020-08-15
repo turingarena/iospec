@@ -12,7 +12,7 @@ use annotate_snippets::display_list::{DisplayList, FormatOptions};
 use annotate_snippets::snippet::*;
 
 use crate::compile::compile_spec;
-use crate::parse::ParsedSpec;
+use crate::ast::ParsedSpec;
 
 #[derive(Debug)]
 pub struct ParseError;
