@@ -2,7 +2,7 @@ extern crate genco;
 
 use genco::prelude::*;
 
-use crate::hir::*;
+use crate::old_hir::*;
 use crate::ir::*;
 
 type GenResult = std::result::Result<Tokens, Box<dyn std::error::Error>>;

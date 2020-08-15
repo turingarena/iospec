@@ -1,4 +1,4 @@
-use crate::hir::*;
+use crate::old_hir::*;
 use crate::ast::*;
 
 #[derive(Debug, Clone)]
