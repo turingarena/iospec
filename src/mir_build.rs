@@ -41,7 +41,8 @@ fn mir_decl_insts(hir: &HN<HStmt>) -> Vec<MInst> {
 
 fn mir_alloc_insts(hir: &HN<HStmt>) -> Vec<MInst> {
     match &hir.kind {
-        HStmtKind::For { body, .. } => body.defs
+        HStmtKind::For { body, .. } => body
+            .defs
             .iter()
             .flat_map(|c| match &c.kind {
                 HDefExprKind::Subscript { array, .. } => match array.expr_ty.deref() {
