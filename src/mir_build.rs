@@ -62,6 +62,10 @@ impl HirNode<HirDef> {
             },
         }
     }
+
+    fn build_var_ty_mir(self: &Self) -> MirConsTy {
+        self.expr.build_ty_mir(&self.ty.build_mir())
+    }
 }
 
 impl HirNode<HirScalarTypeExpr> {
@@ -98,7 +102,7 @@ impl HirNode<HirExpr> {
                 target: Some(target),
                 ..
             } => match &target.kind {
-                HirRefKind::Var { def, .. } => todo!(),
+                HirRefKind::Var { def, .. } => def.build_var_ty_mir(),
                 HirRefKind::Index { .. } => MirConsTy::Scalar { def: MirDefTy::N32 },
                 _ => todo!("recover"),
             },

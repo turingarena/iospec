@@ -66,7 +66,7 @@ fn gen_inst(inst: &MirInst) -> Tokens {
             printf(#(gen_printf_format(ty)), #(gen_expr(arg)));
         },
         MirInst::Read { arg, ty } => quote! {
-            printf(#(gen_scanf_format(ty)), &#(gen_expr(arg)));
+            scanf(#(gen_scanf_format(ty)), &#(gen_expr(arg)));
         },
         MirInst::Call { name, args, ret: None } => quote! {
             #(name)(#(
