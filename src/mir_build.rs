@@ -96,7 +96,7 @@ fn mir_expr_ty(hir: &HN<HValExpr>) -> MConsTy {
             ..
         } => match &target.kind {
             HRefKind::Var { def, .. } => mir_cons_ty(def),
-            HRefKind::Index { .. } => MConsTy::Atom { def: MAtomTy::N32 },
+            HRefKind::Index { .. } => MConsTy::Atom { atom: MAtomTy::N32 },
             _ => todo!("recover"),
         },
         HValExprKind::Subscript { array, .. } => match mir_expr_ty(array) {
@@ -109,7 +109,7 @@ fn mir_expr_ty(hir: &HN<HValExpr>) -> MConsTy {
 
 fn mir_expr_def_ty(hir: &HN<HValExpr>) -> MAtomTy {
     match mir_expr_ty(hir) {
-        MConsTy::Atom { def } => def,
+        MConsTy::Atom { atom } => atom,
         _ => todo!("recover"),
     }
 }
@@ -126,11 +126,11 @@ fn mir_def_expr(hir: &HN<HDefExpr>) -> MExpr {
     }
 }
 
-fn mir_def_expr_cons_ty(hir: &HN<HDefExpr>, def: &MAtomTy) -> MConsTy {
+fn mir_def_expr_cons_ty(hir: &HN<HDefExpr>, atom: &MAtomTy) -> MConsTy {
     match &hir.kind {
-        HDefExprKind::Var { .. } => MConsTy::Atom { def: def.clone() },
+        HDefExprKind::Var { .. } => MConsTy::Atom { atom: atom.clone() },
         HDefExprKind::Subscript { array, .. } => MConsTy::Array {
-            item: Box::new(mir_def_expr_cons_ty(array, def)),
+            item: Box::new(mir_def_expr_cons_ty(array, atom)),
         },
     }
 }
