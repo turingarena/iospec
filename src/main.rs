@@ -31,7 +31,7 @@ mod hir;
 mod hir_compile;
 mod gen;
 mod ir;
-mod parse;
+mod ast_parse;
 mod parsefile;
 
 fn main() {
