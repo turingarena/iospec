@@ -15,6 +15,11 @@ pub enum MInst {
         name: String,
         ty: MConsTy,
     },
+    Alloc {
+        array: MExpr,
+        ty: MConsTy,
+        size: MExpr,
+    },
     Read {
         arg: MExpr,
         ty: MAtomTy,

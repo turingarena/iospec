@@ -59,6 +59,15 @@ fn gen_inst(inst: &MInst) -> Tokens {
         MInst::Decl { name, ty } => quote! {
             #(gen_left_type(ty)) #(name);
         },
+        MInst::Alloc { array, ty, size } => {
+            let a = gen_expr(array);
+            let t = gen_left_type(ty);
+            let n = gen_expr(size);
+
+            quote! [
+                #(a) = new #(t)[#(n)];
+            ]
+        }
         MInst::Write { arg, ty } => quote! {
             printf(#(gen_printf_format(ty)), #(gen_expr(arg)));
         },

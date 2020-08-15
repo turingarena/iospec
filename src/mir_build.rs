@@ -12,13 +12,21 @@ pub fn build_mir(spec: &HSpec) -> MSpec {
 fn mir_block(hir: &HN<HBlock>) -> Vec<MInst> {
     let mut insts = Vec::new();
 
-    insts.extend(hir.stmts.iter().flat_map(mir_stmt_decls));
-    insts.extend(hir.stmts.iter().flat_map(mir_stmt_insts));
-
+    for stmt in hir.stmts.deref() {
+        for inst in mir_decl_insts(&stmt) {
+            insts.push(inst)
+        }
+        for inst in mir_alloc_insts(&stmt) {
+            insts.push(inst)
+        }
+        for inst in mir_stmt_insts(&stmt) {
+            insts.push(inst)
+        }
+    }
     insts
 }
 
-fn mir_stmt_decls(hir: &HN<HStmt>) -> Vec<MInst> {
+fn mir_decl_insts(hir: &HN<HStmt>) -> Vec<MInst> {
     hir.defs
         .iter()
         .flat_map(|c| match &c.kind {
@@ -29,6 +37,26 @@ fn mir_stmt_decls(hir: &HN<HStmt>) -> Vec<MInst> {
             _ => None,
         })
         .collect()
+}
+
+fn mir_alloc_insts(hir: &HN<HStmt>) -> Vec<MInst> {
+    match &hir.kind {
+        HStmtKind::For { body, .. } => body.defs
+            .iter()
+            .flat_map(|c| match &c.kind {
+                HDefExprKind::Subscript { array, .. } => match array.expr_ty.deref() {
+                    HExprTy::Array { item, range } => Some(MInst::Alloc {
+                        array: mir_def_expr(array),
+                        size: mir_val_expr(&range.bound),
+                        ty: mir_expr_ty(item),
+                    }),
+                    _ => todo!("recover"),
+                },
+                _ => None,
+            })
+            .collect(),
+        _ => vec![],
+    }
 }
 
 fn mir_stmt_insts(hir: &HN<HStmt>) -> Vec<MInst> {
