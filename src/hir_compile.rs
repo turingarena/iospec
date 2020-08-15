@@ -40,119 +40,6 @@ fn hir_block(ast: ABlock, env: &Env) -> HBlock {
     }
 }
 
-fn hir_def(ast: ADef, env: &Env) -> HDef {
-    let ADef { expr, colon, ty } = ast;
-    let atom_ty = HN::new(hir_atom_ty(ty, env));
-
-    let expr = hir_def_expr(
-        expr,
-        env,
-        &HN::new(HExprTy::Atom {
-            atom: atom_ty.clone(),
-        }),
-        &env.cons_path.clone(),
-    );
-
-    HDef {
-        colon,
-        atom_ty,
-        ident: expr.ident.clone(),
-        var_ty: expr.expr_ty.clone(),
-        expr: HN::new(expr),
-    }
-}
-
-fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
-    match ast {
-        AExpr::Ref { ident } => {
-            let ident = hir_ident(ident, env);
-            let target = env.resolve(&ident);
-
-            let ty = match &target.as_ref().unwrap_or_else(|| todo!("recover")).kind {
-                HDeclKind::Var { def } => def.var_ty.clone(),
-                HDeclKind::Index { range } => HN::new(HExprTy::Index {
-                    range: range.clone(),
-                }),
-            };
-
-            HValExpr {
-                ty,
-                kind: HValExprKind::Ref {
-                    target,
-                    ident: HN::new(ident),
-                },
-            }
-        }
-        AExpr::Subscript {
-            array,
-            bracket,
-            index,
-        } => {
-            let array = hir_val_expr(*array, env);
-            let index = hir_val_expr(*index, env);
-
-            let ty = match array.ty.deref() {
-                HExprTy::Array { item, .. } => item.clone(),
-                _ => todo!("recover"),
-            };
-
-            HValExpr {
-                ty,
-                kind: HValExprKind::Subscript {
-                    array: HN::new(array),
-                    index: HN::new(index),
-                    bracket,
-                },
-            }
-        }
-    }
-}
-
-fn hir_def_expr(ast: AExpr, env: &Env, ty: &HN<HExprTy>, cons_path: &ConsPath) -> HDefExpr {
-    match ast {
-        AExpr::Ref { ident } => {
-            let ident = HN::new(hir_ident(ident, env));
-            HDefExpr {
-                ident: ident.clone(),
-                kind: HDefExprKind::Var { ident },
-                expr_ty: ty.clone(),
-                var_ty: ty.clone(),
-            }
-        }
-        AExpr::Subscript {
-            array,
-            bracket,
-            index,
-        } => match cons_path {
-            ConsPath::For { range, parent } => {
-                let ty = HN::new(HExprTy::Array {
-                    item: ty.clone(),
-                    range: range.clone(),
-                });
-
-                let array = hir_def_expr(*array, env, &ty, parent);
-
-                HDefExpr {
-                    ident: array.ident.clone(),
-                    var_ty: array.var_ty.clone(),
-                    expr_ty: ty,
-                    kind: HDefExprKind::Subscript {
-                        array: HN::new(array),
-                        index: HN::new(hir_val_expr(*index, env)),
-                        bracket,
-                    },
-                }
-            }
-            _ => todo!("recover"),
-        },
-    }
-}
-
-fn hir_ident(ast: AIdent, env: &Env) -> HIdent {
-    let AIdent { token } = ast;
-    HIdent { token }
-}
-
 fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
     match ast {
         AStmt::Read { inst, args, semi } => {
@@ -280,7 +167,7 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 index_name: index_name.clone(),
             });
 
-            let mut inner_env = Env {
+            let body = hir_block(body, &Env {
                 refs: vec![HN::new(HVarDecl {
                     ident: index_name,
                     kind: HDeclKind::Index {
@@ -292,9 +179,7 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                     range: range.clone(),
                     parent: Box::new(env.cons_path.clone()),
                 },
-            };
-
-            let body = hir_block(body, &mut inner_env);
+            });
 
             HStmt {
                 fun_decls: body.fun_decls.clone(),
@@ -320,10 +205,123 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
     }
 }
 
+fn hir_def(ast: ADef, env: &Env) -> HDef {
+    let ADef { expr, colon, ty } = ast;
+    let atom_ty = HN::new(hir_atom_ty(ty, env));
+
+    let expr = hir_def_expr(
+        expr,
+        env,
+        &HN::new(HExprTy::Atom {
+            atom: atom_ty.clone(),
+        }),
+        &env.cons_path.clone(),
+    );
+
+    HDef {
+        colon,
+        atom_ty,
+        ident: expr.ident.clone(),
+        var_ty: expr.var_ty.clone(),
+        expr: HN::new(expr),
+    }
+}
+
+fn hir_def_expr(ast: AExpr, env: &Env, ty: &HN<HExprTy>, cons_path: &ConsPath) -> HDefExpr {
+    match ast {
+        AExpr::Ref { ident } => {
+            let ident = HN::new(hir_ident(ident, env));
+            HDefExpr {
+                ident: ident.clone(),
+                kind: HDefExprKind::Var { ident },
+                expr_ty: ty.clone(),
+                var_ty: ty.clone(),
+            }
+        }
+        AExpr::Subscript {
+            array,
+            bracket,
+            index,
+        } => match cons_path {
+            ConsPath::For { range, parent } => {
+                let array_ty = HN::new(HExprTy::Array {
+                    item: ty.clone(),
+                    range: range.clone(),
+                });
+
+                let array = hir_def_expr(*array, env, &array_ty, parent);
+
+                HDefExpr {
+                    ident: array.ident.clone(),
+                    var_ty: array.var_ty.clone(),
+                    expr_ty: ty.clone(),
+                    kind: HDefExprKind::Subscript {
+                        array: HN::new(array),
+                        index: HN::new(hir_val_expr(*index, env)),
+                        bracket,
+                    },
+                }
+            }
+            _ => todo!("recover"),
+        },
+    }
+}
+
+fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
+    match ast {
+        AExpr::Ref { ident } => {
+            let ident = hir_ident(ident, env);
+            let target = env.resolve(&ident);
+
+            let ty = match &target.as_ref().unwrap_or_else(|| todo!("recover from undefined var")).kind {
+                HDeclKind::Var { def } => def.var_ty.clone(),
+                HDeclKind::Index { range } => HN::new(HExprTy::Index {
+                    range: range.clone(),
+                }),
+            };
+
+            HValExpr {
+                ty,
+                kind: HValExprKind::Ref {
+                    target,
+                    ident: HN::new(ident),
+                },
+            }
+        }
+        AExpr::Subscript {
+            array,
+            bracket,
+            index,
+        } => {
+            let array = hir_val_expr(*array, env);
+            let index = hir_val_expr(*index, env);
+
+            let ty = match array.ty.deref() {
+                HExprTy::Array { item, .. } => item.clone(),
+                _ => todo!("recover"),
+            };
+
+            HValExpr {
+                ty,
+                kind: HValExprKind::Subscript {
+                    array: HN::new(array),
+                    index: HN::new(index),
+                    bracket,
+                },
+            }
+        }
+    }
+}
+
 fn hir_atom_ty(ast: ATy, env: &Env) -> HAtomTy {
     HAtomTy {
         ident: HN::new(hir_ident(ast.ident, env)),
     }
+}
+
+fn hir_ident(ast: AIdent, env: &Env) -> HIdent {
+    let AIdent { token } = ast;
+    HIdent { token }
 }
 
 fn hir_def_decl(def: &HN<HDef>) -> HVarDecl {
