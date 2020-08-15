@@ -1,6 +1,21 @@
+use std::ops::Deref;
+
 use crate::ast::*;
 use crate::hir::*;
-use std::ops::Deref;
+
+#[derive(Debug, Clone)]
+struct Env {
+    refs: Vec<HirNode<HirRef>>,
+    outer: Option<Scope>,
+}
+
+impl Env {
+    fn resolve(self: &Self, ident: HirNode<HirIdent>) -> Option<HirNode<HirRef>> {
+        self.refs.iter().find(|r| r.ident.token == ident.token).map(|r| r.clone()).or(
+            self.outer.as_ref().and_then(|s| s.resolve(ident))
+        )
+    }
+}
 
 #[derive(Debug, Clone)]
 enum Scope {
@@ -10,80 +25,124 @@ enum Scope {
     },
 }
 
-#[derive(Debug, Clone)]
-struct Env {
-    defs: Vec<HirNode<HirDef>>,
-    outer: Option<Scope>,
-}
-
-trait HirCompile<T>: std::marker::Sized {
-    fn compile(ast: T, env: &mut Env) -> HirNode<Self>;
-}
-
-impl<T, U> HirCompile<Box<T>> for U
-    where U: HirCompile<T>
-{
-    fn compile(ast: Box<T>, env: &mut Env) -> HirNode<Self> {
-        (*ast).compile(env)
+impl Scope {
+    fn resolve(self: &Self, ident: HirNode<HirIdent>) -> Option<HirNode<HirRef>> {
+        match self {
+            Scope::For { range, env } => {
+                // TODO: resolve index
+                env.resolve(ident)
+            }
+        }
     }
 }
 
-trait HirCompileInto<U> {
-    fn compile(self: Self, env: &mut Env) -> HirNode<U>;
-}
-
-impl<T, U> HirCompileInto<U> for T
-    where
-        U: HirCompile<T> {
-    fn compile(self: Self, env: &mut Env) -> HirNode<U> {
-        U::compile(self, env)
-    }
-}
-
-impl HirCompile<AstBlock> for HirBlock {
-    fn compile(ast: AstBlock, env: &mut Env) -> HirNode<Self> {
+impl AstBlock {
+    fn compile(self: Self, env: &mut Env) -> HirNode<HirBlock> {
+        let stmts: Vec<HirNode<HirStmt>> = self.stmts.into_iter().map(|stmt| stmt.compile(env)).collect();
         HirNode::new(HirBlock {
-            stmts: ast.stmts.into_iter().map(|stmt| stmt.compile(env)).collect(),
+            conses: stmts.iter().flat_map(|stmt| stmt.conses.iter()).map(Clone::clone).collect(),
+            stmts,
         })
     }
 }
 
-impl HirCompile<AstDef> for HirDef {
-    fn compile(ast: AstDef, env: &mut Env) -> HirNode<Self> {
-        let AstDef { expr, colon, ty } = ast;
-        HirNode::new(HirDef {
-            expr: expr.compile(env),
+impl AstDef {
+    fn compile(self: Self, env: &mut Env) -> HirNode<HirDef> {
+        let AstDef { expr, colon, ty } = self;
+        let def = HirNode::new(HirDef {
+            expr: expr.compile_def(env),
             colon,
             ty: ty.compile(env),
+        });
+        env.refs.push(HirNode::new(HirRef {
+            ident: def.expr.ident.clone(),
+            kind: HirRefKind::Var {
+                cons: HirNode::new(HirCons::Scalar {
+                    def: def.clone(),
+                }),
+            },
+        }));
+        def
+    }
+}
+
+impl AstExpr {
+    fn compile(self: Self, env: &mut Env) -> HirNode<HirExpr> {
+        HirNode::new(match self {
+            AstExpr::Ref { ident } => {
+                let ident = ident.compile(env);
+                HirExpr {
+                    kind: HirExprKind::Ref {
+                        binding: env.resolve(ident.clone()),
+                        ident,
+                    }
+                }
+            }
+            AstExpr::Subscript { array, bracket, index } => HirExpr {
+                kind: HirExprKind::Subscript {
+                    array: array.compile(env),
+                    index: index.compile(env),
+                    bracket,
+                }
+            },
+        })
+    }
+
+    fn compile_def(self: AstExpr, env: &mut Env) -> HirNode<HirDefExpr> {
+        HirNode::new(match self {
+            AstExpr::Ref { ident } => {
+                let ident = ident.compile(env);
+                HirDefExpr {
+                    ident: ident.clone(),
+                    kind: HirDefExprKind::Var {
+                        ident,
+                    },
+                }
+            }
+            AstExpr::Subscript { array, bracket, index } => {
+                let array = array.compile_def(env);
+                HirDefExpr {
+                    ident: array.ident.clone(),
+                    kind: HirDefExprKind::Subscript {
+                        array,
+                        index: index.compile(env),
+                        bracket,
+                    },
+                }},
         })
     }
 }
 
-impl HirCompile<AstIdent> for HirIdent {
-    fn compile(ast: AstIdent, env: &mut Env) -> HirNode<Self> {
-        let AstIdent { token } = ast;
+impl AstIdent {
+    fn compile(self: Self, env: &mut Env) -> HirNode<HirIdent> {
+        let AstIdent { token } = self;
         HirNode::new(HirIdent { token })
     }
 }
 
-impl HirCompile<AstStmt> for HirStmt {
-    fn compile(ast: AstStmt, env: &mut Env) -> HirNode<Self> {
-        HirNode::new(match ast {
+impl AstStmt {
+    fn compile(self: Self, env: &mut Env) -> HirNode<HirStmt> {
+        HirNode::new(match self {
             AstStmt::Read {
                 inst, args, semi,
             } => {
                 let mut arg_commas = Vec::new();
 
+                let args: Vec<HirNode<HirDef>> = args.into_pairs().map(|a| match a {
+                    syn::punctuated::Pair::Punctuated(a, comma) => {
+                        arg_commas.push(comma);
+                        a.compile(env)
+                    }
+                    syn::punctuated::Pair::End(a) => a.compile(env),
+                }).collect();
+
                 HirStmt {
+                    conses: args.iter().map(|def| HirNode::new(HirCons::Scalar {
+                        def: def.clone(),
+                    })).collect(),
                     kind: HirStmtKind::Read {
                         inst,
-                        args: args.into_pairs().map(|a| match a {
-                            syn::punctuated::Pair::Punctuated(a, comma) => {
-                                arg_commas.push(comma);
-                                a.compile(env)
-                            }
-                            syn::punctuated::Pair::End(a) => a.compile(env),
-                        }).collect(),
+                        args,
                         arg_commas,
                         semi,
                     }
@@ -95,6 +154,7 @@ impl HirCompile<AstStmt> for HirStmt {
                 let mut arg_commas = Vec::new();
 
                 HirStmt {
+                    conses: Vec::new(),
                     kind: HirStmtKind::Write {
                         inst,
                         args: args.into_pairs().map(|a| match a {
@@ -113,8 +173,12 @@ impl HirCompile<AstStmt> for HirStmt {
                 inst, name, args_paren, args, return_value, semi
             } => {
                 let mut arg_commas = Vec::new();
+                let return_value: Option<(_, HirNode<HirDef>)> = return_value.map(|(arrow, r)| (arrow, r.compile(env)));
 
                 HirStmt {
+                    conses: return_value.iter().map(|(_, r)| HirNode::new(HirCons::Scalar {
+                        def: r.clone(),
+                    })).collect(),
                     kind: HirStmtKind::Call {
                         inst,
                         name: name.compile(env),
@@ -127,7 +191,7 @@ impl HirCompile<AstStmt> for HirStmt {
                             syn::punctuated::Pair::End(a) => a.compile(env),
                         }).collect(),
                         arg_commas,
-                        return_value: return_value.map(|(arrow, r)| (arrow, r.compile(env))),
+                        return_value,
                         semi,
                     }
                 }
@@ -142,19 +206,24 @@ impl HirCompile<AstStmt> for HirStmt {
                 });
 
                 let mut inner_env = Env {
-                    defs: Vec::new(),
+                    refs: Vec::new(),
                     outer: Some(Scope::For {
                         range: range.clone(),
                         env: Box::new((*env).clone()),
-                    })
+                    }),
                 };
+                let body = body.compile(&mut inner_env);
 
                 HirStmt {
+                    conses: body.conses.iter().map(|c| HirNode::new(HirCons::Array {
+                        item: c.clone(),
+                        range: range.clone(),
+                    })).collect(),
                     kind: HirStmtKind::For {
                         for_token,
                         range,
                         body_brace,
-                        body: body.compile(&mut inner_env),
+                        body,
                     }
                 }
             }
@@ -162,29 +231,10 @@ impl HirCompile<AstStmt> for HirStmt {
     }
 }
 
-impl HirCompile<AstExpr> for HirExpr {
-    fn compile(ast: AstExpr, env: &mut Env) -> HirNode<Self> {
-        HirNode::new(match ast {
-            AstExpr::Ref { ident } => HirExpr {
-                kind: HirExprKind::Ref {
-                    ident: ident.compile(env),
-                }
-            },
-            AstExpr::Subscript { array, bracket, index } => HirExpr {
-                kind: HirExprKind::Subscript {
-                    array: array.compile(env),
-                    index: index.compile(env),
-                    bracket,
-                }
-            },
-        })
-    }
-}
-
-impl HirCompile<AstScalarTypeExpr> for HirScalarTypeExpr {
-    fn compile(ast: AstScalarTypeExpr, env: &mut Env) -> HirNode<Self> {
+impl AstScalarTypeExpr {
+    fn compile(self: Self, env: &mut Env) -> HirNode<HirScalarTypeExpr> {
         HirNode::new(HirScalarTypeExpr {
-            ident: ast.ident.compile(env),
+            ident: self.ident.compile(env),
         })
     }
 }
@@ -192,7 +242,7 @@ impl HirCompile<AstScalarTypeExpr> for HirScalarTypeExpr {
 pub fn compile_hir(ast: AstSpec) -> HirSpec {
     HirSpec {
         main: ast.main.compile(&mut Env {
-            defs: Vec::new(),
+            refs: Vec::new(),
             outer: None,
         })
     }

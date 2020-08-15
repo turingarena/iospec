@@ -11,14 +11,33 @@ pub type HirNode<T> = Rc<T>;
 
 #[derive(Debug, Clone)]
 pub struct HirBlock {
+    pub conses: Vec<HirNode<HirCons>>,
     pub stmts: Vec<HirNode<HirStmt>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct HirDef {
-    pub expr: HirNode<HirExpr>,
+    pub expr: HirNode<HirDefExpr>,
     pub colon: syn::Token![:],
     pub ty: HirNode<HirScalarTypeExpr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HirDefExpr {
+    pub kind: HirDefExprKind,
+    pub ident: HirNode<HirIdent>,
+}
+
+#[derive(Debug, Clone)]
+pub enum HirDefExprKind {
+    Var {
+        ident: HirNode<HirIdent>,
+    },
+    Subscript {
+        array: HirNode<HirDefExpr>,
+        bracket: syn::token::Bracket,
+        index: HirNode<HirExpr>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -30,6 +49,7 @@ pub struct HirExpr {
 pub enum HirExprKind {
     Ref {
         ident: HirNode<HirIdent>,
+        binding: Option<HirNode<HirRef>>,
     },
     Subscript {
         array: HirNode<HirExpr>,
@@ -50,6 +70,7 @@ pub struct HirSpec {
 
 #[derive(Debug, Clone)]
 pub struct HirStmt {
+    pub conses: Vec<HirNode<HirCons>>,
     pub kind: HirStmtKind,
 }
 
@@ -94,4 +115,31 @@ pub struct HirRange {
 #[derive(Debug, Clone)]
 pub struct HirScalarTypeExpr {
     pub ident: HirNode<HirIdent>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HirRef {
+    pub ident: HirNode<HirIdent>,
+    pub kind: HirRefKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum HirRefKind {
+    Var {
+        cons: HirNode<HirCons>,
+    },
+    Index {
+        range: HirNode<HirRange>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum HirCons {
+    Scalar {
+        def: HirNode<HirDef>,
+    },
+    Array {
+        item: HirNode<HirCons>,
+        range: HirNode<HirRange>,
+    },
 }
