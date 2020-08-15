@@ -17,15 +17,15 @@ pub struct HSpec {
 
 #[derive(Debug)]
 pub struct HBlock {
-    pub decls: Vec<HN<HDecl>>,
-    pub defs: Vec<HN<HDefExpr>>,
-    pub stmts: Vec<HN<HStmt>>,
+    pub decls: HN<Vec<HN<HDecl>>>,
+    pub defs: HN<Vec<HN<HDefExpr>>>,
+    pub stmts: HN<Vec<HN<HStmt>>>,
 }
 
 #[derive(Debug)]
 pub struct HStmt {
-    pub decls: Vec<HN<HDecl>>,
-    pub defs: Vec<HN<HDefExpr>>,
+    pub decls: HN<Vec<HN<HDecl>>>,
+    pub defs: HN<Vec<HN<HDefExpr>>>,
     pub kind: HStmtKind,
 }
 
@@ -33,7 +33,7 @@ pub struct HStmt {
 pub enum HStmtKind {
     Write {
         inst: kw::write,
-        args: Vec<HN<HValExpr>>,
+        args: HN<Vec<HN<HValExpr>>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
@@ -47,7 +47,7 @@ pub enum HStmtKind {
         inst: kw::call,
         name: HN<HIdent>,
         args_paren: syn::token::Paren,
-        args: Vec<HN<HValExpr>>,
+        args: HN<Vec<HN<HValExpr>>>,
         arg_commas: Vec<syn::Token![,]>,
         ret_rarrow: Option<syn::Token![->]>,
         ret: Option<HN<HDef>>,

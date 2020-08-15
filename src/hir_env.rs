@@ -8,7 +8,7 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn resolve(self: &Self, ident: HN<HIdent>) -> Option<HN<HDecl>> {
+    pub fn resolve(self: &Self, ident: &HIdent) -> Option<HN<HDecl>> {
         self.refs
             .iter()
             .find(|r| r.ident.token == ident.token)
