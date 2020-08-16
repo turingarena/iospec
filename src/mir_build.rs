@@ -7,7 +7,7 @@ use crate::mir::*;
 
 pub fn build_mir(spec: &HSpec) -> MSpec {
     MSpec {
-        funs: spec.main.funs.iter().map(mir_fun).collect(),
+        funs: spec.main.funs().map(mir_fun).collect(),
         main: mir_block(&spec.main),
     }
 }
@@ -45,8 +45,7 @@ fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
 fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     match &hir.kind {
         HStmtKind::For { body, .. } => body
-            .defs
-            .iter()
+            .defs()
             .flat_map(|c| match &c.kind {
                 HDefExprKind::Subscript { array, .. } => match array.expr_ty.deref() {
                     HExprTy::Array { item, range } => Some(MInst::Alloc {

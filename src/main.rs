@@ -31,6 +31,7 @@ mod ast;
 mod ast_parse;
 mod gen;
 mod hir;
+mod hir_analyze;
 mod hir_compile;
 mod hir_env;
 mod kw;

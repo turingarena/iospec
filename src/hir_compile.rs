@@ -22,27 +22,6 @@ fn hir_block(ast: ABlock, env: &Env) -> HBlock {
     }
 
     HBlock {
-        funs: Rc::new(
-            stmts
-                .iter()
-                .flat_map(|stmt| stmt.funs.iter())
-                .cloned()
-                .collect(),
-        ),
-        vars: Rc::new(
-            stmts
-                .iter()
-                .flat_map(|stmt| stmt.vars.iter())
-                .cloned()
-                .collect(),
-        ),
-        defs: Rc::new(
-            stmts
-                .iter()
-                .flat_map(|stmt| stmt.defs.iter())
-                .cloned()
-                .collect(),
-        ),
         stmts: Rc::new(stmts),
     }
 }
@@ -198,11 +177,10 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             );
 
             HStmt {
-                funs: body.funs.clone(),
-                vars: body.vars.clone(),
+                funs: Rc::new(body.funs().cloned().collect()),
+                vars: Rc::new(body.vars().cloned().collect()),
                 defs: Rc::new(
-                    body.defs
-                        .iter()
+                    body.defs()
                         .flat_map(|expr| match &expr.kind {
                             // TODO: check index somewhere?
                             HDefExprKind::Subscript { array, .. } => Some(array.clone()),
@@ -362,7 +340,7 @@ pub fn compile_hir(ast: ASpec) -> HSpec {
     );
 
     HSpec {
-        funs: main.funs.clone(),
+        funs: Rc::new(main.funs().cloned().collect()),
         main: Rc::new(main),
     }
 }

@@ -27,9 +27,6 @@ pub struct HSpec {
 
 #[derive(Debug)]
 pub struct HBlock {
-    pub funs: Rc<Vec<Rc<HFun>>>,
-    pub vars: Rc<Vec<Rc<HVar>>>,
-    pub defs: Rc<Vec<Rc<HDefExpr>>>,
     pub stmts: Rc<Vec<Rc<HStmt>>>,
 }
 
