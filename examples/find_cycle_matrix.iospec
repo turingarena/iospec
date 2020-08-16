@@ -1,12 +1,12 @@
-read N: n32, M: n32;
+read N: n32;
 
 for u upto N {
-    for v upto M {
+    for v upto N {
         read A[u][v]: n32;
     }
 }
 
-call find_cycle(N, M, A) -> L: n32;
+call find_cycle(N, A) -> L: n32;
 write L;
 
 for i upto L {
