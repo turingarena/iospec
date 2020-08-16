@@ -14,7 +14,7 @@ use crate::hir::*;
 pub struct Env {
     pub refs: Vec<Rc<HVar>>,
     pub outer: Option<Box<Env>>,
-    pub cons_path: ConsPath,
+    pub loc: Rc<HDefLoc>,
 }
 
 impl Env {
@@ -25,13 +25,4 @@ impl Env {
             .map(|r| r.clone())
             .or(self.outer.as_ref().and_then(|s| s.resolve(ident)))
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum ConsPath {
-    Root,
-    For {
-        range: Rc<HRange>,
-        parent: Box<ConsPath>,
-    },
 }

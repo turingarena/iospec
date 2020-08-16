@@ -76,17 +76,16 @@ pub struct HFun {
 pub struct HDef {
     pub expr: Rc<HDefExpr>,
     pub colon: syn::Token![:],
-    pub atom_ty: Rc<HAtomTy>,
-    pub var_ty: Rc<HExprTy>,
-    pub ident: Rc<HIdent>,
+    pub ty: Rc<HAtomTy>,
+    pub loc: Rc<HDefLoc>,
 }
 
 #[derive(Debug)]
 pub struct HDefExpr {
     pub kind: HDefExprKind,
-    pub ident: Rc<HIdent>,
-    pub expr_ty: Rc<HExprTy>,
-    pub var_ty: Rc<HExprTy>,
+    pub atom_ty: Rc<HAtomTy>,
+    pub ctx: Rc<HDefExprCtx>,
+    pub loc: Rc<HDefLoc>,
 }
 
 #[derive(Debug)]
@@ -97,6 +96,15 @@ pub enum HDefExprKind {
     Subscript {
         array: Rc<HDefExpr>,
         bracket: syn::token::Bracket,
+        index: Rc<HValExpr>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum HDefExprCtx {
+    Atom,
+    Subscript {
+        item: Rc<HDefExprCtx>,
         index: Rc<HValExpr>,
     },
 }
@@ -153,6 +161,7 @@ pub struct HIdent {
 #[derive(Debug)]
 pub struct HVar {
     pub ident: Rc<HIdent>,
+    pub ty: Rc<HExprTy>, // Cache
     pub kind: HVarKind,
 }
 
@@ -160,4 +169,13 @@ pub struct HVar {
 pub enum HVarKind {
     Data { def: Rc<HDef> },
     Index { range: Rc<HRange> },
+}
+
+#[derive(Debug, Clone)]
+pub enum HDefLoc {
+    Main,
+    For {
+        range: Rc<HRange>,
+        parent: Rc<HDefLoc>,
+    },
 }

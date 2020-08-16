@@ -32,11 +32,14 @@ fn mir_block(hir: &Rc<HBlock>) -> Vec<MInst> {
 fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     hir.defs()
         .iter()
-        .flat_map(|c| match &c.kind {
-            HDefExprKind::Var { ident } => Some(MInst::Decl {
-                name: ident.token.to_string(),
-                ty: mir_expr_ty(&c.var_ty),
-            }),
+        .flat_map(|def_expr| match &def_expr.kind {
+            HDefExprKind::Var { ident } => {
+                let (name, ty) = def_expr.var_name_and_ty();
+                Some(MInst::Decl {
+                    name: name.token.to_string(),
+                    ty: mir_expr_ty(&ty),
+                })
+            }
             _ => None,
         })
         .collect()
@@ -48,7 +51,7 @@ fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
             .defs()
             .into_iter()
             .flat_map(|c| match &c.kind {
-                HDefExprKind::Subscript { array, .. } => match array.expr_ty.deref() {
+                HDefExprKind::Subscript { array, .. } => match array.ty().deref() {
                     HExprTy::Array { item, range } => Some(MInst::Alloc {
                         array: mir_def_expr(array),
                         size: mir_val_expr(&range.bound),
@@ -68,10 +71,14 @@ fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
         HStmtKind::Read { args, .. } => args
             .iter()
             .map(Deref::deref)
-            .map(|HDef { atom_ty, expr, .. }| MInst::Read {
-                ty: mir_atom_ty(atom_ty),
-                arg: mir_def_expr(expr),
-            })
+            .map(
+                |HDef {
+                     ty: atom_ty, expr, ..
+                 }| MInst::Read {
+                    ty: mir_atom_ty(atom_ty),
+                    arg: mir_def_expr(expr),
+                },
+            )
             .collect(),
         HStmtKind::Write { args, .. } => args
             .iter()
@@ -153,7 +160,7 @@ fn mir_fun(hir: &Rc<HFun>) -> MFun {
     MFun {
         name: hir.name.token.to_string(),
         params: hir.args.iter().map(mir_param).collect(),
-        ret: hir.ret.as_ref().map(|r| mir_atom_ty(&r.atom_ty)),
+        ret: hir.ret.as_ref().map(|r| mir_atom_ty(&r.ty)),
     }
 }
 

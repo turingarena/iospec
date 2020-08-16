@@ -1,0 +1,12 @@
+read N: n32;
+read M: n32;
+
+for i upto N {
+    for j upto M {
+        read A[i][j]: i32;
+    }
+}
+
+call sum(N, A) -> S: i32;
+
+write S;

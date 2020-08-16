@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::hir::*;
 
 impl HSpec {
@@ -42,7 +44,9 @@ impl HStmt {
         match &self.kind {
             HStmtKind::Read { args, .. } => args.iter().map(|d| d.expr.clone()).collect(),
             HStmtKind::Call { fun, .. } => fun.ret.iter().map(|d| d.expr.clone()).collect(),
-            HStmtKind::For { body, .. } => body.defs().into_iter()
+            HStmtKind::For { body, .. } => body
+                .defs()
+                .into_iter()
                 .flat_map(|expr| match &expr.kind {
                     // TODO: check index somewhere?
                     HDefExprKind::Subscript { array, .. } => Some(array.clone()),
@@ -54,19 +58,10 @@ impl HStmt {
     }
 }
 
-impl HVar {
-    pub fn ty(self: &Self) -> Rc<HExprTy> {
-        match &self.kind {
-            HVarKind::Data { def, .. } => def.var_ty.clone(),
-            HVarKind::Index { range, .. } => Rc::new(HExprTy::Index { range: range.clone() }),
-        }
-    }
-}
-
 impl HValExpr {
     pub fn ty(self: &Self) -> Rc<HExprTy> {
         match &self.kind {
-            HValExprKind::Var { var, .. } => var.ty(),
+            HValExprKind::Var { var, .. } => var.ty.clone(),
             HValExprKind::Subscript { array, .. } => match array.ty().as_ref() {
                 // TODO: check index type as well
                 HExprTy::Array { item, .. } => item.clone(),
@@ -83,10 +78,60 @@ impl HValExpr {
     }
 }
 
-fn hir_def_var(def: &Rc<HDef>) -> HVar {
+impl HDefExpr {
+    pub fn var_name_and_ty(self: &Self) -> (Rc<HIdent>, Rc<HExprTy>) {
+        match &self.kind {
+            HDefExprKind::Var { ident, .. } => (ident.clone(), self.ty()),
+            HDefExprKind::Subscript { array, .. } => array.var_name_and_ty(),
+        }
+    }
+
+    pub fn ty(self: &Self) -> Rc<HExprTy> {
+        make_def_expr_ty(Rc::new(HExprTy::Atom {
+            atom: self.atom_ty.clone(),
+        }), self.ctx.clone(), self.loc.clone())
+    }
+}
+
+impl HDef {
+    pub fn var_name_and_ty(self: &Self) -> (Rc<HIdent>, Rc<HExprTy>) {
+        self.expr.var_name_and_ty()
+    }
+}
+
+pub fn hir_def_var(def: &Rc<HDef>) -> HVar {
+    let (ident, ty) = def.var_name_and_ty();
     HVar {
-        ident: def.ident.clone(),
+        ident,
+        ty,
         kind: HVarKind::Data { def: def.clone() },
     }
 }
 
+pub fn hir_index_var(range: &Rc<HRange>) -> HVar {
+    HVar {
+        ident: range.index.clone(),
+        ty: Rc::new(HExprTy::Index {
+            range: range.clone(),
+        }),
+        kind: HVarKind::Index {
+            range: range.clone(),
+        },
+    }
+}
+
+fn make_def_expr_ty(ty: Rc<HExprTy>, ctx: Rc<HDefExprCtx>, loc: Rc<HDefLoc>) -> Rc<HExprTy> {
+    match ctx.deref() {
+        HDefExprCtx::Atom => ty,
+        HDefExprCtx::Subscript { item, index } => match loc.deref() {
+            HDefLoc::For { range, parent } => {
+                // TODO: check index matches parent
+                make_def_expr_ty(Rc::new(HExprTy::Array {
+                    item: ty.clone(),
+                    range: range.clone(),
+                }), item.clone(), parent.clone())
+            },
+            _ => todo!("recover from wrong index in def expr subscript"),
+        },
+    }
+}
