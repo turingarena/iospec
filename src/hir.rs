@@ -32,9 +32,6 @@ pub struct HBlock {
 
 #[derive(Debug)]
 pub struct HStmt {
-    pub funs: Rc<Vec<Rc<HFun>>>,
-    pub vars: Rc<Vec<Rc<HVar>>>,
-    pub defs: Rc<Vec<Rc<HDefExpr>>>,
     pub kind: HStmtKind,
 }
 

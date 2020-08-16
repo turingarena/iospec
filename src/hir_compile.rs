@@ -17,7 +17,7 @@ fn hir_block(ast: ABlock, env: &Env) -> HBlock {
 
     for stmt in ast.stmts {
         let stmt = hir_stmt(stmt, &env);
-        env.refs.extend(stmt.vars.iter().cloned());
+        env.refs.extend(stmt.vars().into_iter());
         stmts.push(Rc::new(stmt));
     }
 
@@ -44,9 +44,6 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 .collect();
 
             HStmt {
-                funs: Rc::new(Vec::new()),
-                vars: Rc::new(args.iter().map(hir_def_decl).map(Rc::new).collect()),
-                defs: Rc::new(args.iter().map(|def| def.expr.clone()).collect()),
                 kind: HStmtKind::Read {
                     kw,
                     args,
@@ -59,9 +56,6 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             let mut arg_commas = Vec::new();
 
             HStmt {
-                funs: Rc::new(Vec::new()),
-                vars: Rc::new(Vec::new()),
-                defs: Rc::new(Vec::new()),
                 kind: HStmtKind::Write {
                     kw,
                     args: Rc::new(
@@ -108,9 +102,6 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 .map(Rc::new)
                 .collect();
 
-            let ret_var = ret.as_ref().map(hir_def_decl).map(Rc::new);
-            let ret_def = ret.as_ref().map(|r| r.expr.clone());
-
             let fun = HFun {
                 name: Rc::new(hir_ident(name)),
                 params: Rc::new(
@@ -130,9 +121,6 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             let fun = Rc::new(fun);
 
             HStmt {
-                funs: Rc::new(vec![fun.clone()]),
-                vars: Rc::new(ret_var.iter().cloned().collect()),
-                defs: Rc::new(ret_def.iter().cloned().collect()),
                 kind: HStmtKind::Call {
                     kw,
                     fun,
@@ -177,17 +165,6 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             );
 
             HStmt {
-                funs: Rc::new(body.funs().cloned().collect()),
-                vars: Rc::new(body.vars().cloned().collect()),
-                defs: Rc::new(
-                    body.defs()
-                        .flat_map(|expr| match &expr.kind {
-                            // TODO: check index somewhere?
-                            HDefExprKind::Subscript { array, .. } => Some(array.clone()),
-                            _ => None,
-                        })
-                        .collect(),
-                ),
                 kind: HStmtKind::For {
                     kw,
                     range,
@@ -322,13 +299,6 @@ fn hir_ident(ast: AIdent) -> HIdent {
     HIdent { token }
 }
 
-fn hir_def_decl(def: &Rc<HDef>) -> HVar {
-    HVar {
-        ident: def.ident.clone(),
-        kind: HVarKind::Data { def: def.clone() },
-    }
-}
-
 pub fn compile_hir(ast: ASpec) -> HSpec {
     let main = hir_block(
         ast.main,
@@ -340,7 +310,7 @@ pub fn compile_hir(ast: ASpec) -> HSpec {
     );
 
     HSpec {
-        funs: Rc::new(main.funs().cloned().collect()),
+        funs: Rc::new(main.funs()),
         main: Rc::new(main),
     }
 }
