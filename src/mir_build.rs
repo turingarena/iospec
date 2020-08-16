@@ -7,7 +7,7 @@ use crate::mir::*;
 
 pub fn build_mir(spec: &HSpec) -> MSpec {
     MSpec {
-        funs: spec.main.funs().iter().map(mir_fun).collect(),
+        funs: spec.funs().iter().map(mir_fun).collect(),
         main: mir_block(&spec.main),
     }
 }
@@ -76,16 +76,16 @@ fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
         HStmtKind::Write { args, .. } => args
             .iter()
             .map(|expr| MInst::Write {
-                ty: mir_atom_ty(match expr.ty.deref() {
+                ty: mir_atom_ty(match expr.ty().as_ref() {
                     HExprTy::Atom { atom } => atom,
                     _ => todo!("recover"),
                 }),
                 arg: mir_val_expr(expr),
             })
             .collect(),
-        HStmtKind::Call { fun, args, .. } => vec![MInst::Call {
+        HStmtKind::Call { fun, .. } => vec![MInst::Call {
             name: fun.name.token.to_string(),
-            args: args.iter().map(mir_val_expr).collect(),
+            args: fun.args.iter().map(mir_val_expr).collect(),
             ret: fun
                 .ret
                 .as_ref()
@@ -135,31 +135,31 @@ fn mir_atom_ty(hir: &Rc<HAtomTy>) -> MAtomTy {
     }
 }
 
-fn mir_expr_ty(hir: &Rc<HExprTy>) -> MConsTy {
+fn mir_expr_ty(hir: &Rc<HExprTy>) -> MExprTy {
     let hir: &HExprTy = hir.deref();
 
     match hir {
-        HExprTy::Atom { atom } => MConsTy::Atom {
+        HExprTy::Atom { atom } => MExprTy::Atom {
             atom: mir_atom_ty(atom),
         },
-        HExprTy::Array { item, .. } => MConsTy::Array {
+        HExprTy::Array { item, .. } => MExprTy::Array {
             item: Box::new(mir_expr_ty(item)),
         },
-        HExprTy::Index { .. } => MConsTy::Atom { atom: MAtomTy::N32 },
+        HExprTy::Index { .. } => MExprTy::Atom { atom: MAtomTy::N32 },
     }
 }
 
 fn mir_fun(hir: &Rc<HFun>) -> MFun {
     MFun {
         name: hir.name.token.to_string(),
-        params: hir.params.iter().map(mir_param).collect(),
+        params: hir.args.iter().map(mir_param).collect(),
         ret: hir.ret.as_ref().map(|r| mir_atom_ty(&r.atom_ty)),
     }
 }
 
-fn mir_param(hir: &Rc<HParam>) -> MParam {
+fn mir_param(hir: &Rc<HValExpr>) -> MParam {
     MParam {
-        name: hir.name.token.to_string(),
-        ty: mir_expr_ty(&hir.ty),
+        name: hir.param_name().token.to_string(),
+        ty: mir_expr_ty(&hir.ty()),
     }
 }

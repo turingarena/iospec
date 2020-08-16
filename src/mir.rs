@@ -26,7 +26,7 @@ pub struct MFun {
 #[derive(Debug, Clone)]
 pub struct MParam {
     pub name: String,
-    pub ty: MConsTy,
+    pub ty: MExprTy,
 }
 
 pub type MBlock = Vec<MInst>;
@@ -35,11 +35,11 @@ pub type MBlock = Vec<MInst>;
 pub enum MInst {
     Decl {
         name: String,
-        ty: MConsTy,
+        ty: MExprTy,
     },
     Alloc {
         array: MExpr,
-        ty: MConsTy,
+        ty: MExprTy,
         size: MExpr,
     },
     Read {
@@ -75,9 +75,9 @@ pub enum MExpr {
 }
 
 #[derive(Debug, Clone)]
-pub enum MConsTy {
+pub enum MExprTy {
     Atom { atom: MAtomTy },
-    Array { item: Box<MConsTy> },
+    Array { item: Box<MExprTy> },
 }
 
 #[derive(Debug, Clone)]

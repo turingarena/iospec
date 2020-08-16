@@ -1,5 +1,11 @@
 use crate::hir::*;
 
+impl HSpec {
+    pub fn funs(self: &Self) -> Vec<Rc<HFun>> {
+        self.main.funs()
+    }
+}
+
 impl HBlock {
     pub fn funs(self: &Self) -> Vec<Rc<HFun>> {
         self.stmts.iter().flat_map(|s| s.funs()).collect()
@@ -44,6 +50,35 @@ impl HStmt {
                 })
                 .collect(),
             _ => Vec::new(),
+        }
+    }
+}
+
+impl HVar {
+    pub fn ty(self: &Self) -> Rc<HExprTy> {
+        match &self.kind {
+            HVarKind::Data { def, .. } => def.var_ty.clone(),
+            HVarKind::Index { range, .. } => Rc::new(HExprTy::Index { range: range.clone() }),
+        }
+    }
+}
+
+impl HValExpr {
+    pub fn ty(self: &Self) -> Rc<HExprTy> {
+        match &self.kind {
+            HValExprKind::Var { var, .. } => var.ty(),
+            HValExprKind::Subscript { array, .. } => match array.ty().as_ref() {
+                // TODO: check index type as well
+                HExprTy::Array { item, .. } => item.clone(),
+                _ => todo!("recover from invalid array type"),
+            },
+        }
+    }
+
+    pub fn param_name(self: &Self) -> Rc<HIdent> {
+        match &self.kind {
+            HValExprKind::Var { var, .. } => var.ident.clone(),
+            _ => todo!("recover from invalid expr in call args"),
         }
     }
 }

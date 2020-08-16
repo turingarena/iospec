@@ -5,8 +5,6 @@
 //! encountered in the traversal.
 //! At the end the environment is discarded, and only the HIR (with its internal links) is kept.
 
-use std::ops::Deref;
-
 use crate::ast::*;
 use crate::hir::*;
 use crate::hir_env::*;
@@ -104,19 +102,11 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
 
             let fun = HFun {
                 name: Rc::new(hir_ident(name)),
-                params: Rc::new(
-                    args.iter()
-                        .map(|a| HParam {
-                            name: match &a.kind {
-                                HValExprKind::Var { ident, .. } => ident.clone(),
-                                _ => todo!("recover from non-simple-var arg"),
-                            },
-                            ty: a.ty.clone(),
-                        })
-                        .map(Rc::new)
-                        .collect(),
-                ),
+                args: Rc::new(args),
                 ret,
+                args_paren,
+                arg_commas,
+                ret_rarrow,
             };
             let fun = Rc::new(fun);
 
@@ -124,10 +114,6 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 kind: HStmtKind::Call {
                     kw,
                     fun,
-                    args: Rc::new(args),
-                    args_paren,
-                    arg_commas,
-                    ret_rarrow,
                     semi,
                 },
             }
@@ -242,21 +228,9 @@ fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
     match ast {
         AExpr::Ref { ident } => {
             let ident = hir_ident(ident);
-            let var = env.resolve(&ident);
-
-            let ty = match &var
-                .as_ref()
-                .unwrap_or_else(|| todo!("recover from undefined var"))
-                .kind
-            {
-                HVarKind::Data { def } => def.var_ty.clone(),
-                HVarKind::Index { range } => Rc::new(HExprTy::Index {
-                    range: range.clone(),
-                }),
-            };
+            let var = env.resolve(&ident).unwrap_or_else(|| todo!("recover from undefined var"));
 
             HValExpr {
-                ty,
                 kind: HValExprKind::Var {
                     var,
                     ident: Rc::new(ident),
@@ -271,13 +245,7 @@ fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
             let array = hir_val_expr(*array, env);
             let index = hir_val_expr(*index, env);
 
-            let ty = match array.ty.deref() {
-                HExprTy::Array { item, .. } => item.clone(),
-                _ => todo!("recover"),
-            };
-
             HValExpr {
-                ty,
                 kind: HValExprKind::Subscript {
                     array: Rc::new(array),
                     index: Rc::new(index),
@@ -310,7 +278,6 @@ pub fn compile_hir(ast: ASpec) -> HSpec {
     );
 
     HSpec {
-        funs: Rc::new(main.funs()),
         main: Rc::new(main),
     }
 }

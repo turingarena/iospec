@@ -21,7 +21,6 @@ use crate::kw;
 
 #[derive(Debug)]
 pub struct HSpec {
-    pub funs: Rc<Vec<Rc<HFun>>>,
     pub main: Rc<HBlock>,
 }
 
@@ -52,10 +51,6 @@ pub enum HStmtKind {
     Call {
         kw: kw::call,
         fun: Rc<HFun>,
-        args: Rc<Vec<Rc<HValExpr>>>,
-        args_paren: syn::token::Paren,
-        arg_commas: Vec<syn::Token![,]>,
-        ret_rarrow: Option<syn::Token![->]>,
         semi: syn::Token![;],
     },
     For {
@@ -69,14 +64,12 @@ pub enum HStmtKind {
 #[derive(Debug)]
 pub struct HFun {
     pub name: Rc<HIdent>,
-    pub params: Rc<Vec<Rc<HParam>>>,
+    pub args: Rc<Vec<Rc<HValExpr>>>,
     pub ret: Option<Rc<HDef>>,
-}
 
-#[derive(Debug)]
-pub struct HParam {
-    pub name: Rc<HIdent>,
-    pub ty: Rc<HExprTy>,
+    pub args_paren: syn::token::Paren,
+    pub arg_commas: Vec<syn::Token![,]>,
+    pub ret_rarrow: Option<syn::Token![->]>,
 }
 
 #[derive(Debug)]
@@ -110,14 +103,13 @@ pub enum HDefExprKind {
 
 #[derive(Debug)]
 pub struct HValExpr {
-    pub ty: Rc<HExprTy>,
     pub kind: HValExprKind,
 }
 
 #[derive(Debug)]
 pub enum HValExprKind {
     Var {
-        var: Option<Rc<HVar>>,
+        var: Rc<HVar>,
         ident: Rc<HIdent>,
     },
     Subscript {

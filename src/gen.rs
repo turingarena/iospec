@@ -77,10 +77,10 @@ fn gen_atom_ty(ty: &MAtomTy) -> Tokens {
     }
 }
 
-fn gen_expr_ty(ty: &MConsTy) -> Tokens {
+fn gen_expr_ty(ty: &MExprTy) -> Tokens {
     match ty {
-        MConsTy::Atom { atom } => gen_atom_ty(atom),
-        MConsTy::Array { item } => quote!(#(gen_expr_ty(item))*),
+        MExprTy::Atom { atom } => gen_atom_ty(atom),
+        MExprTy::Array { item } => quote!(#(gen_expr_ty(item))*),
     }
 }
 
