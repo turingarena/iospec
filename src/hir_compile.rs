@@ -133,7 +133,7 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             let ret_def = ret.as_ref().map(|r| r.expr.clone());
 
             let fun = HFun {
-                name: Rc::new(hir_ident(name, env)),
+                name: Rc::new(hir_ident(name)),
                 params: Rc::new(
                     args.iter()
                         .map(|a| HParam {
@@ -173,7 +173,7 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             body_brace,
             body,
         } => {
-            let index = Rc::new(hir_ident(index, env));
+            let index = Rc::new(hir_ident(index));
             let range = Rc::new(HRange {
                 bound: Rc::new(hir_val_expr(bound, env)),
                 upto,
@@ -223,7 +223,7 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
 
 fn hir_def(ast: ADef, env: &Env) -> HDef {
     let ADef { expr, colon, ty } = ast;
-    let atom_ty = Rc::new(hir_atom_ty(ty, env));
+    let atom_ty = Rc::new(hir_atom_ty(ty));
 
     let expr = hir_def_expr(
         expr,
@@ -246,7 +246,7 @@ fn hir_def(ast: ADef, env: &Env) -> HDef {
 fn hir_def_expr(ast: AExpr, env: &Env, ty: &Rc<HExprTy>, cons_path: &ConsPath) -> HDefExpr {
     match ast {
         AExpr::Ref { ident } => {
-            let ident = Rc::new(hir_ident(ident, env));
+            let ident = Rc::new(hir_ident(ident));
             HDefExpr {
                 ident: ident.clone(),
                 kind: HDefExprKind::Var { ident },
@@ -286,7 +286,7 @@ fn hir_def_expr(ast: AExpr, env: &Env, ty: &Rc<HExprTy>, cons_path: &ConsPath) -
 fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
     match ast {
         AExpr::Ref { ident } => {
-            let ident = hir_ident(ident, env);
+            let ident = hir_ident(ident);
             let var = env.resolve(&ident);
 
             let ty = match &var
@@ -333,13 +333,13 @@ fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
     }
 }
 
-fn hir_atom_ty(ast: ATy, env: &Env) -> HAtomTy {
+fn hir_atom_ty(ast: ATy) -> HAtomTy {
     HAtomTy {
-        ident: Rc::new(hir_ident(ast.ident, env)),
+        ident: Rc::new(hir_ident(ast.ident)),
     }
 }
 
-fn hir_ident(ast: AIdent, env: &Env) -> HIdent {
+fn hir_ident(ast: AIdent) -> HIdent {
     let AIdent { token } = ast;
     HIdent { token }
 }
