@@ -1,3 +1,5 @@
+//! Parse an AST from a `syn::parse::ParseBuffer`.
+
 use syn::parse::Parse;
 use syn::parse::ParseBuffer;
 use syn::punctuated::Punctuated;
@@ -28,13 +30,13 @@ impl Parse for AStmt {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
         if input.peek(kw::read) {
             Ok(AStmt::Read {
-                inst: input.parse()?,
+                kw: input.parse()?,
                 args: Punctuated::parse_separated_nonempty(input)?,
                 semi: input.parse()?,
             })
         } else if input.peek(kw::write) {
             Ok(AStmt::Write {
-                inst: input.parse()?,
+                kw: input.parse()?,
                 args: Punctuated::parse_separated_nonempty(input)?,
                 semi: input.parse()?,
             })
@@ -42,7 +44,7 @@ impl Parse for AStmt {
             let args_input;
 
             Ok(AStmt::Call {
-                inst: input.parse()?,
+                kw: input.parse()?,
                 name: input.parse()?,
                 args_paren: syn::parenthesized!(args_input in input),
                 args: Punctuated::parse_terminated(&args_input)?,
@@ -56,8 +58,8 @@ impl Parse for AStmt {
         } else if input.peek(syn::Token![for]) {
             let body_input;
             Ok(AStmt::For {
-                for_token: input.parse()?,
-                index_name: input.parse()?,
+                kw: input.parse()?,
+                index: input.parse()?,
                 upto: input.parse()?,
                 bound: input.parse()?,
                 body_brace: syn::braced!(body_input in input),

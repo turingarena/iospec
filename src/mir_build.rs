@@ -1,3 +1,5 @@
+//! Build MIR from HIR.
+
 use std::ops::Deref;
 
 use crate::hir::*;
@@ -5,12 +7,12 @@ use crate::mir::*;
 
 pub fn build_mir(spec: &HSpec) -> MSpec {
     MSpec {
-        funs: spec.main.fun_decls.iter().map(mir_fun).collect(),
+        funs: spec.main.funs.iter().map(mir_fun).collect(),
         main: mir_block(&spec.main),
     }
 }
 
-fn mir_block(hir: &HN<HBlock>) -> Vec<MInst> {
+fn mir_block(hir: &Rc<HBlock>) -> Vec<MInst> {
     let mut insts = Vec::new();
 
     for stmt in hir.stmts.deref() {
@@ -27,7 +29,7 @@ fn mir_block(hir: &HN<HBlock>) -> Vec<MInst> {
     insts
 }
 
-fn mir_decl_insts(hir: &HN<HStmt>) -> Vec<MInst> {
+fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     hir.defs
         .iter()
         .flat_map(|c| match &c.kind {
@@ -40,7 +42,7 @@ fn mir_decl_insts(hir: &HN<HStmt>) -> Vec<MInst> {
         .collect()
 }
 
-fn mir_alloc_insts(hir: &HN<HStmt>) -> Vec<MInst> {
+fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     match &hir.kind {
         HStmtKind::For { body, .. } => body
             .defs
@@ -61,7 +63,7 @@ fn mir_alloc_insts(hir: &HN<HStmt>) -> Vec<MInst> {
     }
 }
 
-fn mir_stmt_insts(hir: &HN<HStmt>) -> Vec<MInst> {
+fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     match &hir.kind {
         HStmtKind::Read { args, .. } => args
             .iter()
@@ -91,14 +93,14 @@ fn mir_stmt_insts(hir: &HN<HStmt>) -> Vec<MInst> {
                 .map(|HDef { expr, .. }| mir_def_expr(expr)),
         }],
         HStmtKind::For { range, body, .. } => vec![MInst::For {
-            index_name: range.index_name.token.to_string(),
+            index_name: range.index.token.to_string(),
             bound: mir_val_expr(&range.bound),
             body: Box::new(mir_block(body)),
         }],
     }
 }
 
-fn mir_def_expr(hir: &HN<HDefExpr>) -> MExpr {
+fn mir_def_expr(hir: &Rc<HDefExpr>) -> MExpr {
     match &hir.kind {
         HDefExprKind::Var { ident, .. } => MExpr::Var {
             name: ident.token.to_string(),
@@ -110,9 +112,9 @@ fn mir_def_expr(hir: &HN<HDefExpr>) -> MExpr {
     }
 }
 
-fn mir_val_expr(hir: &HN<HValExpr>) -> MExpr {
+fn mir_val_expr(hir: &Rc<HValExpr>) -> MExpr {
     match &hir.kind {
-        HValExprKind::Ref { ident, .. } => MExpr::Var {
+        HValExprKind::Var { ident, .. } => MExpr::Var {
             name: ident.token.to_string(),
         },
         HValExprKind::Subscript { array, index, .. } => MExpr::Subscript {
@@ -122,7 +124,7 @@ fn mir_val_expr(hir: &HN<HValExpr>) -> MExpr {
     }
 }
 
-fn mir_atom_ty(hir: &HN<HAtomTy>) -> MAtomTy {
+fn mir_atom_ty(hir: &Rc<HAtomTy>) -> MAtomTy {
     // TODO: exploit interning of identifiers
     match hir.ident.token.to_string().as_str() {
         "n32" => MAtomTy::N32,
@@ -133,7 +135,7 @@ fn mir_atom_ty(hir: &HN<HAtomTy>) -> MAtomTy {
     }
 }
 
-fn mir_expr_ty(hir: &HN<HExprTy>) -> MConsTy {
+fn mir_expr_ty(hir: &Rc<HExprTy>) -> MConsTy {
     let hir: &HExprTy = hir.deref();
 
     match hir {
@@ -147,7 +149,7 @@ fn mir_expr_ty(hir: &HN<HExprTy>) -> MConsTy {
     }
 }
 
-fn mir_fun(hir: &HN<HFun>) -> MFun {
+fn mir_fun(hir: &Rc<HFun>) -> MFun {
     MFun {
         name: hir.name.token.to_string(),
         params: hir.params.iter().map(mir_param).collect(),
@@ -155,7 +157,7 @@ fn mir_fun(hir: &HN<HFun>) -> MFun {
     }
 }
 
-fn mir_param(hir: &HN<HParam>) -> MParam {
+fn mir_param(hir: &Rc<HParam>) -> MParam {
     MParam {
         name: hir.name.token.to_string(),
         ty: mir_expr_ty(&hir.ty),

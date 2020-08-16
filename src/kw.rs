@@ -1,3 +1,5 @@
+//! Definitions of custom keywords.
+
 extern crate syn;
 
 pub mod kw {

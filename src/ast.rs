@@ -1,3 +1,5 @@
+//! Abstract Syntax Tree (AST), obtained by parsing spec file syntax.
+
 extern crate proc_macro2;
 extern crate syn;
 
@@ -5,39 +7,46 @@ use syn::punctuated::Punctuated;
 
 use crate::kw::*;
 
+/// AST of a spec file as a whole. Wraps `ABlock`.
 #[derive(Debug)]
 pub struct ASpec {
     pub main: ABlock,
 }
 
+/// AST of a block (sequence of statements), e.g. `read A: n32; call f(A) -> S: i32;`.
 #[derive(Debug)]
 pub struct ABlock {
     pub stmts: Vec<AStmt>,
 }
 
+/// AST of a statement, e.g., `read A: n32;` or `for i upto N { [...] }`.
 #[derive(Debug)]
 pub enum AStmt {
+    /// AST of, e.g., `write N, A[i];`.
     Write {
-        inst: kw::write,
+        kw: kw::write,
         args: Punctuated<AExpr, syn::Token![,]>,
         semi: syn::Token![;],
     },
+    /// AST of, e.g., `read N: n32, A[i]: i64;`.
     Read {
-        inst: kw::read,
+        kw: kw::read,
         args: Punctuated<ADef, syn::Token![,]>,
         semi: syn::Token![;],
     },
+    /// AST of, e.g., `call f(N, M, A, B) -> S: i64;`.
     Call {
-        inst: kw::call,
+        kw: kw::call,
         name: AIdent,
         args_paren: syn::token::Paren,
         args: Punctuated<AExpr, syn::Token![,]>,
         ret: Option<(syn::Token![->], ADef)>,
         semi: syn::Token![;],
     },
+    /// AST of, e.g., `for i upto M[i] { [...] }`.
     For {
-        for_token: syn::Token![for],
-        index_name: AIdent,
+        kw: syn::Token![for],
+        index: AIdent,
         upto: kw::upto,
         bound: AExpr,
         body_brace: syn::token::Brace,
@@ -45,6 +54,7 @@ pub enum AStmt {
     },
 }
 
+/// AST of, e.g., `N: n32` or `A[i]: i32`.
 #[derive(Debug)]
 pub struct ADef {
     pub expr: AExpr,
@@ -52,11 +62,13 @@ pub struct ADef {
     pub ty: ATy,
 }
 
+/// AST of, e.g, `n32`.
 #[derive(Debug)]
 pub struct ATy {
     pub ident: AIdent,
 }
 
+/// AST of, e.g, `N[A[i]]` (or `A[i] * N + 1` when implemented).
 #[derive(Debug)]
 pub enum AExpr {
     Ref {
@@ -69,6 +81,7 @@ pub enum AExpr {
     },
 }
 
+/// AST of an identifier, including variable names, function names, and types.
 #[derive(Debug)]
 pub struct AIdent {
     pub token: proc_macro2::Ident,

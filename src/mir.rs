@@ -1,6 +1,14 @@
-use std::rc::Rc;
-
-use crate::hir::*;
+//! Middle-level Intermediate Representation (MIR), used for interpretation and code generation.
+//!
+//! The MIR is a tree of nodes, but its topology can be different from the AST.
+//! E.g., the MIR contains extra nodes for the declaration of variables,
+//! allocation and de-allocation of arrays, and so on.
+//!
+//! MIR is meant to be directly interpreted or translated into parser code.
+//! Being a tree, it can be easily traversed structurally.
+//! (TODO: the following is not implemented yet)
+//! However, MIR nodes also contains references to HIR nodes from which they were generated.
+//! This is useful, e.g., for reporting detailed errors if they occur during interpretation.
 
 #[derive(Debug, Clone)]
 pub struct MSpec {

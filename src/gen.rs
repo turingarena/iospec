@@ -136,7 +136,6 @@ fn gen_inst(inst: &MInst) -> Tokens {
                 }
             ]
         }
-        _ => unreachable!(),
     }
 }
 

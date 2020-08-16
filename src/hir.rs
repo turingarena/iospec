@@ -1,154 +1,163 @@
+//! High-level Intermediate Representation (HIR), used for semantic analysis.
+//!
+//! The HIR has a topology similar to the AST, but it also has links from each node
+//! to any other nodes it refers to.
+//! E.g., names are resolved by introducing a link to the node where the name is defined.
+//!
+//! HIR nodes only link to nodes which occur *before* in a post-order traversal of the AST.
+//! Hence, HIR nodes result in a directed acyclic graph (DAG).
+//! To represent links, nodes are wrapped in `std::rc:Rc` pointers.
+//! Since there are no cycles, no `std::rc:Weak` reference is needed.
+//!
+//! The HIR contains references to all the *tokens* in the original AST, and all the information
+//! needed to reconstruct the AST tree, but does not keep any reference to the tree itself.
+
 extern crate proc_macro2;
 extern crate syn;
 
-use std::ops::Deref;
-use std::rc::Rc;
-
-use syn::punctuated::Punctuated;
+pub use std::rc::Rc;
 
 use crate::kw::*;
 use crate::mir::MFun;
 
-pub type HN<T> = Rc<T>;
-
 #[derive(Debug)]
 pub struct HSpec {
-    pub fun_decls: HN<Vec<HN<HFun>>>,
-    pub main: HN<HBlock>,
+    pub funs: Rc<Vec<Rc<HFun>>>,
+    pub main: Rc<HBlock>,
 }
 
 #[derive(Debug)]
 pub struct HBlock {
-    pub fun_decls: HN<Vec<HN<HFun>>>,
-    pub var_decls: HN<Vec<HN<HVarDecl>>>,
-    pub defs: HN<Vec<HN<HDefExpr>>>,
-    pub stmts: HN<Vec<HN<HStmt>>>,
+    pub funs: Rc<Vec<Rc<HFun>>>,
+    pub vars: Rc<Vec<Rc<HVar>>>,
+    pub defs: Rc<Vec<Rc<HDefExpr>>>,
+    pub stmts: Rc<Vec<Rc<HStmt>>>,
 }
 
 #[derive(Debug)]
 pub struct HStmt {
-    pub fun_decls: HN<Vec<HN<HFun>>>,
-    pub var_decls: HN<Vec<HN<HVarDecl>>>,
-    pub defs: HN<Vec<HN<HDefExpr>>>,
+    pub funs: Rc<Vec<Rc<HFun>>>,
+    pub vars: Rc<Vec<Rc<HVar>>>,
+    pub defs: Rc<Vec<Rc<HDefExpr>>>,
     pub kind: HStmtKind,
 }
 
 #[derive(Debug)]
 pub enum HStmtKind {
     Write {
-        inst: kw::write,
-        args: HN<Vec<HN<HValExpr>>>,
+        kw: kw::write,
+        args: Rc<Vec<Rc<HValExpr>>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
     Read {
-        inst: kw::read,
-        args: Vec<HN<HDef>>,
+        kw: kw::read,
+        args: Vec<Rc<HDef>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
     Call {
-        inst: kw::call,
-        fun: HN<HFun>,
-        args: HN<Vec<HN<HValExpr>>>,
+        kw: kw::call,
+        fun: Rc<HFun>,
+        args: Rc<Vec<Rc<HValExpr>>>,
         args_paren: syn::token::Paren,
         arg_commas: Vec<syn::Token![,]>,
         ret_rarrow: Option<syn::Token![->]>,
         semi: syn::Token![;],
     },
     For {
-        for_token: syn::Token![for],
-        range: HN<HRange>,
+        kw: syn::Token![for],
+        range: Rc<HRange>,
         body_brace: syn::token::Brace,
-        body: HN<HBlock>,
+        body: Rc<HBlock>,
     },
 }
 
 #[derive(Debug)]
 pub struct HFun {
-    pub name: HN<HIdent>,
-    pub params: HN<Vec<HN<HParam>>>,
-    pub ret: Option<HN<HDef>>,
+    pub name: Rc<HIdent>,
+    pub params: Rc<Vec<Rc<HParam>>>,
+    pub ret: Option<Rc<HDef>>,
 }
 
 #[derive(Debug)]
 pub struct HParam {
-    pub name: HN<HIdent>,
-    pub ty: HN<HExprTy>,
+    pub name: Rc<HIdent>,
+    pub ty: Rc<HExprTy>,
 }
 
 #[derive(Debug)]
 pub struct HDef {
-    pub expr: HN<HDefExpr>,
+    pub expr: Rc<HDefExpr>,
     pub colon: syn::Token![:],
-    pub atom_ty: HN<HAtomTy>,
-    pub var_ty: HN<HExprTy>,
-    pub ident: HN<HIdent>,
+    pub atom_ty: Rc<HAtomTy>,
+    pub var_ty: Rc<HExprTy>,
+    pub ident: Rc<HIdent>,
 }
 
 #[derive(Debug)]
 pub struct HDefExpr {
     pub kind: HDefExprKind,
-    pub ident: HN<HIdent>,
-    pub expr_ty: HN<HExprTy>,
-    pub var_ty: HN<HExprTy>,
+    pub ident: Rc<HIdent>,
+    pub expr_ty: Rc<HExprTy>,
+    pub var_ty: Rc<HExprTy>,
 }
 
 #[derive(Debug)]
 pub enum HDefExprKind {
     Var {
-        ident: HN<HIdent>,
+        ident: Rc<HIdent>,
     },
     Subscript {
-        array: HN<HDefExpr>,
+        array: Rc<HDefExpr>,
         bracket: syn::token::Bracket,
-        index: HN<HValExpr>,
+        index: Rc<HValExpr>,
     },
 }
 
 #[derive(Debug)]
 pub struct HValExpr {
-    pub ty: HN<HExprTy>,
+    pub ty: Rc<HExprTy>,
     pub kind: HValExprKind,
 }
 
 #[derive(Debug)]
 pub enum HValExprKind {
-    Ref {
-        ident: HN<HIdent>,
-        target: Option<HN<HVarDecl>>,
+    Var {
+        var: Option<Rc<HVar>>,
+        ident: Rc<HIdent>,
     },
     Subscript {
-        array: HN<HValExpr>,
+        array: Rc<HValExpr>,
         bracket: syn::token::Bracket,
-        index: HN<HValExpr>,
+        index: Rc<HValExpr>,
     },
 }
 
 #[derive(Debug)]
 pub struct HRange {
-    pub index_name: HN<HIdent>,
+    pub index: Rc<HIdent>,
     pub upto: kw::upto,
-    pub bound: HN<HValExpr>,
+    pub bound: Rc<HValExpr>,
 }
 
 #[derive(Debug)]
 pub enum HExprTy {
     Atom {
-        atom: HN<HAtomTy>,
+        atom: Rc<HAtomTy>,
     },
     Array {
-        item: HN<HExprTy>,
-        range: HN<HRange>,
+        item: Rc<HExprTy>,
+        range: Rc<HRange>,
     },
     Index {
-        range: HN<HRange>,
+        range: Rc<HRange>,
     },
 }
 
 #[derive(Debug)]
 pub struct HAtomTy {
-    pub ident: HN<HIdent>,
+    pub ident: Rc<HIdent>,
 }
 
 #[derive(Debug)]
@@ -157,13 +166,13 @@ pub struct HIdent {
 }
 
 #[derive(Debug)]
-pub struct HVarDecl {
-    pub ident: HN<HIdent>,
-    pub kind: HDeclKind,
+pub struct HVar {
+    pub ident: Rc<HIdent>,
+    pub kind: HVarKind,
 }
 
 #[derive(Debug)]
-pub enum HDeclKind {
-    Var { def: HN<HDef> },
-    Index { range: HN<HRange> },
+pub enum HVarKind {
+    Data { def: Rc<HDef> },
+    Index { range: Rc<HRange> },
 }
