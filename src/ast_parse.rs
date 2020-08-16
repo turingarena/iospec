@@ -6,7 +6,7 @@ use syn::punctuated::Punctuated;
 use syn::Error;
 
 use crate::ast::*;
-use crate::kw::*;
+use crate::kw;
 
 impl Parse for ASpec {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {

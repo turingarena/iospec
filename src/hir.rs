@@ -17,7 +17,7 @@ extern crate syn;
 
 pub use std::rc::Rc;
 
-use crate::kw::*;
+use crate::kw;
 use crate::mir::MFun;
 
 #[derive(Debug)]

@@ -5,7 +5,7 @@ extern crate syn;
 
 use syn::punctuated::Punctuated;
 
-use crate::kw::*;
+use crate::kw;
 
 /// AST of a spec file as a whole. Wraps `ABlock`.
 #[derive(Debug)]
