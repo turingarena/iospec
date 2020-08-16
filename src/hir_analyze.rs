@@ -87,9 +87,13 @@ impl HDefExpr {
     }
 
     pub fn ty(self: &Self) -> Rc<HExprTy> {
-        make_def_expr_ty(Rc::new(HExprTy::Atom {
-            atom: self.atom_ty.clone(),
-        }), self.ctx.clone(), self.loc.clone())
+        make_def_expr_ty(
+            Rc::new(HExprTy::Atom {
+                atom: self.atom_ty.clone(),
+            }),
+            self.ctx.clone(),
+            self.loc.clone(),
+        )
     }
 }
 
@@ -123,14 +127,18 @@ pub fn hir_index_var(range: &Rc<HRange>) -> HVar {
 fn make_def_expr_ty(ty: Rc<HExprTy>, ctx: Rc<HDefExprCtx>, loc: Rc<HDefLoc>) -> Rc<HExprTy> {
     match ctx.deref() {
         HDefExprCtx::Atom => ty,
-        HDefExprCtx::Subscript { item, index } => match loc.deref() {
+        HDefExprCtx::Subscript { item, .. } => match loc.deref() {
             HDefLoc::For { range, parent } => {
                 // TODO: check index matches parent
-                make_def_expr_ty(Rc::new(HExprTy::Array {
-                    item: ty.clone(),
-                    range: range.clone(),
-                }), item.clone(), parent.clone())
-            },
+                make_def_expr_ty(
+                    Rc::new(HExprTy::Array {
+                        item: ty.clone(),
+                        range: range.clone(),
+                    }),
+                    item.clone(),
+                    parent.clone(),
+                )
+            }
             _ => todo!("recover from wrong index in def expr subscript"),
         },
     }

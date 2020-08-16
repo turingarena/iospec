@@ -196,7 +196,10 @@ fn hir_def_expr(
             } => {
                 let index = Rc::new(hir_val_expr(*index, env));
 
-                let array_ctx = HDefExprCtx::Subscript { item: ctx, index: index.clone() };
+                let array_ctx = HDefExprCtx::Subscript {
+                    item: ctx,
+                    index: index.clone(),
+                };
                 let array = Rc::new(hir_def_expr(*array, env, atom_ty, Rc::new(array_ctx), loc));
 
                 HDefExprKind::Subscript {

@@ -33,7 +33,7 @@ fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     hir.defs()
         .iter()
         .flat_map(|def_expr| match &def_expr.kind {
-            HDefExprKind::Var { ident } => {
+            HDefExprKind::Var { .. } => {
                 let (name, ty) = def_expr.var_name_and_ty();
                 Some(MInst::Decl {
                     name: name.token.to_string(),
