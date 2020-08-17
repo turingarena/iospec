@@ -120,11 +120,11 @@ fn mir_def_expr(hir: &Rc<HDefExpr>) -> MExpr {
 }
 
 fn mir_val_expr(hir: &Rc<HValExpr>) -> MExpr {
-    match &hir.kind {
-        HValExprKind::Var { ident, .. } => MExpr::Var {
+    match hir.deref() {
+        HValExpr::Var { ident, .. } => MExpr::Var {
             name: ident.token.to_string(),
         },
-        HValExprKind::Subscript { array, index, .. } => MExpr::Subscript {
+        HValExpr::Subscript { array, index, .. } => MExpr::Subscript {
             array: Box::new(mir_val_expr(array)),
             index: Box::new(mir_val_expr(index)),
         },

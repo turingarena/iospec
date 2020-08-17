@@ -60,9 +60,9 @@ impl HStmt {
 
 impl HValExpr {
     pub fn ty(self: &Self) -> Rc<HExprTy> {
-        match &self.kind {
-            HValExprKind::Var { var, .. } => var.ty.clone(),
-            HValExprKind::Subscript { array, .. } => match array.ty().as_ref() {
+        match self {
+            HValExpr::Var { var, .. } => var.ty.clone(),
+            HValExpr::Subscript { array, .. } => match array.ty().as_ref() {
                 // TODO: check index type as well
                 HExprTy::Array { item, .. } => item.clone(),
                 _ => todo!("recover from invalid array type"),
@@ -71,8 +71,8 @@ impl HValExpr {
     }
 
     pub fn param_name(self: &Self) -> Rc<HIdent> {
-        match &self.kind {
-            HValExprKind::Var { var, .. } => var.ident.clone(),
+        match self {
+            HValExpr::Var { var, .. } => var.ident.clone(),
             _ => todo!("recover from invalid expr in call args"),
         }
     }

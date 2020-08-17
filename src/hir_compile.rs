@@ -200,23 +200,19 @@ fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
                 .resolve(&ident)
                 .unwrap_or_else(|| todo!("recover from undefined var"));
 
-            HValExpr {
-                kind: HValExprKind::Var {
-                    var,
-                    ident: Rc::new(ident),
-                },
+            HValExpr::Var {
+                var,
+                ident: Rc::new(ident),
             }
         }
         AExpr::Subscript {
             array,
             bracket,
             index,
-        } => HValExpr {
-            kind: HValExprKind::Subscript {
-                array: Rc::new(hir_val_expr(*array, env)),
-                index: Rc::new(hir_val_expr(*index, env)),
-                bracket,
-            },
+        } => HValExpr::Subscript {
+            array: Rc::new(hir_val_expr(*array, env)),
+            index: Rc::new(hir_val_expr(*index, env)),
+            bracket,
         },
     }
 }

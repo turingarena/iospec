@@ -105,12 +105,7 @@ pub enum HDefExprCtx {
 }
 
 #[derive(Debug)]
-pub struct HValExpr {
-    pub kind: HValExprKind,
-}
-
-#[derive(Debug)]
-pub enum HValExprKind {
+pub enum HValExpr {
     Var {
         var: Rc<HVar>,
         ident: Rc<HIdent>,
