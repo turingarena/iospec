@@ -30,7 +30,7 @@ fn mir_block(hir: &Rc<HBlock>) -> Vec<MInst> {
 }
 
 fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
-    hir.defs()
+    hir.allocs()
         .iter()
         .flat_map(|def_expr| match &def_expr.kind {
             HDefExprKind::Var { .. } => {
@@ -48,7 +48,7 @@ fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
 fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     match hir.deref() {
         HStmt::For { body, .. } => body
-            .defs()
+            .allocs()
             .into_iter()
             .flat_map(|c| match &c.kind {
                 HDefExprKind::Subscript { array, .. } => match array.ty().deref() {

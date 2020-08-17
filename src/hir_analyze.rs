@@ -17,8 +17,8 @@ impl HBlock {
         self.stmts.iter().flat_map(|s| s.vars()).collect()
     }
 
-    pub fn defs(self: &Self) -> Vec<Rc<HDefExpr>> {
-        self.stmts.iter().flat_map(|s| s.defs()).collect()
+    pub fn allocs(self: &Self) -> Vec<Rc<HDefExpr>> {
+        self.stmts.iter().flat_map(|s| s.allocs()).collect()
     }
 }
 
@@ -40,12 +40,12 @@ impl HStmt {
         }
     }
 
-    pub fn defs(self: &Self) -> Vec<Rc<HDefExpr>> {
+    pub fn allocs(self: &Self) -> Vec<Rc<HDefExpr>> {
         match self {
             HStmt::Read { args, .. } => args.iter().map(|d| d.expr.clone()).collect(),
             HStmt::Call { fun, .. } => fun.ret.iter().map(|d| d.expr.clone()).collect(),
             HStmt::For { body, .. } => body
-                .defs()
+                .allocs()
                 .into_iter()
                 .flat_map(|expr| match &expr.kind {
                     // TODO: check index somewhere?
