@@ -26,7 +26,7 @@ pub struct HSpec {
 
 #[derive(Debug)]
 pub struct HBlock {
-    pub stmts: Rc<Vec<Rc<HStmt>>>,
+    pub stmts: Vec<Rc<HStmt>>,
 }
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ pub struct HStmt {
 pub enum HStmtKind {
     Write {
         kw: kw::write,
-        args: Rc<Vec<Rc<HValExpr>>>,
+        args: Vec<Rc<HValExpr>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
@@ -64,7 +64,7 @@ pub enum HStmtKind {
 #[derive(Debug)]
 pub struct HFun {
     pub name: Rc<HIdent>,
-    pub args: Rc<Vec<Rc<HValExpr>>>,
+    pub args: Vec<Rc<HValExpr>>,
     pub ret: Option<Rc<HDef>>,
 
     pub args_paren: syn::token::Paren,

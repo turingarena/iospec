@@ -33,9 +33,7 @@ fn hir_block(ast: ABlock, env: &Env) -> HBlock {
         stmts.push(Rc::new(stmt));
     }
 
-    HBlock {
-        stmts: Rc::new(stmts),
-    }
+    HBlock { stmts }
 }
 
 fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
@@ -64,12 +62,10 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             HStmt {
                 kind: HStmtKind::Write {
                     kw,
-                    args: Rc::new(
-                        args.into_iter()
-                            .map(|a| hir_val_expr(a, env))
-                            .map(Rc::new)
-                            .collect(),
-                    ),
+                    args: args.into_iter()
+                        .map(|a| hir_val_expr(a, env))
+                        .map(Rc::new)
+                        .collect(),
                     arg_commas,
                     semi,
                 },
@@ -91,12 +87,10 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
 
             let fun = HFun {
                 name: Rc::new(hir_ident(name)),
-                args: Rc::new(
-                    args.into_iter()
-                        .map(|a| hir_val_expr(a, env))
-                        .map(Rc::new)
-                        .collect(),
-                ),
+                args: args.into_iter()
+                    .map(|a| hir_val_expr(a, env))
+                    .map(Rc::new)
+                    .collect(),
                 ret,
                 args_paren,
                 arg_commas,
