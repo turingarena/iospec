@@ -10,6 +10,19 @@ use crate::hir::*;
 use crate::hir_analyze::*;
 use crate::hir_env::*;
 
+fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<U>) {
+    let mut args = Vec::new();
+    let mut puncts = Vec::new();
+    for p in p.into_pairs() {
+        let (a, p) = p.into_tuple();
+        args.push(a);
+        if let Some(p) = p {
+            puncts.push(p)
+        }
+    }
+    (args, puncts)
+}
+
 fn hir_block(ast: ABlock, env: &Env) -> HBlock {
     let mut env = env.clone();
     let mut stmts = Vec::new();
@@ -28,17 +41,11 @@ fn hir_block(ast: ABlock, env: &Env) -> HBlock {
 fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
     match ast {
         AStmt::Read { kw, args, semi } => {
-            let mut arg_commas = Vec::new();
+            let (args, arg_commas) = unzip_punctuated(args);
 
             let args: Vec<Rc<HDef>> = args
-                .into_pairs()
-                .map(|a| match a {
-                    syn::punctuated::Pair::Punctuated(a, comma) => {
-                        arg_commas.push(comma);
-                        hir_def(a, env)
-                    }
-                    syn::punctuated::Pair::End(a) => hir_def(a, env),
-                })
+                .into_iter()
+                .map(|a| hir_def(a, env))
                 .map(Rc::new)
                 .collect();
 
@@ -52,20 +59,14 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             }
         }
         AStmt::Write { kw, args, semi } => {
-            let mut arg_commas = Vec::new();
+            let (args, arg_commas) = unzip_punctuated(args);
 
             HStmt {
                 kind: HStmtKind::Write {
                     kw,
                     args: Rc::new(
-                        args.into_pairs()
-                            .map(|a| match a {
-                                syn::punctuated::Pair::Punctuated(a, comma) => {
-                                    arg_commas.push(comma);
-                                    hir_val_expr(a, env)
-                                }
-                                syn::punctuated::Pair::End(a) => hir_val_expr(a, env),
-                            })
+                        args.into_iter()
+                            .map(|a| hir_val_expr(a, env))
                             .map(Rc::new)
                             .collect(),
                     ),
@@ -82,28 +83,20 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             ret,
             semi,
         } => {
-            let mut arg_commas = Vec::new();
-
+            let (args, arg_commas) = unzip_punctuated(args);
             let (ret_rarrow, ret) = match ret {
                 Some((a, r)) => (Some(a), Some(Rc::new(hir_def(r, env)))),
                 None => (None, None),
             };
 
-            let args: Vec<Rc<HValExpr>> = args
-                .into_pairs()
-                .map(|a| match a {
-                    syn::punctuated::Pair::Punctuated(a, comma) => {
-                        arg_commas.push(comma);
-                        hir_val_expr(a, env)
-                    }
-                    syn::punctuated::Pair::End(a) => hir_val_expr(a, env),
-                })
-                .map(Rc::new)
-                .collect();
-
             let fun = HFun {
                 name: Rc::new(hir_ident(name)),
-                args: Rc::new(args),
+                args: Rc::new(
+                    args.into_iter()
+                        .map(|a| hir_val_expr(a, env))
+                        .map(Rc::new)
+                        .collect(),
+                ),
                 ret,
                 args_paren,
                 arg_commas,
