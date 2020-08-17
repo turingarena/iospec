@@ -87,7 +87,7 @@ impl HDefExpr {
     }
 
     pub fn ty(self: &Self) -> Rc<HExprTy> {
-        make_def_expr_ty(
+        hir_def_ctx_ty(
             Rc::new(HExprTy::Atom {
                 atom: self.atom_ty.clone(),
             }),
@@ -97,14 +97,8 @@ impl HDefExpr {
     }
 }
 
-impl HDef {
-    pub fn var_name_and_ty(self: &Self) -> (Rc<HIdent>, Rc<HExprTy>) {
-        self.expr.var_name_and_ty()
-    }
-}
-
 pub fn hir_def_var(def: &Rc<HDef>) -> HVar {
-    let (ident, ty) = def.var_name_and_ty();
+    let (ident, ty) = def.expr.var_name_and_ty();
     HVar {
         ident,
         ty,
@@ -124,13 +118,13 @@ pub fn hir_index_var(range: &Rc<HRange>) -> HVar {
     }
 }
 
-fn make_def_expr_ty(ty: Rc<HExprTy>, ctx: Rc<HDefExprCtx>, loc: Rc<HDefLoc>) -> Rc<HExprTy> {
+fn hir_def_ctx_ty(ty: Rc<HExprTy>, ctx: Rc<HDefExprCtx>, loc: Rc<HDefLoc>) -> Rc<HExprTy> {
     match ctx.deref() {
         HDefExprCtx::Atom => ty,
         HDefExprCtx::Subscript { item, .. } => match loc.deref() {
             HDefLoc::For { range, parent } => {
                 // TODO: check index matches parent
-                make_def_expr_ty(
+                hir_def_ctx_ty(
                     Rc::new(HExprTy::Array {
                         item: ty.clone(),
                         range: range.clone(),
