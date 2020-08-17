@@ -46,8 +46,8 @@ fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
 }
 
 fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
-    match &hir.kind {
-        HStmtKind::For { body, .. } => body
+    match hir.deref() {
+        HStmt::For { body, .. } => body
             .defs()
             .into_iter()
             .flat_map(|c| match &c.kind {
@@ -67,8 +67,8 @@ fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
 }
 
 fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
-    match &hir.kind {
-        HStmtKind::Read { args, .. } => args
+    match hir.deref() {
+        HStmt::Read { args, .. } => args
             .iter()
             .map(Deref::deref)
             .map(
@@ -80,7 +80,7 @@ fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
                 },
             )
             .collect(),
-        HStmtKind::Write { args, .. } => args
+        HStmt::Write { args, .. } => args
             .iter()
             .map(|expr| MInst::Write {
                 ty: mir_atom_ty(match expr.ty().as_ref() {
@@ -90,7 +90,7 @@ fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
                 arg: mir_val_expr(expr),
             })
             .collect(),
-        HStmtKind::Call { fun, .. } => vec![MInst::Call {
+        HStmt::Call { fun, .. } => vec![MInst::Call {
             name: fun.name.token.to_string(),
             args: fun.args.iter().map(mir_val_expr).collect(),
             ret: fun
@@ -99,7 +99,7 @@ fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
                 .map(Deref::deref)
                 .map(|HDef { expr, .. }| mir_def_expr(expr)),
         }],
-        HStmtKind::For { range, body, .. } => vec![MInst::For {
+        HStmt::For { range, body, .. } => vec![MInst::For {
             index_name: range.index.token.to_string(),
             bound: mir_val_expr(&range.bound),
             body: Box::new(mir_block(body)),

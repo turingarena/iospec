@@ -47,29 +47,25 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 .map(Rc::new)
                 .collect();
 
-            HStmt {
-                kind: HStmtKind::Read {
-                    kw,
-                    args,
-                    arg_commas,
-                    semi,
-                },
+            HStmt::Read {
+                kw,
+                args,
+                arg_commas,
+                semi,
             }
         }
         AStmt::Write { kw, args, semi } => {
             let (args, arg_commas) = unzip_punctuated(args);
 
-            HStmt {
-                kind: HStmtKind::Write {
-                    kw,
-                    args: args
-                        .into_iter()
-                        .map(|a| hir_val_expr(a, env))
-                        .map(Rc::new)
-                        .collect(),
-                    arg_commas,
-                    semi,
-                },
+            HStmt::Write {
+                kw,
+                args: args
+                    .into_iter()
+                    .map(|a| hir_val_expr(a, env))
+                    .map(Rc::new)
+                    .collect(),
+                arg_commas,
+                semi,
             }
         }
         AStmt::Call {
@@ -100,9 +96,7 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             };
             let fun = Rc::new(fun);
 
-            HStmt {
-                kind: HStmtKind::Call { kw, fun, semi },
-            }
+            HStmt::Call { kw, fun, semi }
         }
         AStmt::For {
             kw,
@@ -119,23 +113,21 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 index: index.clone(),
             });
 
-            HStmt {
-                kind: HStmtKind::For {
-                    kw,
-                    range,
-                    body_brace,
-                    body: Rc::new(hir_block(
-                        body,
-                        &Env {
-                            refs: vec![Rc::new(hir_index_var(&range))],
-                            outer: Some(Box::new((*env).clone())),
-                            loc: Rc::new(HDefLoc::For {
-                                range: range.clone(),
-                                parent: env.loc.clone(),
-                            }),
-                        },
-                    )),
-                },
+            HStmt::For {
+                kw,
+                body: Rc::new(hir_block(
+                    body,
+                    &Env {
+                        refs: vec![Rc::new(hir_index_var(&range))],
+                        outer: Some(Box::new((*env).clone())),
+                        loc: Rc::new(HDefLoc::For {
+                            range: range.clone(),
+                            parent: env.loc.clone(),
+                        }),
+                    },
+                )),
+                range,
+                body_brace,
             }
         }
     }
@@ -147,7 +139,6 @@ fn hir_def(ast: ADef, env: &Env) -> HDef {
 
     HDef {
         colon,
-        ty,
         expr: Rc::new(hir_def_expr(
             expr,
             env,
@@ -155,6 +146,7 @@ fn hir_def(ast: ADef, env: &Env) -> HDef {
             Rc::new(HDefExprCtx::Atom),
             env.loc.clone(),
         )),
+        ty,
         loc: env.loc.clone(),
     }
 }
@@ -182,7 +174,6 @@ fn hir_def_expr(
                 let index = Rc::new(hir_val_expr(*index, env));
 
                 HDefExprKind::Subscript {
-                    index,
                     array: Rc::new(hir_def_expr(
                         *array,
                         env,
@@ -193,6 +184,7 @@ fn hir_def_expr(
                         }),
                         loc,
                     )),
+                    index,
                     bracket,
                 }
             }

@@ -30,12 +30,7 @@ pub struct HBlock {
 }
 
 #[derive(Debug)]
-pub struct HStmt {
-    pub kind: HStmtKind,
-}
-
-#[derive(Debug)]
-pub enum HStmtKind {
+pub enum HStmt {
     Write {
         kw: kw::write,
         args: Vec<Rc<HValExpr>>,

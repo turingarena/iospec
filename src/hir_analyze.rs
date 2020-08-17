@@ -24,27 +24,27 @@ impl HBlock {
 
 impl HStmt {
     pub fn funs(self: &Self) -> Vec<Rc<HFun>> {
-        match &self.kind {
-            HStmtKind::Call { fun, .. } => vec![fun.clone()],
-            HStmtKind::For { body, .. } => body.funs(),
+        match self {
+            HStmt::Call { fun, .. } => vec![fun.clone()],
+            HStmt::For { body, .. } => body.funs(),
             _ => Vec::new(),
         }
     }
 
     pub fn vars(self: &Self) -> Vec<Rc<HVar>> {
-        match &self.kind {
-            HStmtKind::Read { args, .. } => args.iter().map(hir_def_var).map(Rc::new).collect(),
-            HStmtKind::Call { fun, .. } => fun.ret.iter().map(hir_def_var).map(Rc::new).collect(),
-            HStmtKind::For { body, .. } => body.vars(),
+        match self {
+            HStmt::Read { args, .. } => args.iter().map(hir_def_var).map(Rc::new).collect(),
+            HStmt::Call { fun, .. } => fun.ret.iter().map(hir_def_var).map(Rc::new).collect(),
+            HStmt::For { body, .. } => body.vars(),
             _ => Vec::new(),
         }
     }
 
     pub fn defs(self: &Self) -> Vec<Rc<HDefExpr>> {
-        match &self.kind {
-            HStmtKind::Read { args, .. } => args.iter().map(|d| d.expr.clone()).collect(),
-            HStmtKind::Call { fun, .. } => fun.ret.iter().map(|d| d.expr.clone()).collect(),
-            HStmtKind::For { body, .. } => body
+        match self {
+            HStmt::Read { args, .. } => args.iter().map(|d| d.expr.clone()).collect(),
+            HStmt::Call { fun, .. } => fun.ret.iter().map(|d| d.expr.clone()).collect(),
+            HStmt::For { body, .. } => body
                 .defs()
                 .into_iter()
                 .flat_map(|expr| match &expr.kind {
