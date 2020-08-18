@@ -26,3 +26,11 @@ impl Env {
             .or(self.outer.as_ref().and_then(|s| s.resolve(ident)))
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct HDefEnv {
+    pub env: Env,
+    pub atom_ty: Rc<HAtomTy>,
+    pub ctx: Rc<HDefExprCtx>,
+    pub loc: Rc<HDefLoc>,
+}

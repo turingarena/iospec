@@ -15,8 +15,8 @@ trait HirCompileFrom<T, E = Env> {
 }
 
 impl<T, U, E> HirCompileFrom<Box<T>, E> for U
-where
-    U: HirCompileFrom<T, E>,
+    where
+        U: HirCompileFrom<T, E>,
 {
     fn compile(ast: Box<T>, env: &E) -> Self {
         U::compile(*ast, env)
@@ -28,8 +28,8 @@ trait HirCompileInto<T, E> {
 }
 
 impl<U, T, E> HirCompileInto<U, E> for T
-where
-    U: HirCompileFrom<T, E>,
+    where
+        U: HirCompileFrom<T, E>,
 {
     fn compile(self: Self, env: &E) -> Rc<U> {
         Rc::new(U::compile(self, env))
@@ -59,11 +59,7 @@ impl HirCompileFrom<AStmt> for HStmt {
 
                 HStmt::Read {
                     kw,
-                    args: args
-                        .into_iter()
-                        .map(|a| hir_def(a, env))
-                        .map(Rc::new)
-                        .collect(),
+                    args: args.into_iter().map(|a| a.compile(env)).collect(),
                     arg_commas,
                     semi,
                 }
@@ -88,7 +84,7 @@ impl HirCompileFrom<AStmt> for HStmt {
             } => {
                 let (args, arg_commas) = unzip_punctuated(args);
                 let (ret_rarrow, ret) = match ret {
-                    Some((a, r)) => (Some(a), Some(Rc::new(hir_def(r, env)))),
+                    Some((a, r)) => (Some(a), Some(r.compile(env))),
                     None => (None, None),
                 };
 
@@ -137,62 +133,58 @@ impl HirCompileFrom<AStmt> for HStmt {
     }
 }
 
-fn hir_def(ast: ADef, env: &Env) -> HDef {
-    let ADef { expr, colon, ty } = ast;
-    let ty: Rc<HAtomTy> = ty.compile(&());
+impl HirCompileFrom<ADef> for HDef {
+    fn compile(ast: ADef, env: &Env) -> Self {
+        let ADef { expr, colon, ty } = ast;
+        let ty: Rc<HAtomTy> = ty.compile(&());
 
-    HDef {
-        colon,
-        expr: Rc::new(hir_def_expr(
-            expr,
-            env,
-            ty.clone(),
-            Rc::new(HDefExprCtx::Atom),
-            env.loc.clone(),
-        )),
-        ty,
-        loc: env.loc.clone(),
+        HDef {
+            colon,
+            expr: expr.compile(&HDefEnv {
+                env: env.clone(),
+                atom_ty: ty.clone(),
+                ctx: Rc::new(HDefExprCtx::Atom),
+                loc: env.loc.clone(),
+            }),
+            ty,
+            loc: env.loc.clone(),
+        }
     }
 }
 
-fn hir_def_expr(
-    ast: AExpr,
-    env: &Env,
-    atom_ty: Rc<HAtomTy>,
-    ctx: Rc<HDefExprCtx>,
-    loc: Rc<HDefLoc>,
-) -> HDefExpr {
-    HDefExpr {
-        atom_ty: atom_ty.clone(),
-        ctx: ctx.clone(),
-        loc: loc.clone(),
-        kind: match ast {
-            AExpr::Ref { ident } => HDefExprKind::Var {
-                ident: ident.compile(&()),
-            },
-            AExpr::Subscript {
-                array,
-                bracket,
-                index,
-            } => {
-                let index: Rc<HValExpr> = index.compile(env);
-
-                HDefExprKind::Subscript {
-                    array: Rc::new(hir_def_expr(
-                        *array,
-                        env,
-                        atom_ty,
-                        Rc::new(HDefExprCtx::Subscript {
-                            item: ctx,
-                            index: index.clone(),
-                        }),
-                        loc,
-                    )),
-                    index,
+impl HirCompileFrom<AExpr, HDefEnv> for HDefExpr {
+    fn compile(ast: AExpr, env: &HDefEnv) -> Self {
+        HDefExpr {
+            atom_ty: env.atom_ty.clone(),
+            ctx: env.ctx.clone(),
+            loc: env.loc.clone(),
+            kind: match ast {
+                AExpr::Ref { ident } => HDefExprKind::Var {
+                    ident: ident.compile(&()),
+                },
+                AExpr::Subscript {
+                    array,
                     bracket,
+                    index,
+                } => {
+                    let index: Rc<HValExpr> = index.compile(&env.env);
+
+                    HDefExprKind::Subscript {
+                        array: array.compile(&HDefEnv {
+                            env: env.env.clone(),
+                            atom_ty: env.atom_ty.clone(),
+                            ctx: Rc::new(HDefExprCtx::Subscript {
+                                item: env.ctx.clone(),
+                                index: index.clone(),
+                            }),
+                            loc: env.loc.clone(),
+                        }),
+                        index,
+                        bracket,
+                    }
                 }
-            }
-        },
+            },
+        }
     }
 }
 
