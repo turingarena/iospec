@@ -41,15 +41,13 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
         AStmt::Read { kw, args, semi } => {
             let (args, arg_commas) = unzip_punctuated(args);
 
-            let args: Vec<Rc<HDef>> = args
-                .into_iter()
-                .map(|a| hir_def(a, env))
-                .map(Rc::new)
-                .collect();
-
             HStmt::Read {
                 kw,
-                args,
+                args: args
+                    .into_iter()
+                    .map(|a| hir_def(a, env))
+                    .map(Rc::new)
+                    .collect(),
                 arg_commas,
                 semi,
             }
@@ -82,21 +80,22 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
                 None => (None, None),
             };
 
-            let fun = HFun {
-                name: Rc::new(hir_ident(name)),
-                args: args
-                    .into_iter()
-                    .map(|a| hir_val_expr(a, env))
-                    .map(Rc::new)
-                    .collect(),
-                ret,
-                args_paren,
-                arg_commas,
-                ret_rarrow,
-            };
-            let fun = Rc::new(fun);
-
-            HStmt::Call { kw, fun, semi }
+            HStmt::Call {
+                kw,
+                fun: Rc::new(HFun {
+                    name: Rc::new(hir_ident(name)),
+                    args: args
+                        .into_iter()
+                        .map(|a| hir_val_expr(a, env))
+                        .map(Rc::new)
+                        .collect(),
+                    ret,
+                    args_paren,
+                    arg_commas,
+                    ret_rarrow,
+                }),
+                semi,
+            }
         }
         AStmt::For {
             kw,
@@ -106,11 +105,10 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
             body_brace,
             body,
         } => {
-            let index = Rc::new(hir_ident(index));
             let range = Rc::new(HRange {
-                bound: Rc::new(hir_val_expr(bound, env)),
+                index: Rc::new(hir_ident(index)),
                 upto,
-                index: index.clone(),
+                bound: Rc::new(hir_val_expr(bound, env)),
             });
 
             HStmt::For {
