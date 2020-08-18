@@ -10,30 +10,34 @@ use crate::hir::*;
 use crate::hir_analyze::*;
 use crate::hir_env::*;
 
-fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<U>) {
-    let mut args = Vec::new();
-    let mut puncts = Vec::new();
-    for p in p.into_pairs() {
-        let (a, p) = p.into_tuple();
-        args.push(a);
-        if let Some(p) = p {
-            puncts.push(p)
-        }
-    }
-    (args, puncts)
+trait HirCompileFrom<T> {
+    fn compile(ast: T, env: &Env) -> Self;
 }
 
-fn hir_block(ast: ABlock, env: &Env) -> HStmt {
-    let mut env = env.clone();
-    let mut stmts = Vec::new();
+trait HirCompileInto<T> {
+    fn compile(self: Self, env: &Env) -> Rc<T>;
+}
 
-    for stmt in ast.stmts {
-        let stmt = hir_stmt(stmt, &env);
-        env.refs.extend(stmt.vars().into_iter());
-        stmts.push(Rc::new(stmt));
+impl<T, U> HirCompileInto<T> for U
+where T: HirCompileFrom<U> {
+    fn compile(self: Self, env: &Env) -> Rc<T> {
+        Rc::new(T::compile(self, env))
     }
+}
 
-    HStmt::Block { stmts }
+impl HirCompileFrom<ABlock> for HStmt {
+    fn compile(ast: ABlock, env: &Env) -> Self {
+        let mut env = env.clone();
+        let mut stmts = Vec::new();
+
+        for stmt in ast.stmts {
+            let stmt = hir_stmt(stmt, &env);
+            env.refs.extend(stmt.vars().into_iter());
+            stmts.push(Rc::new(stmt));
+        }
+
+        HStmt::Block { stmts }
+    }
 }
 
 fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
@@ -113,17 +117,14 @@ fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
 
             HStmt::For {
                 kw,
-                body: Rc::new(hir_block(
-                    body,
-                    &Env {
-                        refs: vec![Rc::new(hir_index_var(&range))],
-                        outer: Some(Box::new((*env).clone())),
-                        loc: Rc::new(HDefLoc::For {
-                            range: range.clone(),
-                            parent: env.loc.clone(),
-                        }),
-                    },
-                )),
+                body: body.compile(&Env {
+                    refs: vec![Rc::new(hir_index_var(&range))],
+                    outer: Some(Box::new((*env).clone())),
+                    loc: Rc::new(HDefLoc::For {
+                        range: range.clone(),
+                        parent: env.loc.clone(),
+                    }),
+                }),
                 range,
                 body_brace,
             }
@@ -228,13 +229,23 @@ fn hir_ident(ast: AIdent) -> HIdent {
 
 pub fn compile_hir(ast: ASpec) -> HSpec {
     HSpec {
-        main: Rc::new(hir_block(
-            ast.main,
-            &Env {
-                refs: Vec::new(),
-                outer: None,
-                loc: Rc::new(HDefLoc::Main),
-            },
-        )),
+        main: ast.main.compile(&Env {
+            refs: Vec::new(),
+            outer: None,
+            loc: Rc::new(HDefLoc::Main),
+        }),
     }
+}
+
+fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<U>) {
+    let mut args = Vec::new();
+    let mut puncts = Vec::new();
+    for p in p.into_pairs() {
+        let (a, p) = p.into_tuple();
+        args.push(a);
+        if let Some(p) = p {
+            puncts.push(p)
+        }
+    }
+    (args, puncts)
 }
