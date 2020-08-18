@@ -39,7 +39,7 @@ pub enum HStmt {
     },
     Read {
         kw: kw::read,
-        args: Vec<Rc<HDef>>,
+        args: Vec<Rc<HAtom>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
@@ -60,7 +60,7 @@ pub enum HStmt {
 pub struct HFun {
     pub name: Rc<HIdent>,
     pub args: Vec<Rc<HArg>>,
-    pub ret: Option<Rc<HDef>>,
+    pub ret: Option<Rc<HAtom>>,
 
     pub args_paren: syn::token::Paren,
     pub arg_commas: Vec<syn::Token![,]>,
@@ -75,40 +75,35 @@ pub struct HArg {
 }
 
 #[derive(Debug)]
-pub struct HDef {
-    pub expr: Rc<HDefExpr>,
+pub struct HAtom {
+    pub node: Rc<HNode>,
     pub colon: syn::Token![:],
     pub ty: Rc<HAtomTy>,
-    pub loc: Rc<HDefLoc>,
 }
 
 #[derive(Debug)]
-pub struct HDefExpr {
-    pub kind: HDefExprKind,
-    pub atom_ty: Rc<HAtomTy>,
-    pub ctx: Rc<HDefExprCtx>,
-    pub loc: Rc<HDefLoc>,
+pub struct HNode {
+    pub expr: Rc<HNodeExpr>,
+    pub root: Rc<HDataVar>,
+    pub ty: Rc<HExprTy>,
 }
 
 #[derive(Debug)]
-pub enum HDefExprKind {
+pub enum HNodeExpr {
     Var {
-        ident: Rc<HIdent>,
+        var: Rc<HDataVar>,
     },
     Subscript {
-        array: Rc<HDefExpr>,
+        array: Rc<HNode>,
         bracket: syn::token::Bracket,
         index: Rc<HVal>,
     },
 }
 
-#[derive(Debug, Clone)]
-pub enum HDefExprCtx {
-    Atom,
-    Subscript {
-        item: Rc<HDefExprCtx>,
-        index: Rc<HVal>,
-    },
+#[derive(Debug)]
+pub struct HDataVar {
+    pub name: Rc<HIdent>,
+    pub ty: Rc<HExprTy>,
 }
 
 #[derive(Debug)]
@@ -163,22 +158,22 @@ pub struct HIdent {
 
 #[derive(Debug)]
 pub struct HVar {
-    pub ident: Rc<HIdent>,
+    pub name: Rc<HIdent>,
     pub ty: Rc<HExprTy>, // Cache
     pub kind: HVarKind,
 }
 
 #[derive(Debug)]
 pub enum HVarKind {
-    Data { def: Rc<HDef> },
+    Data { var: Rc<HDataVar> },
     Index { range: Rc<HRange> },
 }
 
 #[derive(Debug, Clone)]
-pub enum HDefLoc {
+pub enum HNodeLoc {
     Main,
     For {
         range: Rc<HRange>,
-        parent: Rc<HDefLoc>,
+        parent: Rc<HNodeLoc>,
     },
 }

@@ -7,7 +7,6 @@
 
 use crate::ast::*;
 use crate::hir::*;
-use crate::hir_analyze::*;
 use crate::hir_env::*;
 use std::ops::Deref;
 
@@ -16,8 +15,8 @@ trait HirCompileFrom<T, E = Env> {
 }
 
 impl<T, U, E> HirCompileFrom<Box<T>, E> for U
-    where
-        U: HirCompileFrom<T, E>,
+where
+    U: HirCompileFrom<T, E>,
 {
     fn compile(ast: Box<T>, env: &E) -> Self {
         U::compile(*ast, env)
@@ -29,14 +28,13 @@ trait HirCompileInto<T, E> {
 }
 
 impl<U, T, E> HirCompileInto<U, E> for T
-    where
-        U: HirCompileFrom<T, E>,
+where
+    U: HirCompileFrom<T, E>,
 {
     fn compile(self: Self, env: &E) -> Rc<U> {
         Rc::new(U::compile(self, env))
     }
 }
-
 
 impl HStmt {
     fn funs(self: &Self) -> Vec<Rc<HFun>> {
@@ -51,25 +49,25 @@ impl HStmt {
     fn vars(self: &Self) -> Vec<Rc<HVar>> {
         match self {
             HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.vars()).collect(),
-            HStmt::Read { args, .. } => args.iter().map(hir_def_var).map(Rc::new).collect(),
-            HStmt::Call { fun, .. } => fun.ret.iter().map(hir_def_var).map(Rc::new).collect(),
+            HStmt::Read { args, .. } => args.iter().map(hir_node_var).map(Rc::new).collect(),
+            HStmt::Call { fun, .. } => fun.ret.iter().map(hir_node_var).map(Rc::new).collect(),
             HStmt::For { body, .. } => body.vars(),
             _ => Vec::new(),
         }
     }
 
     // TODO: make private?
-    pub fn allocs(self: &Self) -> Vec<Rc<HDefExpr>> {
+    pub fn allocs(self: &Self) -> Vec<Rc<HNode>> {
         match self {
             HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.allocs()).collect(),
-            HStmt::Read { args, .. } => args.iter().map(|d| d.expr.clone()).collect(),
-            HStmt::Call { fun, .. } => fun.ret.iter().map(|d| d.expr.clone()).collect(),
+            HStmt::Read { args, .. } => args.iter().map(|d| d.node.clone()).collect(),
+            HStmt::Call { fun, .. } => fun.ret.iter().map(|d| d.node.clone()).collect(),
             HStmt::For { body, .. } => body
                 .allocs()
                 .into_iter()
-                .flat_map(|expr| match &expr.kind {
+                .flat_map(|node| match node.expr.deref() {
                     // TODO: check index somewhere?
-                    HDefExprKind::Subscript { array, .. } => Some(array.clone()),
+                    HNodeExpr::Subscript { array, .. } => Some(array.clone()),
                     _ => None,
                 })
                 .collect(),
@@ -162,7 +160,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                     body: body.compile(&Env {
                         refs: vec![Rc::new(hir_index_var(&range))],
                         outer: Some(Box::new((*env).clone())),
-                        loc: Rc::new(HDefLoc::For {
+                        loc: Rc::new(HNodeLoc::For {
                             range: range.clone(),
                             parent: env.loc.clone(),
                         }),
@@ -175,57 +173,82 @@ impl HirCompileFrom<AStmt> for HStmt {
     }
 }
 
-impl HirCompileFrom<ADef> for HDef {
+fn make_atom_expr_ty(atom_ty: &Rc<HAtomTy>) -> Rc<HExprTy> {
+    Rc::new(HExprTy::Atom {
+        atom: atom_ty.clone(),
+    })
+}
+
+impl HirCompileFrom<ADef> for HAtom {
     fn compile(ast: ADef, env: &Env) -> Self {
         let ADef { expr, colon, ty } = ast;
         let ty: Rc<HAtomTy> = ty.compile(&());
 
-        HDef {
+        HAtom {
             colon,
-            expr: expr.compile(&HDefEnv {
+            node: expr.compile(&HDefEnv {
                 env: env.clone(),
-                atom_ty: ty.clone(),
-                ctx: Rc::new(HDefExprCtx::Atom),
+                ty: make_atom_expr_ty(&ty),
                 loc: env.loc.clone(),
             }),
             ty,
-            loc: env.loc.clone(),
         }
     }
 }
 
-impl HirCompileFrom<AExpr, HDefEnv> for HDefExpr {
+impl HirCompileFrom<AExpr, HDefEnv> for HNode {
     fn compile(ast: AExpr, env: &HDefEnv) -> Self {
-        HDefExpr {
-            atom_ty: env.atom_ty.clone(),
-            ctx: env.ctx.clone(),
-            loc: env.loc.clone(),
-            kind: match ast {
-                AExpr::Ref { ident } => HDefExprKind::Var {
-                    ident: ident.compile(&()),
-                },
-                AExpr::Subscript {
-                    array,
+        let expr: Rc<HNodeExpr> = ast.compile(env);
+
+        HNode {
+            ty: env.ty.clone(),
+            root: match expr.deref() {
+                HNodeExpr::Var { var } => var.clone(),
+                HNodeExpr::Subscript { array, .. } => array.root.clone(),
+            },
+            expr,
+        }
+    }
+}
+
+impl HirCompileFrom<AExpr, HDefEnv> for HNodeExpr {
+    fn compile(ast: AExpr, env: &HDefEnv) -> Self {
+        match ast {
+            AExpr::Ref { ident } => HNodeExpr::Var {
+                var: ident.compile(env),
+            },
+            AExpr::Subscript {
+                array,
+                bracket,
+                index,
+            } => {
+                let index: Rc<HVal> = index.compile(&env.env);
+
+                HNodeExpr::Subscript {
+                    array: array.compile(&match env.loc.deref() {
+                        HNodeLoc::For { range, parent } => HDefEnv {
+                            env: env.env.clone(),
+                            ty: Rc::new(HExprTy::Array {
+                                item: env.ty.clone(),
+                                range: range.clone(),
+                            }),
+                            loc: parent.clone(),
+                        },
+                        _ => todo!("recover from invalid index in node def"),
+                    }),
                     bracket,
                     index,
-                } => {
-                    let index: Rc<HVal> = index.compile(&env.env);
-
-                    HDefExprKind::Subscript {
-                        array: array.compile(&HDefEnv {
-                            env: env.env.clone(),
-                            atom_ty: env.atom_ty.clone(),
-                            ctx: Rc::new(HDefExprCtx::Subscript {
-                                item: env.ctx.clone(),
-                                index: index.clone(),
-                            }),
-                            loc: env.loc.clone(),
-                        }),
-                        index,
-                        bracket,
-                    }
                 }
-            },
+            }
+        }
+    }
+}
+
+impl HirCompileFrom<AIdent, HDefEnv> for HDataVar {
+    fn compile(ast: AIdent, env: &HDefEnv) -> Self {
+        HDataVar {
+            name: ast.compile(&()),
+            ty: env.ty.clone(),
         }
     }
 }
@@ -246,7 +269,7 @@ impl HValExpr {
 impl HVal {
     fn name(self: &Self) -> Rc<HIdent> {
         match self.expr.deref() {
-            HValExpr::Var { var, .. } => var.ident.clone(),
+            HValExpr::Var { var, .. } => var.name.clone(),
             _ => todo!("recover from invalid expr in call args"),
         }
     }
@@ -268,7 +291,10 @@ impl HirCompileFrom<AExpr> for HVal {
     fn compile(ast: AExpr, env: &Env) -> Self {
         let expr: Rc<HValExpr> = ast.compile(env);
 
-        HVal { ty: expr.ty(), expr }
+        HVal {
+            ty: expr.ty(),
+            expr,
+        }
     }
 }
 
@@ -315,7 +341,7 @@ pub fn compile_hir(ast: ASpec) -> HSpec {
     let main: Rc<HStmt> = ast.main.compile(&Env {
         refs: Vec::new(),
         outer: None,
-        loc: Rc::new(HDefLoc::Main),
+        loc: Rc::new(HNodeLoc::Main),
     });
 
     HSpec {
@@ -335,4 +361,26 @@ fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<
         }
     }
     (args, puncts)
+}
+
+fn hir_node_var(atom: &Rc<HAtom>) -> HVar {
+    HVar {
+        name: atom.node.root.name.clone(),
+        ty: atom.node.root.ty.clone(),
+        kind: HVarKind::Data {
+            var: atom.node.root.clone(),
+        },
+    }
+}
+
+fn hir_index_var(range: &Rc<HRange>) -> HVar {
+    HVar {
+        name: range.index.clone(),
+        ty: Rc::new(HExprTy::Index {
+            range: range.clone(),
+        }),
+        kind: HVarKind::Index {
+            range: range.clone(),
+        },
+    }
 }

@@ -14,14 +14,14 @@ use crate::hir::*;
 pub struct Env {
     pub refs: Vec<Rc<HVar>>,
     pub outer: Option<Box<Env>>,
-    pub loc: Rc<HDefLoc>,
+    pub loc: Rc<HNodeLoc>,
 }
 
 impl Env {
     pub fn resolve(self: &Self, ident: &HIdent) -> Option<Rc<HVar>> {
         self.refs
             .iter()
-            .find(|r| r.ident.token == ident.token)
+            .find(|r| r.name.token == ident.token)
             .map(|r| r.clone())
             .or(self.outer.as_ref().and_then(|s| s.resolve(ident)))
     }
@@ -30,7 +30,6 @@ impl Env {
 #[derive(Debug, Clone)]
 pub struct HDefEnv {
     pub env: Env,
-    pub atom_ty: Rc<HAtomTy>,
-    pub ctx: Rc<HDefExprCtx>,
-    pub loc: Rc<HDefLoc>,
+    pub loc: Rc<HNodeLoc>,
+    pub ty: Rc<HExprTy>,
 }
