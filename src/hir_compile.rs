@@ -14,14 +14,25 @@ trait HirCompileFrom<T> {
     fn compile(ast: T, env: &Env) -> Self;
 }
 
+impl<T, U> HirCompileFrom<Box<T>> for U
+where
+    U: HirCompileFrom<T>,
+{
+    fn compile(ast: Box<T>, env: &Env) -> Self {
+        U::compile(*ast, env)
+    }
+}
+
 trait HirCompileInto<T> {
     fn compile(self: Self, env: &Env) -> Rc<T>;
 }
 
-impl<T, U> HirCompileInto<T> for U
-    where T: HirCompileFrom<U> {
-    fn compile(self: Self, env: &Env) -> Rc<T> {
-        Rc::new(T::compile(self, env))
+impl<U, T> HirCompileInto<U> for T
+where
+    U: HirCompileFrom<T>,
+{
+    fn compile(self: Self, env: &Env) -> Rc<U> {
+        Rc::new(U::compile(self, env))
     }
 }
 
@@ -62,11 +73,7 @@ impl HirCompileFrom<AStmt> for HStmt {
 
                 HStmt::Write {
                     kw,
-                    args: args
-                        .into_iter()
-                        .map(|a| hir_val_expr(a, env))
-                        .map(Rc::new)
-                        .collect(),
+                    args: args.into_iter().map(|a| a.compile(env)).collect(),
                     arg_commas,
                     semi,
                 }
@@ -89,11 +96,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                     kw,
                     fun: Rc::new(HFun {
                         name: Rc::new(hir_ident(name)),
-                        args: args
-                            .into_iter()
-                            .map(|a| hir_val_expr(a, env))
-                            .map(Rc::new)
-                            .collect(),
+                        args: args.into_iter().map(|a| a.compile(env)).collect(),
                         ret,
                         args_paren,
                         arg_commas,
@@ -113,7 +116,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                 let range = Rc::new(HRange {
                     index: Rc::new(hir_ident(index)),
                     upto,
-                    bound: Rc::new(hir_val_expr(bound, env)),
+                    bound: bound.compile(env),
                 });
 
                 HStmt::For {
@@ -172,7 +175,7 @@ fn hir_def_expr(
                 bracket,
                 index,
             } => {
-                let index = Rc::new(hir_val_expr(*index, env));
+                let index: Rc<HValExpr> = index.compile(env);
 
                 HDefExprKind::Subscript {
                     array: Rc::new(hir_def_expr(
@@ -193,28 +196,30 @@ fn hir_def_expr(
     }
 }
 
-fn hir_val_expr(ast: AExpr, env: &Env) -> HValExpr {
-    match ast {
-        AExpr::Ref { ident } => {
-            let ident = hir_ident(ident);
-            let var = env
-                .resolve(&ident)
-                .unwrap_or_else(|| todo!("recover from undefined var"));
+impl HirCompileFrom<AExpr> for HValExpr {
+    fn compile(ast: AExpr, env: &Env) -> Self {
+        match ast {
+            AExpr::Ref { ident } => {
+                let ident = hir_ident(ident);
+                let var = env
+                    .resolve(&ident)
+                    .unwrap_or_else(|| todo!("recover from undefined var"));
 
-            HValExpr::Var {
-                var,
-                ident: Rc::new(ident),
+                HValExpr::Var {
+                    var,
+                    ident: Rc::new(ident),
+                }
             }
+            AExpr::Subscript {
+                array,
+                bracket,
+                index,
+            } => HValExpr::Subscript {
+                array: array.compile(env),
+                index: index.compile(env),
+                bracket,
+            },
         }
-        AExpr::Subscript {
-            array,
-            bracket,
-            index,
-        } => HValExpr::Subscript {
-            array: Rc::new(hir_val_expr(*array, env)),
-            index: Rc::new(hir_val_expr(*index, env)),
-            bracket,
-        },
     }
 }
 
