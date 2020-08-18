@@ -96,8 +96,14 @@ pub enum HNodeExpr {
     Subscript {
         array: Rc<HNode>,
         bracket: syn::token::Bracket,
-        index: Rc<HVal>,
+        index: Rc<HIndex>,
     },
+}
+
+#[derive(Debug)]
+pub struct HIndex {
+    pub name: Rc<HIdent>,
+    pub range: Rc<HRange>,
 }
 
 #[derive(Debug)]

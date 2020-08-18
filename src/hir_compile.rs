@@ -5,18 +5,19 @@
 //! encountered in the traversal.
 //! At the end the environment is discarded, and only the HIR (with its internal links) is kept.
 
+use std::ops::Deref;
+
 use crate::ast::*;
 use crate::hir::*;
 use crate::hir_env::*;
-use std::ops::Deref;
 
 trait HirCompileFrom<T, E = Env> {
     fn compile(ast: T, env: &E) -> Self;
 }
 
 impl<T, U, E> HirCompileFrom<Box<T>, E> for U
-where
-    U: HirCompileFrom<T, E>,
+    where
+        U: HirCompileFrom<T, E>,
 {
     fn compile(ast: Box<T>, env: &E) -> Self {
         U::compile(*ast, env)
@@ -28,8 +29,8 @@ trait HirCompileInto<T, E> {
 }
 
 impl<U, T, E> HirCompileInto<U, E> for T
-where
-    U: HirCompileFrom<T, E>,
+    where
+        U: HirCompileFrom<T, E>,
 {
     fn compile(self: Self, env: &E) -> Rc<U> {
         Rc::new(U::compile(self, env))
@@ -221,25 +222,31 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeExpr {
                 array,
                 bracket,
                 index,
-            } => {
-                let index: Rc<HVal> = index.compile(&env.env);
+            } => match env.loc.deref() {
+                HNodeLoc::For { range, parent } => match *index {
+                    AExpr::Ref { ident } if ident.token.to_string() == range.index.token.to_string() => {
+                        let index = Rc::new(HIndex {
+                            name: ident.compile(&()),
+                            range: range.clone(),
+                        });
 
-                HNodeExpr::Subscript {
-                    array: array.compile(&match env.loc.deref() {
-                        HNodeLoc::For { range, parent } => HDefEnv {
-                            env: env.env.clone(),
-                            ty: Rc::new(HExprTy::Array {
-                                item: env.ty.clone(),
-                                range: range.clone(),
+                        HNodeExpr::Subscript {
+                            array: array.compile(&HDefEnv {
+                                env: env.env.clone(),
+                                ty: Rc::new(HExprTy::Array {
+                                    item: env.ty.clone(),
+                                    range: range.clone(),
+                                }),
+                                loc: parent.clone(),
                             }),
-                            loc: parent.clone(),
-                        },
-                        _ => todo!("recover from invalid index in node def"),
-                    }),
-                    bracket,
-                    index,
+                            bracket,
+                            index,
+                        }
+                    }
+                    _ => todo!("recover from invalid expression for index")
                 }
-            }
+                _ => todo!("recover from invalid expression for index")
+            },
         }
     }
 }

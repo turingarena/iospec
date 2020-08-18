@@ -100,7 +100,7 @@ fn mir_node_expr(hir: &Rc<HNode>) -> MExpr {
         },
         HNodeExpr::Subscript { array, index, .. } => MExpr::Subscript {
             array: Box::new(mir_node_expr(array)),
-            index: Box::new(mir_val_expr(index)),
+            index: Box::new(mir_index_expr(index)),
         },
     }
 }
@@ -114,6 +114,12 @@ fn mir_val_expr(hir: &Rc<HVal>) -> MExpr {
             array: Box::new(mir_val_expr(array)),
             index: Box::new(mir_val_expr(index)),
         },
+    }
+}
+
+fn mir_index_expr(hir: &Rc<HIndex>) -> MExpr {
+    MExpr::Var {
+        name: hir.name.token.to_string(),
     }
 }
 

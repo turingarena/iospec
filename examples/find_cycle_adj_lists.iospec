@@ -1,0 +1,17 @@
+read N: n32;
+
+for u upto N {
+    read D[u]: n32;
+    for i upto D[u] {
+        read A[u][i]: n32;
+    }
+}
+
+call find_cycle(N, D, A) -> L: n32;
+
+write L;
+
+for i upto L {
+    call get_cycle_node(i) -> u:n32;
+    write u;
+}
