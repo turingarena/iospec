@@ -74,17 +74,17 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
             .collect(),
         HStmt::Write { args, .. } => args
             .iter()
-            .map(|expr| MInst::Write {
-                ty: mir_atom_ty(match expr.ty().as_ref() {
+            .map(|val| MInst::Write {
+                ty: mir_atom_ty(match val.ty.as_ref() {
                     HExprTy::Atom { atom } => atom,
                     _ => todo!("recover"),
                 }),
-                arg: mir_val_expr(expr),
+                arg: mir_val_expr(val),
             })
             .collect(),
         HStmt::Call { fun, .. } => vec![MInst::Call {
             name: fun.name.token.to_string(),
-            args: fun.args.iter().map(mir_val_expr).collect(),
+            args: fun.args.iter().map(|a| &a.val).map(mir_val_expr).collect(),
             ret: fun
                 .ret
                 .as_ref()
@@ -111,8 +111,8 @@ fn mir_def_expr(hir: &Rc<HDefExpr>) -> MExpr {
     }
 }
 
-fn mir_val_expr(hir: &Rc<HValExpr>) -> MExpr {
-    match hir.deref() {
+fn mir_val_expr(hir: &Rc<HVal>) -> MExpr {
+    match hir.expr.deref() {
         HValExpr::Var { ident, .. } => MExpr::Var {
             name: ident.token.to_string(),
         },
@@ -156,9 +156,9 @@ fn mir_fun(hir: &Rc<HFun>) -> MFun {
     }
 }
 
-fn mir_param(hir: &Rc<HValExpr>) -> MParam {
+fn mir_param(hir: &Rc<HArg>) -> MParam {
     MParam {
-        name: hir.param_name().token.to_string(),
-        ty: mir_expr_ty(&hir.ty()),
+        name: hir.name.token.to_string(),
+        ty: mir_expr_ty(&hir.ty),
     }
 }

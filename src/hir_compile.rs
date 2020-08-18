@@ -9,6 +9,7 @@ use crate::ast::*;
 use crate::hir::*;
 use crate::hir_analyze::*;
 use crate::hir_env::*;
+use std::ops::Deref;
 
 trait HirCompileFrom<T, E = Env> {
     fn compile(ast: T, env: &E) -> Self;
@@ -167,7 +168,7 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDefExpr {
                     bracket,
                     index,
                 } => {
-                    let index: Rc<HValExpr> = index.compile(&env.env);
+                    let index: Rc<HVal> = index.compile(&env.env);
 
                     HDefExprKind::Subscript {
                         array: array.compile(&HDefEnv {
@@ -185,6 +186,48 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDefExpr {
                 }
             },
         }
+    }
+}
+
+impl HValExpr {
+    fn ty(self: &Self) -> Rc<HExprTy> {
+        match self {
+            HValExpr::Var { var, .. } => var.ty.clone(),
+            HValExpr::Subscript { array, .. } => match array.ty.deref() {
+                // TODO: check index type as well
+                HExprTy::Array { item, .. } => item.clone(),
+                _ => todo!("recover from invalid array type"),
+            },
+        }
+    }
+}
+
+impl HVal {
+    fn name(self: &Self) -> Rc<HIdent> {
+        match self.expr.deref() {
+            HValExpr::Var { var, .. } => var.ident.clone(),
+            _ => todo!("recover from invalid expr in call args"),
+        }
+    }
+}
+
+impl HirCompileFrom<AExpr> for HArg {
+    fn compile(ast: AExpr, env: &Env) -> Self {
+        let val: Rc<HVal> = ast.compile(env);
+
+        HArg {
+            name: val.name(),
+            ty: val.ty.clone(),
+            val,
+        }
+    }
+}
+
+impl HirCompileFrom<AExpr> for HVal {
+    fn compile(ast: AExpr, env: &Env) -> Self {
+        let expr: Rc<HValExpr> = ast.compile(env);
+
+        HVal { ty: expr.ty(), expr }
     }
 }
 

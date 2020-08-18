@@ -32,7 +32,7 @@ pub enum HStmt {
     },
     Write {
         kw: kw::write,
-        args: Vec<Rc<HValExpr>>,
+        args: Vec<Rc<HVal>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
@@ -58,12 +58,19 @@ pub enum HStmt {
 #[derive(Debug)]
 pub struct HFun {
     pub name: Rc<HIdent>,
-    pub args: Vec<Rc<HValExpr>>,
+    pub args: Vec<Rc<HArg>>,
     pub ret: Option<Rc<HDef>>,
 
     pub args_paren: syn::token::Paren,
     pub arg_commas: Vec<syn::Token![,]>,
     pub ret_rarrow: Option<syn::Token![->]>,
+}
+
+#[derive(Debug)]
+pub struct HArg {
+    pub name: Rc<HIdent>,
+    pub ty: Rc<HExprTy>,
+    pub val: Rc<HVal>,
 }
 
 #[derive(Debug)]
@@ -90,7 +97,7 @@ pub enum HDefExprKind {
     Subscript {
         array: Rc<HDefExpr>,
         bracket: syn::token::Bracket,
-        index: Rc<HValExpr>,
+        index: Rc<HVal>,
     },
 }
 
@@ -99,8 +106,14 @@ pub enum HDefExprCtx {
     Atom,
     Subscript {
         item: Rc<HDefExprCtx>,
-        index: Rc<HValExpr>,
+        index: Rc<HVal>,
     },
+}
+
+#[derive(Debug)]
+pub struct HVal {
+    pub expr: Rc<HValExpr>,
+    pub ty: Rc<HExprTy>,
 }
 
 #[derive(Debug)]
@@ -110,9 +123,9 @@ pub enum HValExpr {
         ident: Rc<HIdent>,
     },
     Subscript {
-        array: Rc<HValExpr>,
+        array: Rc<HVal>,
         bracket: syn::token::Bracket,
-        index: Rc<HValExpr>,
+        index: Rc<HVal>,
     },
 }
 
@@ -120,7 +133,7 @@ pub enum HValExpr {
 pub struct HRange {
     pub index: Rc<HIdent>,
     pub upto: kw::upto,
-    pub bound: Rc<HValExpr>,
+    pub bound: Rc<HVal>,
 }
 
 #[derive(Debug)]

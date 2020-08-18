@@ -47,26 +47,6 @@ impl HStmt {
     }
 }
 
-impl HValExpr {
-    pub fn ty(self: &Self) -> Rc<HExprTy> {
-        match self {
-            HValExpr::Var { var, .. } => var.ty.clone(),
-            HValExpr::Subscript { array, .. } => match array.ty().as_ref() {
-                // TODO: check index type as well
-                HExprTy::Array { item, .. } => item.clone(),
-                _ => todo!("recover from invalid array type"),
-            },
-        }
-    }
-
-    pub fn param_name(self: &Self) -> Rc<HIdent> {
-        match self {
-            HValExpr::Var { var, .. } => var.ident.clone(),
-            _ => todo!("recover from invalid expr in call args"),
-        }
-    }
-}
-
 impl HDefExpr {
     pub fn var_name_and_ty(self: &Self) -> (Rc<HIdent>, Rc<HExprTy>) {
         match &self.kind {
