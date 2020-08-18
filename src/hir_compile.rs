@@ -23,7 +23,7 @@ fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<
     (args, puncts)
 }
 
-fn hir_block(ast: ABlock, env: &Env) -> HBlock {
+fn hir_block(ast: ABlock, env: &Env) -> HStmt {
     let mut env = env.clone();
     let mut stmts = Vec::new();
 
@@ -33,7 +33,7 @@ fn hir_block(ast: ABlock, env: &Env) -> HBlock {
         stmts.push(Rc::new(stmt));
     }
 
-    HBlock { stmts }
+    HStmt::Block { stmts }
 }
 
 fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {

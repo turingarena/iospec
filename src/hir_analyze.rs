@@ -8,23 +8,10 @@ impl HSpec {
     }
 }
 
-impl HBlock {
-    pub fn funs(self: &Self) -> Vec<Rc<HFun>> {
-        self.stmts.iter().flat_map(|s| s.funs()).collect()
-    }
-
-    pub fn vars(self: &Self) -> Vec<Rc<HVar>> {
-        self.stmts.iter().flat_map(|s| s.vars()).collect()
-    }
-
-    pub fn allocs(self: &Self) -> Vec<Rc<HDefExpr>> {
-        self.stmts.iter().flat_map(|s| s.allocs()).collect()
-    }
-}
-
 impl HStmt {
     pub fn funs(self: &Self) -> Vec<Rc<HFun>> {
         match self {
+            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.funs()).collect(),
             HStmt::Call { fun, .. } => vec![fun.clone()],
             HStmt::For { body, .. } => body.funs(),
             _ => Vec::new(),
@@ -33,6 +20,7 @@ impl HStmt {
 
     pub fn vars(self: &Self) -> Vec<Rc<HVar>> {
         match self {
+            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.vars()).collect(),
             HStmt::Read { args, .. } => args.iter().map(hir_def_var).map(Rc::new).collect(),
             HStmt::Call { fun, .. } => fun.ret.iter().map(hir_def_var).map(Rc::new).collect(),
             HStmt::For { body, .. } => body.vars(),
@@ -42,6 +30,7 @@ impl HStmt {
 
     pub fn allocs(self: &Self) -> Vec<Rc<HDefExpr>> {
         match self {
+            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.allocs()).collect(),
             HStmt::Read { args, .. } => args.iter().map(|d| d.expr.clone()).collect(),
             HStmt::Call { fun, .. } => fun.ret.iter().map(|d| d.expr.clone()).collect(),
             HStmt::For { body, .. } => body

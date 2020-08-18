@@ -8,24 +8,15 @@ use crate::mir::*;
 pub fn build_mir(spec: &HSpec) -> MSpec {
     MSpec {
         funs: spec.funs().iter().map(mir_fun).collect(),
-        main: mir_block(&spec.main),
+        main: mir_exec_insts(&spec.main),
     }
 }
 
-fn mir_block(hir: &Rc<HBlock>) -> Vec<MInst> {
+fn mir_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     let mut insts = Vec::new();
-
-    for stmt in hir.stmts.deref() {
-        for inst in mir_decl_insts(&stmt) {
-            insts.push(inst)
-        }
-        for inst in mir_alloc_insts(&stmt) {
-            insts.push(inst)
-        }
-        for inst in mir_stmt_insts(&stmt) {
-            insts.push(inst)
-        }
-    }
+    insts.extend(mir_decl_insts(hir).into_iter());
+    insts.extend(mir_alloc_insts(hir).into_iter());
+    insts.extend(mir_exec_insts(hir).into_iter());
     insts
 }
 
@@ -66,8 +57,9 @@ fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     }
 }
 
-fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
+fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     match hir.deref() {
+        HStmt::Block { stmts } => stmts.iter().flat_map(mir_insts).collect(),
         HStmt::Read { args, .. } => args
             .iter()
             .map(Deref::deref)
@@ -102,7 +94,7 @@ fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
         HStmt::For { range, body, .. } => vec![MInst::For {
             index_name: range.index.token.to_string(),
             bound: mir_val_expr(&range.bound),
-            body: Box::new(mir_block(body)),
+            body: Box::new(mir_exec_insts(body)),
         }],
     }
 }

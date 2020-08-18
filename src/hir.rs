@@ -21,16 +21,15 @@ use crate::kw;
 
 #[derive(Debug)]
 pub struct HSpec {
-    pub main: Rc<HBlock>,
+    pub main: Rc<HStmt>,
 }
 
-#[derive(Debug)]
-pub struct HBlock {
-    pub stmts: Vec<Rc<HStmt>>,
-}
-
+/// An executable part of the spec, i.e., either a statement or block.
 #[derive(Debug)]
 pub enum HStmt {
+    Block {
+        stmts: Vec<Rc<HStmt>>,
+    },
     Write {
         kw: kw::write,
         args: Vec<Rc<HValExpr>>,
@@ -52,7 +51,7 @@ pub enum HStmt {
         kw: syn::Token![for],
         range: Rc<HRange>,
         body_brace: syn::token::Brace,
-        body: Rc<HBlock>,
+        body: Rc<HStmt>,
     },
 }
 
