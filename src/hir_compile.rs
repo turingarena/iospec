@@ -58,7 +58,7 @@ impl HStmt {
     }
 
     // TODO: make private?
-    pub fn allocs(self: &Self) -> Vec<Rc<HNode>> {
+    pub fn allocs(self: &Self) -> Vec<Rc<HDataNode>> {
         match self {
             HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.allocs()).collect(),
             HStmt::Read { args, .. } => args.iter().map(|d| d.node.clone()).collect(),
@@ -68,7 +68,7 @@ impl HStmt {
                 .into_iter()
                 .flat_map(|node| match node.expr.deref() {
                     // TODO: check index somewhere?
-                    HNodeExpr::Subscript { array, .. } => Some(array.clone()),
+                    HDataExpr::Subscript { array, .. } => Some(array.clone()),
                     _ => None,
                 })
                 .collect(),
@@ -161,7 +161,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                     body: body.compile(&Env {
                         refs: vec![Rc::new(hir_index_var(&range))],
                         outer: Some(Box::new((*env).clone())),
-                        loc: Rc::new(HNodeLoc::For {
+                        loc: Rc::new(HDataLoc::For {
                             range: range.clone(),
                             parent: env.loc.clone(),
                         }),
@@ -174,22 +174,18 @@ impl HirCompileFrom<AStmt> for HStmt {
     }
 }
 
-fn make_atom_expr_ty(atom_ty: &Rc<HAtomTy>) -> Rc<HExprTy> {
-    Rc::new(HExprTy::Atom {
-        atom: atom_ty.clone(),
-    })
-}
-
-impl HirCompileFrom<ADef> for HAtom {
+impl HirCompileFrom<ADef> for HDataAtom {
     fn compile(ast: ADef, env: &Env) -> Self {
         let ADef { expr, colon, ty } = ast;
         let ty: Rc<HAtomTy> = ty.compile(&());
 
-        HAtom {
+        HDataAtom {
             colon,
             node: expr.compile(&HDefEnv {
                 env: env.clone(),
-                ty: make_atom_expr_ty(&ty),
+                ty: Rc::new(HValTy::Atom {
+                    atom_ty: ty.clone(),
+                }),
                 loc: env.loc.clone(),
             }),
             ty,
@@ -197,25 +193,25 @@ impl HirCompileFrom<ADef> for HAtom {
     }
 }
 
-impl HirCompileFrom<AExpr, HDefEnv> for HNode {
+impl HirCompileFrom<AExpr, HDefEnv> for HDataNode {
     fn compile(ast: AExpr, env: &HDefEnv) -> Self {
-        let expr: Rc<HNodeExpr> = ast.compile(env);
+        let expr: Rc<HDataExpr> = ast.compile(env);
 
-        HNode {
+        HDataNode {
             ty: env.ty.clone(),
             root: match expr.deref() {
-                HNodeExpr::Var { var } => var.clone(),
-                HNodeExpr::Subscript { array, .. } => array.root.clone(),
+                HDataExpr::Var { var } => var.clone(),
+                HDataExpr::Subscript { array, .. } => array.root.clone(),
             },
             expr,
         }
     }
 }
 
-impl HirCompileFrom<AExpr, HDefEnv> for HNodeExpr {
+impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
     fn compile(ast: AExpr, env: &HDefEnv) -> Self {
         match ast {
-            AExpr::Ref { ident } => HNodeExpr::Var {
+            AExpr::Ref { ident } => HDataExpr::Var {
                 var: ident.compile(env),
             },
             AExpr::Subscript {
@@ -223,17 +219,17 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeExpr {
                 bracket,
                 index,
             } => match env.loc.deref() {
-                HNodeLoc::For { range, parent } => match *index {
+                HDataLoc::For { range, parent } => match *index {
                     AExpr::Ref { ident } if ident.token.to_string() == range.index.token.to_string() => {
                         let index = Rc::new(HIndex {
                             name: ident.compile(&()),
                             range: range.clone(),
                         });
 
-                        HNodeExpr::Subscript {
+                        HDataExpr::Subscript {
                             array: array.compile(&HDefEnv {
                                 env: env.env.clone(),
-                                ty: Rc::new(HExprTy::Array {
+                                ty: Rc::new(HValTy::Array {
                                     item: env.ty.clone(),
                                     range: range.clone(),
                                 }),
@@ -261,12 +257,12 @@ impl HirCompileFrom<AIdent, HDefEnv> for HDataVar {
 }
 
 impl HValExpr {
-    fn ty(self: &Self) -> Rc<HExprTy> {
+    fn ty(self: &Self) -> Rc<HValTy> {
         match self {
             HValExpr::Var { var, .. } => var.ty.clone(),
             HValExpr::Subscript { array, .. } => match array.ty.deref() {
                 // TODO: check index type as well
-                HExprTy::Array { item, .. } => item.clone(),
+                HValTy::Array { item, .. } => item.clone(),
                 _ => todo!("recover from invalid array type"),
             },
         }
@@ -348,7 +344,7 @@ pub fn compile_hir(ast: ASpec) -> HSpec {
     let main: Rc<HStmt> = ast.main.compile(&Env {
         refs: Vec::new(),
         outer: None,
-        loc: Rc::new(HNodeLoc::Main),
+        loc: Rc::new(HDataLoc::Main),
     });
 
     HSpec {
@@ -370,7 +366,7 @@ fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<
     (args, puncts)
 }
 
-fn hir_node_var(atom: &Rc<HAtom>) -> HVar {
+fn hir_node_var(atom: &Rc<HDataAtom>) -> HVar {
     HVar {
         name: atom.node.root.name.clone(),
         ty: atom.node.root.ty.clone(),
@@ -383,7 +379,7 @@ fn hir_node_var(atom: &Rc<HAtom>) -> HVar {
 fn hir_index_var(range: &Rc<HRange>) -> HVar {
     HVar {
         name: range.index.clone(),
-        ty: Rc::new(HExprTy::Index {
+        ty: Rc::new(HValTy::Index {
             range: range.clone(),
         }),
         kind: HVarKind::Index {

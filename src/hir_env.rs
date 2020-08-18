@@ -14,7 +14,7 @@ use crate::hir::*;
 pub struct Env {
     pub refs: Vec<Rc<HVar>>,
     pub outer: Option<Box<Env>>,
-    pub loc: Rc<HNodeLoc>,
+    pub loc: Rc<HDataLoc>,
 }
 
 impl Env {
@@ -30,6 +30,15 @@ impl Env {
 #[derive(Debug, Clone)]
 pub struct HDefEnv {
     pub env: Env,
-    pub loc: Rc<HNodeLoc>,
-    pub ty: Rc<HExprTy>,
+    pub loc: Rc<HDataLoc>,
+    pub ty: Rc<HValTy>,
+}
+
+#[derive(Debug, Clone)]
+pub enum HDataLoc {
+    Main,
+    For {
+        range: Rc<HRange>,
+        parent: Rc<HDataLoc>,
+    },
 }

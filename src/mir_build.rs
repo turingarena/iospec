@@ -24,7 +24,7 @@ fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     hir.allocs()
         .iter()
         .flat_map(|node| match node.expr.deref() {
-            HNodeExpr::Var { var } => Some(MInst::Decl {
+            HDataExpr::Var { var } => Some(MInst::Decl {
                 name: var.name.token.to_string(),
                 ty: mir_expr_ty(&var.ty),
             }),
@@ -39,9 +39,9 @@ fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
             .allocs()
             .into_iter()
             .flat_map(|node| match node.expr.deref() {
-                HNodeExpr::Subscript { array, .. } => match array.ty.deref() {
+                HDataExpr::Subscript { array, .. } => match array.ty.deref() {
                     // TODO: store index in node expr
-                    HExprTy::Array { item, range } => Some(MInst::Alloc {
+                    HValTy::Array { item, range } => Some(MInst::Alloc {
                         array: mir_node_expr(array),
                         size: mir_val_expr(&range.bound),
                         ty: mir_expr_ty(item),
@@ -61,7 +61,7 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
         HStmt::Read { args, .. } => args
             .iter()
             .map(Deref::deref)
-            .map(|HAtom { ty, node, .. }| MInst::Read {
+            .map(|HDataAtom { ty, node, .. }| MInst::Read {
                 ty: mir_atom_ty(ty),
                 arg: mir_node_expr(node),
             })
@@ -70,7 +70,7 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
             .iter()
             .map(|val| MInst::Write {
                 ty: mir_atom_ty(match val.ty.as_ref() {
-                    HExprTy::Atom { atom } => atom,
+                    HValTy::Atom { atom_ty } => atom_ty,
                     _ => todo!("recover"),
                 }),
                 arg: mir_val_expr(val),
@@ -83,7 +83,7 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
                 .ret
                 .as_ref()
                 .map(Deref::deref)
-                .map(|HAtom { node, .. }| mir_node_expr(node)),
+                .map(|HDataAtom { node, .. }| mir_node_expr(node)),
         }],
         HStmt::For { range, body, .. } => vec![MInst::For {
             index_name: range.index.token.to_string(),
@@ -93,12 +93,12 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     }
 }
 
-fn mir_node_expr(hir: &Rc<HNode>) -> MExpr {
+fn mir_node_expr(hir: &Rc<HDataNode>) -> MExpr {
     match hir.expr.deref() {
-        HNodeExpr::Var { var, .. } => MExpr::Var {
+        HDataExpr::Var { var, .. } => MExpr::Var {
             name: var.name.token.to_string(),
         },
-        HNodeExpr::Subscript { array, index, .. } => MExpr::Subscript {
+        HDataExpr::Subscript { array, index, .. } => MExpr::Subscript {
             array: Box::new(mir_node_expr(array)),
             index: Box::new(mir_index_expr(index)),
         },
@@ -134,17 +134,17 @@ fn mir_atom_ty(hir: &Rc<HAtomTy>) -> MAtomTy {
     }
 }
 
-fn mir_expr_ty(hir: &Rc<HExprTy>) -> MExprTy {
-    let hir: &HExprTy = hir.deref();
+fn mir_expr_ty(hir: &Rc<HValTy>) -> MExprTy {
+    let hir: &HValTy = hir.deref();
 
     match hir {
-        HExprTy::Atom { atom } => MExprTy::Atom {
-            atom: mir_atom_ty(atom),
+        HValTy::Atom { atom_ty } => MExprTy::Atom {
+            atom: mir_atom_ty(atom_ty),
         },
-        HExprTy::Array { item, .. } => MExprTy::Array {
+        HValTy::Array { item, .. } => MExprTy::Array {
             item: Box::new(mir_expr_ty(item)),
         },
-        HExprTy::Index { .. } => MExprTy::Atom { atom: MAtomTy::N32 },
+        HValTy::Index { .. } => MExprTy::Atom { atom: MAtomTy::N32 },
     }
 }
 
