@@ -19,7 +19,7 @@ trait HirCompileInto<T> {
 }
 
 impl<T, U> HirCompileInto<T> for U
-where T: HirCompileFrom<U> {
+    where T: HirCompileFrom<U> {
     fn compile(self: Self, env: &Env) -> Rc<T> {
         Rc::new(T::compile(self, env))
     }
@@ -31,102 +31,104 @@ impl HirCompileFrom<ABlock> for HStmt {
         let mut stmts = Vec::new();
 
         for stmt in ast.stmts {
-            let stmt = hir_stmt(stmt, &env);
+            let stmt: Rc<HStmt> = stmt.compile(&env);
             env.refs.extend(stmt.vars().into_iter());
-            stmts.push(Rc::new(stmt));
+            stmts.push(stmt);
         }
 
         HStmt::Block { stmts }
     }
 }
 
-fn hir_stmt(ast: AStmt, env: &Env) -> HStmt {
-    match ast {
-        AStmt::Read { kw, args, semi } => {
-            let (args, arg_commas) = unzip_punctuated(args);
+impl HirCompileFrom<AStmt> for HStmt {
+    fn compile(ast: AStmt, env: &Env) -> Self {
+        match ast {
+            AStmt::Read { kw, args, semi } => {
+                let (args, arg_commas) = unzip_punctuated(args);
 
-            HStmt::Read {
-                kw,
-                args: args
-                    .into_iter()
-                    .map(|a| hir_def(a, env))
-                    .map(Rc::new)
-                    .collect(),
-                arg_commas,
-                semi,
+                HStmt::Read {
+                    kw,
+                    args: args
+                        .into_iter()
+                        .map(|a| hir_def(a, env))
+                        .map(Rc::new)
+                        .collect(),
+                    arg_commas,
+                    semi,
+                }
             }
-        }
-        AStmt::Write { kw, args, semi } => {
-            let (args, arg_commas) = unzip_punctuated(args);
+            AStmt::Write { kw, args, semi } => {
+                let (args, arg_commas) = unzip_punctuated(args);
 
-            HStmt::Write {
-                kw,
-                args: args
-                    .into_iter()
-                    .map(|a| hir_val_expr(a, env))
-                    .map(Rc::new)
-                    .collect(),
-                arg_commas,
-                semi,
-            }
-        }
-        AStmt::Call {
-            kw,
-            name,
-            args_paren,
-            args,
-            ret,
-            semi,
-        } => {
-            let (args, arg_commas) = unzip_punctuated(args);
-            let (ret_rarrow, ret) = match ret {
-                Some((a, r)) => (Some(a), Some(Rc::new(hir_def(r, env)))),
-                None => (None, None),
-            };
-
-            HStmt::Call {
-                kw,
-                fun: Rc::new(HFun {
-                    name: Rc::new(hir_ident(name)),
+                HStmt::Write {
+                    kw,
                     args: args
                         .into_iter()
                         .map(|a| hir_val_expr(a, env))
                         .map(Rc::new)
                         .collect(),
-                    ret,
-                    args_paren,
                     arg_commas,
-                    ret_rarrow,
-                }),
-                semi,
+                    semi,
+                }
             }
-        }
-        AStmt::For {
-            kw,
-            index,
-            upto,
-            bound,
-            body_brace,
-            body,
-        } => {
-            let range = Rc::new(HRange {
-                index: Rc::new(hir_ident(index)),
-                upto,
-                bound: Rc::new(hir_val_expr(bound, env)),
-            });
-
-            HStmt::For {
+            AStmt::Call {
                 kw,
-                body: body.compile(&Env {
-                    refs: vec![Rc::new(hir_index_var(&range))],
-                    outer: Some(Box::new((*env).clone())),
-                    loc: Rc::new(HDefLoc::For {
-                        range: range.clone(),
-                        parent: env.loc.clone(),
+                name,
+                args_paren,
+                args,
+                ret,
+                semi,
+            } => {
+                let (args, arg_commas) = unzip_punctuated(args);
+                let (ret_rarrow, ret) = match ret {
+                    Some((a, r)) => (Some(a), Some(Rc::new(hir_def(r, env)))),
+                    None => (None, None),
+                };
+
+                HStmt::Call {
+                    kw,
+                    fun: Rc::new(HFun {
+                        name: Rc::new(hir_ident(name)),
+                        args: args
+                            .into_iter()
+                            .map(|a| hir_val_expr(a, env))
+                            .map(Rc::new)
+                            .collect(),
+                        ret,
+                        args_paren,
+                        arg_commas,
+                        ret_rarrow,
                     }),
-                }),
-                range,
+                    semi,
+                }
+            }
+            AStmt::For {
+                kw,
+                index,
+                upto,
+                bound,
                 body_brace,
+                body,
+            } => {
+                let range = Rc::new(HRange {
+                    index: Rc::new(hir_ident(index)),
+                    upto,
+                    bound: Rc::new(hir_val_expr(bound, env)),
+                });
+
+                HStmt::For {
+                    kw,
+                    body: body.compile(&Env {
+                        refs: vec![Rc::new(hir_index_var(&range))],
+                        outer: Some(Box::new((*env).clone())),
+                        loc: Rc::new(HDefLoc::For {
+                            range: range.clone(),
+                            parent: env.loc.clone(),
+                        }),
+                    }),
+                    range,
+                    body_brace,
+                }
             }
         }
     }
