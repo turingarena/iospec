@@ -10,28 +10,28 @@ use crate::hir::*;
 use crate::hir_analyze::*;
 use crate::hir_env::*;
 
-trait HirCompileFrom<T> {
-    fn compile(ast: T, env: &Env) -> Self;
+trait HirCompileFrom<T, E = Env> {
+    fn compile(ast: T, env: &E) -> Self;
 }
 
-impl<T, U> HirCompileFrom<Box<T>> for U
+impl<T, U, E> HirCompileFrom<Box<T>, E> for U
 where
-    U: HirCompileFrom<T>,
+    U: HirCompileFrom<T, E>,
 {
-    fn compile(ast: Box<T>, env: &Env) -> Self {
+    fn compile(ast: Box<T>, env: &E) -> Self {
         U::compile(*ast, env)
     }
 }
 
-trait HirCompileInto<T> {
-    fn compile(self: Self, env: &Env) -> Rc<T>;
+trait HirCompileInto<T, E> {
+    fn compile(self: Self, env: &E) -> Rc<T>;
 }
 
-impl<U, T> HirCompileInto<U> for T
+impl<U, T, E> HirCompileInto<U, E> for T
 where
-    U: HirCompileFrom<T>,
+    U: HirCompileFrom<T, E>,
 {
-    fn compile(self: Self, env: &Env) -> Rc<U> {
+    fn compile(self: Self, env: &E) -> Rc<U> {
         Rc::new(U::compile(self, env))
     }
 }
@@ -95,7 +95,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                 HStmt::Call {
                     kw,
                     fun: Rc::new(HFun {
-                        name: Rc::new(hir_ident(name)),
+                        name: name.compile(&()),
                         args: args.into_iter().map(|a| a.compile(env)).collect(),
                         ret,
                         args_paren,
@@ -114,7 +114,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                 body,
             } => {
                 let range = Rc::new(HRange {
-                    index: Rc::new(hir_ident(index)),
+                    index: index.compile(&()),
                     upto,
                     bound: bound.compile(env),
                 });
@@ -139,7 +139,7 @@ impl HirCompileFrom<AStmt> for HStmt {
 
 fn hir_def(ast: ADef, env: &Env) -> HDef {
     let ADef { expr, colon, ty } = ast;
-    let ty = Rc::new(hir_atom_ty(ty));
+    let ty: Rc<HAtomTy> = ty.compile(&());
 
     HDef {
         colon,
@@ -168,7 +168,7 @@ fn hir_def_expr(
         loc: loc.clone(),
         kind: match ast {
             AExpr::Ref { ident } => HDefExprKind::Var {
-                ident: Rc::new(hir_ident(ident)),
+                ident: ident.compile(&()),
             },
             AExpr::Subscript {
                 array,
@@ -200,15 +200,12 @@ impl HirCompileFrom<AExpr> for HValExpr {
     fn compile(ast: AExpr, env: &Env) -> Self {
         match ast {
             AExpr::Ref { ident } => {
-                let ident = hir_ident(ident);
+                let ident = ident.compile(&());
                 let var = env
                     .resolve(&ident)
                     .unwrap_or_else(|| todo!("recover from undefined var"));
 
-                HValExpr::Var {
-                    var,
-                    ident: Rc::new(ident),
-                }
+                HValExpr::Var { var, ident }
             }
             AExpr::Subscript {
                 array,
@@ -223,15 +220,19 @@ impl HirCompileFrom<AExpr> for HValExpr {
     }
 }
 
-fn hir_atom_ty(ast: ATy) -> HAtomTy {
-    HAtomTy {
-        ident: Rc::new(hir_ident(ast.ident)),
+impl HirCompileFrom<ATy, ()> for HAtomTy {
+    fn compile(ast: ATy, _: &()) -> Self {
+        HAtomTy {
+            ident: ast.ident.compile(&()),
+        }
     }
 }
 
-fn hir_ident(ast: AIdent) -> HIdent {
-    let AIdent { token } = ast;
-    HIdent { token }
+impl HirCompileFrom<AIdent, ()> for HIdent {
+    fn compile(ast: AIdent, _: &()) -> Self {
+        let AIdent { token } = ast;
+        HIdent { token }
+    }
 }
 
 pub fn compile_hir(ast: ASpec) -> HSpec {
