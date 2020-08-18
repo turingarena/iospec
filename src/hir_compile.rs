@@ -37,6 +37,47 @@ impl<U, T, E> HirCompileInto<U, E> for T
     }
 }
 
+
+impl HStmt {
+    fn funs(self: &Self) -> Vec<Rc<HFun>> {
+        match self {
+            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.funs()).collect(),
+            HStmt::Call { fun, .. } => vec![fun.clone()],
+            HStmt::For { body, .. } => body.funs(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn vars(self: &Self) -> Vec<Rc<HVar>> {
+        match self {
+            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.vars()).collect(),
+            HStmt::Read { args, .. } => args.iter().map(hir_def_var).map(Rc::new).collect(),
+            HStmt::Call { fun, .. } => fun.ret.iter().map(hir_def_var).map(Rc::new).collect(),
+            HStmt::For { body, .. } => body.vars(),
+            _ => Vec::new(),
+        }
+    }
+
+    // TODO: make private?
+    pub fn allocs(self: &Self) -> Vec<Rc<HDefExpr>> {
+        match self {
+            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.allocs()).collect(),
+            HStmt::Read { args, .. } => args.iter().map(|d| d.expr.clone()).collect(),
+            HStmt::Call { fun, .. } => fun.ret.iter().map(|d| d.expr.clone()).collect(),
+            HStmt::For { body, .. } => body
+                .allocs()
+                .into_iter()
+                .flat_map(|expr| match &expr.kind {
+                    // TODO: check index somewhere?
+                    HDefExprKind::Subscript { array, .. } => Some(array.clone()),
+                    _ => None,
+                })
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+}
+
 impl HirCompileFrom<ABlock> for HStmt {
     fn compile(ast: ABlock, env: &Env) -> Self {
         let mut env = env.clone();
@@ -271,12 +312,15 @@ impl HirCompileFrom<AIdent, ()> for HIdent {
 }
 
 pub fn compile_hir(ast: ASpec) -> HSpec {
+    let main: Rc<HStmt> = ast.main.compile(&Env {
+        refs: Vec::new(),
+        outer: None,
+        loc: Rc::new(HDefLoc::Main),
+    });
+
     HSpec {
-        main: ast.main.compile(&Env {
-            refs: Vec::new(),
-            outer: None,
-            loc: Rc::new(HDefLoc::Main),
-        }),
+        funs: main.funs(),
+        main,
     }
 }
 

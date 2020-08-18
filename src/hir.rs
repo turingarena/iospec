@@ -22,6 +22,7 @@ use crate::kw;
 #[derive(Debug)]
 pub struct HSpec {
     pub main: Rc<HStmt>,
+    pub funs: Vec<Rc<HFun>>,
 }
 
 /// An executable part of the spec, i.e., either a statement or block.

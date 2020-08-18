@@ -7,7 +7,7 @@ use crate::mir::*;
 
 pub fn build_mir(spec: &HSpec) -> MSpec {
     MSpec {
-        funs: spec.funs().iter().map(mir_fun).collect(),
+        funs: spec.funs.iter().map(mir_fun).collect(),
         main: mir_exec_insts(&spec.main),
     }
 }
