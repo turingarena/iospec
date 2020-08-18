@@ -16,8 +16,8 @@ trait HirCompileFrom<T, E = Env> {
 }
 
 impl<T, U, E> HirCompileFrom<Box<T>, E> for U
-    where
-        U: HirCompileFrom<T, E>,
+where
+    U: HirCompileFrom<T, E>,
 {
     fn compile(ast: Box<T>, env: &E) -> Self {
         U::compile(*ast, env)
@@ -29,8 +29,8 @@ trait HirCompileInto<T, E> {
 }
 
 impl<U, T, E> HirCompileInto<U, E> for T
-    where
-        U: HirCompileFrom<T, E>,
+where
+    U: HirCompileFrom<T, E>,
 {
     fn compile(self: Self, env: &E) -> Rc<U> {
         Rc::new(U::compile(self, env))
@@ -220,7 +220,9 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
                 index,
             } => match env.loc.deref() {
                 HDataLoc::For { range, parent } => match *index {
-                    AExpr::Ref { ident } if ident.token.to_string() == range.index.token.to_string() => {
+                    AExpr::Ref { ident }
+                        if ident.token.to_string() == range.index.token.to_string() =>
+                    {
                         let index = Rc::new(HIndex {
                             name: ident.compile(&()),
                             range: range.clone(),
@@ -239,9 +241,9 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
                             index,
                         }
                     }
-                    _ => todo!("recover from invalid expression for index")
-                }
-                _ => todo!("recover from invalid expression for index")
+                    _ => todo!("recover from invalid expression for index"),
+                },
+                _ => todo!("recover from invalid expression for index"),
             },
         }
     }

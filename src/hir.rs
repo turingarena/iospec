@@ -161,16 +161,9 @@ pub enum HValExpr {
 /// Type of a value (either atomic or aggregate)
 #[derive(Debug)]
 pub enum HValTy {
-    Atom {
-        atom_ty: Rc<HAtomTy>,
-    },
-    Array {
-        item: Rc<HValTy>,
-        range: Rc<HRange>,
-    },
-    Index {
-        range: Rc<HRange>,
-    },
+    Atom { atom_ty: Rc<HAtomTy> },
+    Array { item: Rc<HValTy>, range: Rc<HRange> },
+    Index { range: Rc<HRange> },
 }
 
 /// Type of an atomic value
