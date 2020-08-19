@@ -343,23 +343,23 @@ impl HValExpr {
     }
 }
 
-impl HVal {
-    fn name(self: &Self) -> Rc<HIdent> {
-        match self.expr.deref() {
-            HValExpr::Var { var, .. } => var.name.clone(),
-            _ => todo!("recover from invalid expr in call args"),
-        }
-    }
-}
-
 impl HirCompileFrom<AExpr> for HArg {
     fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
         let val: Rc<HVal> = ast.compile(env, sess);
 
         HArg {
-            name: val.name(),
+            val: val.clone(),
             ty: val.ty.clone(),
-            val,
+            expr: match val.expr.deref() {
+                HValExpr::Var { var, .. } => Rc::new(HArgExpr::Name {
+                    name: var.name.clone(),
+                }),
+                _ => {
+                    sess.diagnostics
+                        .push(Diagnostic::ArgumentNotVariable { val: val.clone() });
+                    HErr::err()
+                }
+            },
         }
     }
 }

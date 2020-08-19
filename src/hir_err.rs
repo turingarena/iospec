@@ -74,3 +74,9 @@ impl HirCreateErr for HDataVarExpr {
         HDataVarExpr::Err
     }
 }
+
+impl HirCreateErr for HArgExpr {
+    fn create_err() -> Self {
+        HArgExpr::Err
+    }
+}

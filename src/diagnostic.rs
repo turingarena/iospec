@@ -64,6 +64,9 @@ pub enum Diagnostic {
         index: Rc<HVal>,
         bracket: syn::token::Bracket,
     },
+    ArgumentNotVariable {
+        val: Rc<HVal>,
+    },
 }
 
 impl Sess {
@@ -262,6 +265,15 @@ impl Diagnostic {
                         bracket.span,
                     )],
                 },
+            ),
+            Diagnostic::ArgumentNotVariable { val } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &format!("function call arguments must be variables, got an expression",),
+                vec![sess.annotation(
+                    AnnotationType::Error,
+                    "must be a variable, not an expression",
+                    val.span(),
+                )],
             ),
         }
     }

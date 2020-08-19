@@ -1,0 +1,6 @@
+read N: n32;
+
+for i upto N {
+    read A[i]: i32;
+    call f(N, i, A[i]);
+}

@@ -152,7 +152,10 @@ fn mir_fun(hir: &Rc<HFun>) -> MFun {
 
 fn mir_param(hir: &Rc<HArg>) -> MParam {
     MParam {
-        name: hir.name.to_string(),
+        name: match hir.expr.deref() {
+            HArgExpr::Name { name } => name.to_string(),
+            HArgExpr::Err => unreachable!(),
+        },
         ty: mir_expr_ty(&hir.ty),
     }
 }

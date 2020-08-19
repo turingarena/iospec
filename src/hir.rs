@@ -74,9 +74,17 @@ pub struct HFun {
 /// E.g., `A` in `... call f(A, B) -> C: i32; ...`.
 #[derive(Debug)]
 pub struct HArg {
-    pub name: Rc<HIdent>,
+    pub expr: Rc<HArgExpr>,
     pub ty: Rc<HValTy>,
     pub val: Rc<HVal>,
+}
+
+/// An argument of a called function.
+/// E.g., `A` in `... call f(A, B) -> C: i32; ...`.
+#[derive(Debug)]
+pub enum HArgExpr {
+    Name { name: Rc<HIdent> },
+    Err,
 }
 
 /// An atomic value in input/output data.
