@@ -39,15 +39,11 @@ fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
             .allocs()
             .into_iter()
             .flat_map(|node| match node.expr.deref() {
-                HDataExpr::Subscript { array, .. } => match array.ty.deref() {
-                    // TODO: store index in node expr
-                    HValTy::Array { item, range } => Some(MInst::Alloc {
-                        array: mir_node_expr(array),
-                        size: mir_val_expr(&range.bound),
-                        ty: mir_expr_ty(item),
-                    }),
-                    _ => todo!("recover"),
-                },
+                HDataExpr::Subscript { array, index, .. } => Some(MInst::Alloc {
+                    array: mir_node_expr(array),
+                    size: mir_val_expr(&index.range.bound),
+                    ty: mir_expr_ty(&node.ty),
+                }),
                 _ => None,
             })
             .collect(),
