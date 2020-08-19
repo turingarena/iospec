@@ -1,0 +1,8 @@
+read N: n32;
+for i upto N {
+    for j upto N {
+        for k upto N {
+            read A[i][k]: i32;
+        }
+    }
+}

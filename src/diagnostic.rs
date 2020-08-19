@@ -234,14 +234,14 @@ impl Diagnostic {
                             quote_string(quote!(#(range.index.deref()))),
                         ),
                     },
-                    None => format!("index must match an enclosing for, but for was found"),
+                    None => format!("index must match an enclosing for, but no for was found"),
                 },
                 match range {
                     Some(range) => vec![
                         match name {
                             Some(name) => sess.annotation(
                                 AnnotationType::Error,
-                                "does not match enclosing index `for` index",
+                                "does not match enclosing for index",
                                 name.span(),
                             ),
                             None => sess.annotation(
