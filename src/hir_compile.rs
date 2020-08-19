@@ -151,6 +151,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                 body_brace,
                 body,
             } => {
+                // TODO: check bound is a natural number
                 let range = Rc::new(HRange {
                     index: index.compile(&(), sess),
                     upto,
@@ -272,9 +273,18 @@ impl HValExpr {
     fn ty(self: &Self) -> Rc<HValTy> {
         match self {
             HValExpr::Var { var, .. } => var.ty.clone(),
-            HValExpr::Subscript { array, .. } => match array.ty.deref() {
-                // TODO: check index type as well
-                HValTy::Array { item, .. } => item.clone(),
+            HValExpr::Subscript { array, index, .. } => match array.ty.deref() {
+                HValTy::Array { item, range } => {
+                    match index.ty.deref() {
+                        HValTy::Atom { atom_ty } => {
+                            if atom_ty.ident.token.to_string() != range.bound.ty.ident.token.to_string() {
+                                todo!("wrong index atom type")
+                            }
+                        }
+                        _ => todo!("wrong index type")
+                    }
+                    item.clone()
+                },
                 _ => todo!("recover from invalid array type"),
             },
         }
@@ -410,7 +420,7 @@ fn hir_node_var(atom: &Rc<HDataAtom>) -> HVar {
 fn hir_index_var(range: &Rc<HRange>) -> HVar {
     HVar {
         name: range.index.clone(),
-        ty: range.bound.ty.clone(),
+        ty: range.bound.val.ty.clone(),
         kind: HVarKind::Index {
             range: range.clone(),
         },

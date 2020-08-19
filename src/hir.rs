@@ -132,7 +132,7 @@ pub struct HIndex {
 pub struct HRange {
     pub index: Rc<HIdent>,
     pub upto: kw::upto,
-    pub bound: Rc<HVal>,
+    pub bound: Rc<HAtom>,
 }
 
 /// An atomic value defined by an expression.

@@ -41,7 +41,7 @@ fn mir_alloc_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
             .flat_map(|node| match node.expr.deref() {
                 HDataExpr::Subscript { array, index, .. } => Some(MInst::Alloc {
                     array: mir_node_expr(array),
-                    size: mir_val_expr(&index.range.bound),
+                    size: mir_val_expr(&index.range.bound.val),
                     ty: mir_expr_ty(&node.ty),
                 }),
                 _ => None,
@@ -80,7 +80,7 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
         }],
         HStmt::For { range, body, .. } => vec![MInst::For {
             index_name: range.index.token.to_string(),
-            bound: mir_val_expr(&range.bound),
+            bound: mir_val_expr(&range.bound.val),
             body: Box::new(mir_exec_insts(body)),
         }],
     }
