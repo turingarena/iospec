@@ -8,32 +8,33 @@
 use std::ops::Deref;
 
 use crate::ast::*;
+use crate::diagnostic::*;
 use crate::hir::*;
 use crate::hir_env::*;
 
 trait HirCompileFrom<T, E = Env> {
-    fn compile(ast: T, env: &E) -> Self;
+    fn compile(ast: T, env: &E, sess: &mut Sess) -> Self;
 }
 
 impl<T, U, E> HirCompileFrom<Box<T>, E> for U
 where
     U: HirCompileFrom<T, E>,
 {
-    fn compile(ast: Box<T>, env: &E) -> Self {
-        U::compile(*ast, env)
+    fn compile(ast: Box<T>, env: &E, sess: &mut Sess) -> Self {
+        U::compile(*ast, env, sess)
     }
 }
 
 trait HirCompileInto<T, E> {
-    fn compile(self: Self, env: &E) -> Rc<T>;
+    fn compile(self: Self, env: &E, sess: &mut Sess) -> Rc<T>;
 }
 
 impl<U, T, E> HirCompileInto<U, E> for T
 where
     U: HirCompileFrom<T, E>,
 {
-    fn compile(self: Self, env: &E) -> Rc<U> {
-        Rc::new(U::compile(self, env))
+    fn compile(self: Self, env: &E, sess: &mut Sess) -> Rc<U> {
+        Rc::new(U::compile(self, env, sess))
     }
 }
 
@@ -78,12 +79,12 @@ impl HStmt {
 }
 
 impl HirCompileFrom<ABlock> for HStmt {
-    fn compile(ast: ABlock, env: &Env) -> Self {
+    fn compile(ast: ABlock, env: &Env, sess: &mut Sess) -> Self {
         let mut env = env.clone();
         let mut stmts = Vec::new();
 
         for stmt in ast.stmts {
-            let stmt: Rc<HStmt> = stmt.compile(&env);
+            let stmt: Rc<HStmt> = stmt.compile(&env, sess);
             env.refs.extend(stmt.vars().into_iter());
             stmts.push(stmt);
         }
@@ -93,14 +94,14 @@ impl HirCompileFrom<ABlock> for HStmt {
 }
 
 impl HirCompileFrom<AStmt> for HStmt {
-    fn compile(ast: AStmt, env: &Env) -> Self {
+    fn compile(ast: AStmt, env: &Env, sess: &mut Sess) -> Self {
         match ast {
             AStmt::Read { kw, args, semi } => {
                 let (args, arg_commas) = unzip_punctuated(args);
 
                 HStmt::Read {
                     kw,
-                    args: args.into_iter().map(|a| a.compile(env)).collect(),
+                    args: args.into_iter().map(|a| a.compile(env, sess)).collect(),
                     arg_commas,
                     semi,
                 }
@@ -110,7 +111,7 @@ impl HirCompileFrom<AStmt> for HStmt {
 
                 HStmt::Write {
                     kw,
-                    args: args.into_iter().map(|a| a.compile(env)).collect(),
+                    args: args.into_iter().map(|a| a.compile(env, sess)).collect(),
                     arg_commas,
                     semi,
                 }
@@ -125,15 +126,15 @@ impl HirCompileFrom<AStmt> for HStmt {
             } => {
                 let (args, arg_commas) = unzip_punctuated(args);
                 let (ret_rarrow, ret) = match ret {
-                    Some((a, r)) => (Some(a), Some(r.compile(env))),
+                    Some((a, r)) => (Some(a), Some(r.compile(env, sess))),
                     None => (None, None),
                 };
 
                 HStmt::Call {
                     kw,
                     fun: Rc::new(HFun {
-                        name: name.compile(&()),
-                        args: args.into_iter().map(|a| a.compile(env)).collect(),
+                        name: name.compile(&(), sess),
+                        args: args.into_iter().map(|a| a.compile(env, sess)).collect(),
                         ret,
                         args_paren,
                         arg_commas,
@@ -151,21 +152,24 @@ impl HirCompileFrom<AStmt> for HStmt {
                 body,
             } => {
                 let range = Rc::new(HRange {
-                    index: index.compile(&()),
+                    index: index.compile(&(), sess),
                     upto,
-                    bound: bound.compile(env),
+                    bound: bound.compile(env, sess),
                 });
 
                 HStmt::For {
                     kw,
-                    body: body.compile(&Env {
-                        refs: vec![Rc::new(hir_index_var(&range))],
-                        outer: Some(Box::new((*env).clone())),
-                        loc: Rc::new(HDataLoc::For {
-                            range: range.clone(),
-                            parent: env.loc.clone(),
-                        }),
-                    }),
+                    body: body.compile(
+                        &Env {
+                            refs: vec![Rc::new(hir_index_var(&range))],
+                            outer: Some(Box::new((*env).clone())),
+                            loc: Rc::new(HDataLoc::For {
+                                range: range.clone(),
+                                parent: env.loc.clone(),
+                            }),
+                        },
+                        sess,
+                    ),
                     range,
                     body_brace,
                 }
@@ -175,27 +179,30 @@ impl HirCompileFrom<AStmt> for HStmt {
 }
 
 impl HirCompileFrom<ADef> for HDataAtom {
-    fn compile(ast: ADef, env: &Env) -> Self {
+    fn compile(ast: ADef, env: &Env, sess: &mut Sess) -> Self {
         let ADef { expr, colon, ty } = ast;
-        let ty: Rc<HAtomTy> = ty.compile(&());
+        let ty: Rc<HAtomTy> = ty.compile(&(), sess);
 
         HDataAtom {
             colon,
-            node: expr.compile(&HDefEnv {
-                env: env.clone(),
-                ty: Rc::new(HValTy::Atom {
-                    atom_ty: ty.clone(),
-                }),
-                loc: env.loc.clone(),
-            }),
+            node: expr.compile(
+                &HDefEnv {
+                    env: env.clone(),
+                    ty: Rc::new(HValTy::Atom {
+                        atom_ty: ty.clone(),
+                    }),
+                    loc: env.loc.clone(),
+                },
+                sess,
+            ),
             ty,
         }
     }
 }
 
 impl HirCompileFrom<AExpr, HDefEnv> for HDataNode {
-    fn compile(ast: AExpr, env: &HDefEnv) -> Self {
-        let expr: Rc<HDataExpr> = ast.compile(env);
+    fn compile(ast: AExpr, env: &HDefEnv, sess: &mut Sess) -> Self {
+        let expr: Rc<HDataExpr> = ast.compile(env, sess);
 
         HDataNode {
             ty: env.ty.clone(),
@@ -209,10 +216,10 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataNode {
 }
 
 impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
-    fn compile(ast: AExpr, env: &HDefEnv) -> Self {
+    fn compile(ast: AExpr, env: &HDefEnv, sess: &mut Sess) -> Self {
         match ast {
             AExpr::Ref { ident } => HDataExpr::Var {
-                var: ident.compile(env),
+                var: ident.compile(env, sess),
             },
             AExpr::Subscript {
                 array,
@@ -224,19 +231,22 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
                         if ident.token.to_string() == range.index.token.to_string() =>
                     {
                         let index = Rc::new(HIndex {
-                            name: ident.compile(&()),
+                            name: ident.compile(&(), sess),
                             range: range.clone(),
                         });
 
                         HDataExpr::Subscript {
-                            array: array.compile(&HDefEnv {
-                                env: env.env.clone(),
-                                ty: Rc::new(HValTy::Array {
-                                    item: env.ty.clone(),
-                                    range: range.clone(),
-                                }),
-                                loc: parent.clone(),
-                            }),
+                            array: array.compile(
+                                &HDefEnv {
+                                    env: env.env.clone(),
+                                    ty: Rc::new(HValTy::Array {
+                                        item: env.ty.clone(),
+                                        range: range.clone(),
+                                    }),
+                                    loc: parent.clone(),
+                                },
+                                sess,
+                            ),
                             bracket,
                             index,
                         }
@@ -250,9 +260,9 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
 }
 
 impl HirCompileFrom<AIdent, HDefEnv> for HDataVar {
-    fn compile(ast: AIdent, env: &HDefEnv) -> Self {
+    fn compile(ast: AIdent, env: &HDefEnv, sess: &mut Sess) -> Self {
         HDataVar {
-            name: ast.compile(&()),
+            name: ast.compile(&(), sess),
             ty: env.ty.clone(),
         }
     }
@@ -281,8 +291,8 @@ impl HVal {
 }
 
 impl HirCompileFrom<AExpr> for HArg {
-    fn compile(ast: AExpr, env: &Env) -> Self {
-        let val: Rc<HVal> = ast.compile(env);
+    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
+        let val: Rc<HVal> = ast.compile(env, sess);
 
         HArg {
             name: val.name(),
@@ -293,8 +303,8 @@ impl HirCompileFrom<AExpr> for HArg {
 }
 
 impl HirCompileFrom<AExpr> for HVal {
-    fn compile(ast: AExpr, env: &Env) -> Self {
-        let expr: Rc<HValExpr> = ast.compile(env);
+    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
+        let expr: Rc<HValExpr> = ast.compile(env, sess);
 
         HVal {
             ty: expr.ty(),
@@ -304,13 +314,11 @@ impl HirCompileFrom<AExpr> for HVal {
 }
 
 impl HirCompileFrom<AExpr> for HValExpr {
-    fn compile(ast: AExpr, env: &Env) -> Self {
+    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
         match ast {
             AExpr::Ref { ident } => {
-                let ident = ident.compile(&());
-                let var = env
-                    .resolve(&ident)
-                    .unwrap_or_else(|| todo!("recover from undefined var"));
+                let ident = ident.compile(&(), sess);
+                let var = env.resolve(&ident, sess);
 
                 HValExpr::Var { var, ident }
             }
@@ -319,8 +327,8 @@ impl HirCompileFrom<AExpr> for HValExpr {
                 bracket,
                 index,
             } => HValExpr::Subscript {
-                array: array.compile(env),
-                index: index.compile(env),
+                array: array.compile(env, sess),
+                index: index.compile(env, sess),
                 bracket,
             },
         }
@@ -328,31 +336,38 @@ impl HirCompileFrom<AExpr> for HValExpr {
 }
 
 impl HirCompileFrom<ATy, ()> for HAtomTy {
-    fn compile(ast: ATy, _: &()) -> Self {
+    fn compile(ast: ATy, _: &(), sess: &mut Sess) -> Self {
         HAtomTy {
-            ident: ast.ident.compile(&()),
+            ident: ast.ident.compile(&(), sess),
         }
     }
 }
 
 impl HirCompileFrom<AIdent, ()> for HIdent {
-    fn compile(ast: AIdent, _: &()) -> Self {
+    fn compile(ast: AIdent, _: &(), _sess: &mut Sess) -> Self {
         let AIdent { token } = ast;
         HIdent { token }
     }
 }
 
-pub fn compile_hir(ast: ASpec) -> HSpec {
-    let main: Rc<HStmt> = ast.main.compile(&Env {
-        refs: Vec::new(),
-        outer: None,
-        loc: Rc::new(HDataLoc::Main),
-    });
+pub fn compile_hir(ast: ASpec, sess: &mut Sess) -> Result<HSpec, ()> {
+    let main: Rc<HStmt> = ast.main.compile(
+        &Env {
+            refs: Vec::new(),
+            outer: None,
+            loc: Rc::new(HDataLoc::Main),
+        },
+        sess,
+    );
 
-    HSpec {
+    if sess.diagnostics.iter().any(|d| d.is_critical()) {
+        Err(())?
+    }
+
+    Ok(HSpec {
         funs: main.funs(),
         main,
-    }
+    })
 }
 
 fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<U>) {

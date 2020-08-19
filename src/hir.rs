@@ -164,6 +164,7 @@ pub enum HValTy {
     Atom { atom_ty: Rc<HAtomTy> },
     Array { item: Rc<HValTy>, range: Rc<HRange> },
     Index { range: Rc<HRange> },
+    Err,
 }
 
 /// Type of an atomic value
@@ -191,4 +192,5 @@ pub struct HVar {
 pub enum HVarKind {
     Data { var: Rc<HDataVar> },
     Index { range: Rc<HRange> },
+    Err,
 }

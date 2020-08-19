@@ -6,7 +6,18 @@ use syn::punctuated::Punctuated;
 use syn::Error;
 
 use crate::ast::*;
+use crate::diagnostic::{Diagnostic, Sess};
 use crate::kw;
+
+pub fn parse_spec(source: &str, sess: &mut Sess) -> Result<ASpec, ()> {
+    match syn::parse_str(source) {
+        Ok(spec) => Ok(spec),
+        Err(error) => {
+            sess.diagnostics.push(Diagnostic::ParseError { error });
+            Err(())
+        }
+    }
+}
 
 impl Parse for ASpec {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {

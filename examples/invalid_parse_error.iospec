@@ -1,0 +1,2 @@
+read N: n32 // missing `;`
+call f(N);

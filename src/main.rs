@@ -2,12 +2,15 @@
 
 extern crate structopt;
 
+use std::fs::read_to_string;
+use std::path::PathBuf;
+
+use structopt::StructOpt;
+
+use crate::ast_parse::parse_spec;
+use crate::diagnostic::Sess;
 use crate::hir_compile::compile_hir;
 use crate::mir_build::build_mir;
-use crate::parsefile::parse_file;
-use std::path::PathBuf;
-use std::process::exit;
-use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -29,6 +32,7 @@ enum App {
 
 mod ast;
 mod ast_parse;
+mod diagnostic;
 mod gen;
 mod hir;
 mod hir_compile;
@@ -36,29 +40,54 @@ mod hir_env;
 mod kw;
 mod mir;
 mod mir_build;
-mod parsefile;
+
+fn create_sess(spec_file: &PathBuf) -> Sess {
+    let mut code_map = codemap::CodeMap::new();
+
+    let file = code_map.add_file(
+        spec_file
+            .to_str()
+            .expect("file path is not valid UTF-8")
+            .into(),
+        read_to_string(spec_file).expect("cannot read file"),
+    );
+
+    Sess::new(&file)
+}
 
 fn main() {
     let app = App::from_args();
 
     match app {
-        App::Lint { spec_file } => match parse_file(&spec_file) {
-            Ok(spec) => {
-                println!("Parsed {:?}", spec);
-            }
-            Err(e) => {
-                println!("{}", e);
-                exit(1)
-            }
-        },
+        App::Lint { spec_file } => {
+            let mut sess = create_sess(&spec_file);
+
+            parse_spec(sess.file.clone().source(), &mut sess)
+                .and_then(|spec| compile_hir(spec, &mut sess))
+                .ok();
+
+            display_diagnostics(&mut sess);
+        }
 
         App::Gen { spec_file } => {
-            let spec = parse_file(&spec_file).unwrap();
-            let spec = compile_hir(spec);
-            let spec = build_mir(&spec);
-            let spec = gen::gen_file(&spec);
+            let mut sess = create_sess(&spec_file);
 
-            print!("{}", spec);
+            let generated = parse_spec(sess.file.clone().source(), &mut sess)
+                .and_then(|spec| compile_hir(spec, &mut sess))
+                .map(|spec| build_mir(&spec))
+                .map(|spec| gen::gen_file(&spec));
+
+            display_diagnostics(&mut sess);
+
+            if let Ok(generated) = generated {
+                print!("{}", generated);
+            }
         }
+    }
+}
+
+fn display_diagnostics(sess: &mut Sess) {
+    for d in sess.diagnostics.iter() {
+        eprintln!("{}", d.diagnostic_message(&sess));
     }
 }

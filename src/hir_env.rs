@@ -8,6 +8,7 @@
 //! The environment is made of HIR nodes, and is used to transform an AST node directly into HIR
 //! (possibly with new links to nodes in the environment).
 
+use crate::diagnostic::*;
 use crate::hir::*;
 
 #[derive(Debug, Clone)]
@@ -18,12 +19,28 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn resolve(self: &Self, ident: &HIdent) -> Option<Rc<HVar>> {
+    pub fn resolve(self: &Self, ident: &Rc<HIdent>, sess: &mut Sess) -> Rc<HVar> {
+        match self.maybe_resolve(ident) {
+            Some(var) => var,
+            None => {
+                sess.diagnostics.push(Diagnostic::UndefVar {
+                    ident: ident.clone(),
+                });
+                Rc::new(HVar {
+                    name: ident.clone(),
+                    ty: Rc::new(HValTy::Err),
+                    kind: HVarKind::Err,
+                })
+            }
+        }
+    }
+
+    fn maybe_resolve(self: &Self, ident: &Rc<HIdent>) -> Option<Rc<HVar>> {
         self.refs
             .iter()
             .find(|r| r.name.token == ident.token)
             .map(|r| r.clone())
-            .or(self.outer.as_ref().and_then(|s| s.resolve(ident)))
+            .or(self.outer.as_ref().and_then(|s| s.maybe_resolve(ident)))
     }
 }
 
