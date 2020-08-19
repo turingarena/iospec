@@ -53,8 +53,8 @@ impl HStmt {
     fn vars(self: &Self) -> Vec<Rc<HVar>> {
         match self {
             HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.vars()).collect(),
-            HStmt::Read { args, .. } => args.iter().map(hir_node_var).map(Rc::new).collect(),
-            HStmt::Call { fun, .. } => fun.ret.iter().map(hir_node_var).map(Rc::new).collect(),
+            HStmt::Read { args, .. } => args.iter().flat_map(hir_node_var).map(Rc::new).collect(),
+            HStmt::Call { fun, .. } => fun.ret.iter().flat_map(hir_node_var).map(Rc::new).collect(),
             HStmt::For { body, .. } => body.vars(),
             _ => Vec::new(),
         }
@@ -212,6 +212,7 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataNode {
             root: match expr.deref() {
                 HDataExpr::Var { var } => var.clone(),
                 HDataExpr::Subscript { array, .. } => array.root.clone(),
+                HDataExpr::Err => HErr::err(),
             },
             expr,
         }
@@ -230,31 +231,59 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
                 index,
             } => match env.loc.deref() {
                 HDataLoc::For { range, parent } => match *index {
-                    AExpr::Ref { ident } if ident.token.to_string() == range.index.to_string() => {
-                        let index = Rc::new(HIndex {
-                            name: ident.compile(&(), sess),
-                            range: range.clone(),
-                        });
+                    AExpr::Ref { ident } => {
+                        let name: Rc<HIdent> = ident.compile(&(), sess);
 
-                        HDataExpr::Subscript {
-                            array: array.compile(
-                                &HDefEnv {
-                                    env: env.env.clone(),
-                                    ty: Rc::new(HValTy::Array {
-                                        item: env.ty.clone(),
-                                        range: range.clone(),
-                                    }),
-                                    loc: parent.clone(),
-                                },
-                                sess,
-                            ),
-                            bracket,
-                            index,
+                        if name.to_string() == range.index.to_string() {
+                            let index = Rc::new(HIndex {
+                                name: name.clone(),
+                                range: range.clone(),
+                            });
+
+                            HDataExpr::Subscript {
+                                array: array.compile(
+                                    &HDefEnv {
+                                        env: env.env.clone(),
+                                        ty: Rc::new(HValTy::Array {
+                                            item: env.ty.clone(),
+                                            range: range.clone(),
+                                        }),
+                                        loc: parent.clone(),
+                                    },
+                                    sess,
+                                ),
+                                bracket,
+                                index,
+                            }
+                        } else {
+                            sess.diagnostics
+                                .push(Diagnostic::SubscriptDefIndexNotMatched {
+                                    bracket: bracket.clone(),
+                                    range: Some(range.clone()),
+                                    name: Some(name.clone()),
+                                });
+                            HDataExpr::Err
                         }
                     }
-                    _ => todo!("recover from invalid expression for index"),
+                    _ => {
+                        sess.diagnostics
+                            .push(Diagnostic::SubscriptDefIndexNotMatched {
+                                range: Some(range.clone()),
+                                bracket: bracket.clone(),
+                                name: None,
+                            });
+                        HDataExpr::Err
+                    }
                 },
-                _ => todo!("recover from invalid expression for index"),
+                _ => {
+                    sess.diagnostics
+                        .push(Diagnostic::SubscriptDefIndexNotMatched {
+                            range: None,
+                            bracket: bracket.clone(),
+                            name: None,
+                        });
+                    HDataExpr::Err
+                }
             },
         }
     }
@@ -263,7 +292,9 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
 impl HirCompileFrom<AIdent, HDefEnv> for HDataVar {
     fn compile(ast: AIdent, env: &HDefEnv, sess: &mut Sess) -> Self {
         HDataVar {
-            name: ast.compile(&(), sess),
+            expr: Rc::new(HDataVarExpr::Name {
+                name: ast.compile(&(), sess),
+            }),
             ty: env.ty.clone(),
         }
     }
@@ -353,8 +384,10 @@ impl HirCompileFrom<AExpr> for HRangeBound {
                 if let AtomTy::Natural { .. } = &atom_ty.sem {
                     // OK
                 } else {
-                    sess.diagnostics
-                        .push(Diagnostic::RangeBoundNotNatural { val: val.clone() })
+                    sess.diagnostics.push(Diagnostic::RangeBoundNotNatural {
+                        val: val.clone(),
+                        atom_ty: Some(atom_ty.clone()),
+                    })
                 }
 
                 HRangeBound {
@@ -363,8 +396,10 @@ impl HirCompileFrom<AExpr> for HRangeBound {
                 }
             }
             _ => {
-                sess.diagnostics
-                    .push(Diagnostic::RangeBoundNotNatural { val: val.clone() });
+                sess.diagnostics.push(Diagnostic::RangeBoundNotNatural {
+                    val: val.clone(),
+                    atom_ty: None,
+                });
                 HRangeBound {
                     ty: HErr::err(),
                     val,
@@ -474,13 +509,17 @@ fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<
     (args, puncts)
 }
 
-fn hir_node_var(atom: &Rc<HDataAtom>) -> HVar {
-    HVar {
-        name: atom.node.root.name.clone(),
-        ty: atom.node.root.ty.clone(),
-        kind: Rc::new(HVarKind::Data {
-            var: atom.node.root.clone(),
-        }),
+fn hir_node_var(atom: &Rc<HDataAtom>) -> Option<HVar> {
+    if let HDataVarExpr::Name { name } = atom.node.root.expr.deref() {
+        Some(HVar {
+            name: name.clone(),
+            ty: atom.node.root.ty.clone(),
+            kind: Rc::new(HVarKind::Data {
+                var: atom.node.root.clone(),
+            }),
+        })
+    } else {
+        None
     }
 }
 

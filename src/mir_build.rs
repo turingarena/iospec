@@ -25,10 +25,13 @@ fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     hir.allocs()
         .iter()
         .flat_map(|node| match node.expr.deref() {
-            HDataExpr::Var { var } => Some(MInst::Decl {
-                name: var.name.to_string(),
-                ty: mir_expr_ty(&var.ty),
-            }),
+            HDataExpr::Var { var } => match var.expr.deref() {
+                HDataVarExpr::Name { name } => Some(MInst::Decl {
+                    name: name.to_string(),
+                    ty: mir_expr_ty(&var.ty),
+                }),
+                _ => unreachable!(),
+            },
             _ => None,
         })
         .collect()
@@ -90,12 +93,16 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
 fn mir_node_expr(hir: &Rc<HDataNode>) -> MExpr {
     match hir.expr.deref() {
         HDataExpr::Var { var, .. } => MExpr::Var {
-            name: var.name.to_string(),
+            name: match var.expr.deref() {
+                HDataVarExpr::Name { name } => name.to_string(),
+                _ => unreachable!(),
+            },
         },
         HDataExpr::Subscript { array, index, .. } => MExpr::Subscript {
             array: Box::new(mir_node_expr(array)),
             index: Box::new(mir_index_expr(index)),
         },
+        HDataExpr::Err => unreachable!(),
     }
 }
 

@@ -1,0 +1,2 @@
+read N: i32;
+read A[i]: i32;

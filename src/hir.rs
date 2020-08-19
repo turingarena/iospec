@@ -109,14 +109,23 @@ pub enum HDataExpr {
         bracket: syn::token::Bracket,
         index: Rc<HIndex>,
     },
+    Err,
 }
 
-/// A variable in input/output data.
+/// A variable in input/output data (analysis).
 /// E.g., `A` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
 pub struct HDataVar {
-    pub name: Rc<HIdent>,
+    pub expr: Rc<HDataVarExpr>,
     pub ty: Rc<HValTy>,
+}
+
+/// A variable in input/output data (construction).
+/// E.g., `A` in `... read A[i][j]: n32; ...`.
+#[derive(Debug)]
+pub enum HDataVarExpr {
+    Name { name: Rc<HIdent> },
+    Err,
 }
 
 /// An index used in a data node expression.

@@ -43,3 +43,34 @@ impl HirCreateErr for HAtomTyExpr {
         HAtomTyExpr::Err
     }
 }
+
+impl HirCreateErr for HDataExpr {
+    fn create_err() -> Self {
+        HDataExpr::Err
+    }
+}
+
+impl HirCreateErr for HDataNode {
+    fn create_err() -> Self {
+        HDataNode {
+            expr: HErr::err(),
+            root: HErr::err(),
+            ty: HErr::err(),
+        }
+    }
+}
+
+impl HirCreateErr for HDataVar {
+    fn create_err() -> Self {
+        HDataVar {
+            expr: HErr::err(),
+            ty: HErr::err(),
+        }
+    }
+}
+
+impl HirCreateErr for HDataVarExpr {
+    fn create_err() -> Self {
+        HDataVarExpr::Err
+    }
+}
