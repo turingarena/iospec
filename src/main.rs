@@ -40,6 +40,7 @@ mod hir_env;
 mod kw;
 mod mir;
 mod mir_build;
+mod ty;
 
 fn create_sess(spec_file: &PathBuf) -> Sess {
     let mut code_map = codemap::CodeMap::new();

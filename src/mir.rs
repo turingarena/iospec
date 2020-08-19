@@ -10,6 +10,8 @@
 //! However, MIR nodes also contains references to HIR nodes from which they were generated.
 //! This is useful, e.g., for reporting detailed errors if they occur during interpretation.
 
+use crate::ty::*;
+
 #[derive(Debug, Clone)]
 pub struct MSpec {
     pub funs: Vec<MFun>,
@@ -20,7 +22,7 @@ pub struct MSpec {
 pub struct MFun {
     pub name: String,
     pub params: Vec<MParam>,
-    pub ret: Option<MAtomTy>,
+    pub ret: Option<AtomTy>,
 }
 
 #[derive(Debug, Clone)]
@@ -44,11 +46,11 @@ pub enum MInst {
     },
     Read {
         arg: MExpr,
-        ty: MAtomTy,
+        ty: AtomTy,
     },
     Write {
         arg: MExpr,
-        ty: MAtomTy,
+        ty: AtomTy,
     },
     Call {
         name: String,
@@ -76,14 +78,6 @@ pub enum MExpr {
 
 #[derive(Debug, Clone)]
 pub enum MExprTy {
-    Atom { atom: MAtomTy },
+    Atom { atom: AtomTy },
     Array { item: Box<MExprTy> },
-}
-
-#[derive(Debug, Clone)]
-pub enum MAtomTy {
-    N32,
-    I32,
-    N64,
-    I64,
 }

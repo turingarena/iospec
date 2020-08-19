@@ -4,6 +4,7 @@ use std::ops::Deref;
 
 use crate::hir::*;
 use crate::mir::*;
+use crate::ty::*;
 
 pub fn build_mir(spec: &HSpec) -> MSpec {
     MSpec {
@@ -116,15 +117,8 @@ fn mir_index_expr(hir: &Rc<HIndex>) -> MExpr {
     }
 }
 
-fn mir_atom_ty(hir: &Rc<HAtomTy>) -> MAtomTy {
-    // TODO: exploit interning of identifiers
-    match hir.ident.token.to_string().as_str() {
-        "n32" => MAtomTy::N32,
-        "i32" => MAtomTy::I32,
-        "n64" => MAtomTy::N64,
-        "i64" => MAtomTy::I64,
-        _ => unreachable!(), // TODO: recover
-    }
+fn mir_atom_ty(hir: &Rc<HAtomTy>) -> AtomTy {
+    hir.kind
 }
 
 fn mir_expr_ty(hir: &Rc<HValTy>) -> MExprTy {

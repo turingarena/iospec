@@ -11,6 +11,7 @@ use crate::ast::*;
 use crate::diagnostic::*;
 use crate::hir::*;
 use crate::hir_env::*;
+use crate::ty::*;
 
 trait HirCompileFrom<T, E = Env> {
     fn compile(ast: T, env: &E, sess: &mut Sess) -> Self;
@@ -380,14 +381,14 @@ impl HirCompileFrom<ATy, ()> for HAtomTy {
         let ident: Rc<HIdent> = ast.ident.compile(&(), sess);
 
         HAtomTy {
-            kind: HAtomTyKind::all()
+            kind: AtomTy::all()
                 .into_iter()
                 .find(|k| k.name() == ident.token.to_string())
                 .unwrap_or_else(|| {
                     sess.diagnostics.push(Diagnostic::InvalidAtomTy {
                         ident: ident.clone(),
                     });
-                    HAtomTyKind::Err
+                    AtomTy::Err
                 }),
             ident,
         }

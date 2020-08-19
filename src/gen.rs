@@ -3,10 +3,12 @@ extern crate genco;
 use genco::prelude::*;
 
 use crate::mir::*;
+use crate::ty::*;
 
 fn gen_spec(spec: &MSpec) -> Tokens {
     quote! {
         ##include <cstdio>
+        ##include <cstdint>
 
         #(for f in spec.funs.iter() join (#<line>) => #(gen_fun(f)))
 
@@ -56,24 +58,38 @@ fn gen_expr(expr: &MExpr) -> Tokens {
     }
 }
 
-fn gen_scanf_format(ty: &MAtomTy) -> Tokens {
+fn gen_scanf_format(ty: &AtomTy) -> Tokens {
     match ty {
-        MAtomTy::I32 | MAtomTy::N32 => quote!("%d"),
-        MAtomTy::I64 | MAtomTy::N64 => quote!("%lld"),
+        AtomTy::Boolean => quote!("%d"),
+        AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
+            BitSize::S8 | BitSize::S16 | BitSize::S32 => quote!("%d"),
+            BitSize::S64 => quote!("%lld"),
+        },
+        AtomTy::Err => unreachable!(),
     }
 }
 
-fn gen_printf_format(ty: &MAtomTy) -> Tokens {
+fn gen_printf_format(ty: &AtomTy) -> Tokens {
     match ty {
-        MAtomTy::I32 | MAtomTy::N32 => quote!("%d "),
-        MAtomTy::I64 | MAtomTy::N64 => quote!("%lld "),
+        AtomTy::Boolean => quote!("%d "),
+        AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
+            BitSize::S8 | BitSize::S16 | BitSize::S32 => quote!("%d "),
+            BitSize::S64 => quote!("%lld "),
+        },
+        AtomTy::Err => unreachable!(),
     }
 }
 
-fn gen_atom_ty(ty: &MAtomTy) -> Tokens {
+fn gen_atom_ty(ty: &AtomTy) -> Tokens {
     match ty {
-        MAtomTy::I32 | MAtomTy::N32 => quote!(int),
-        MAtomTy::I64 | MAtomTy::N64 => quote!(int64_t),
+        AtomTy::Boolean => quote!(bool),
+        AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
+            BitSize::S8 => quote!(int8_t),
+            BitSize::S16 => quote!(int16_t),
+            BitSize::S32 => quote!(int32_t),
+            BitSize::S64 => quote!(int64_t),
+        },
+        AtomTy::Err => unreachable!(),
     }
 }
 
