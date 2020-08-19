@@ -171,7 +171,6 @@ pub enum HValExpr {
 pub enum HValTy {
     Atom { atom_ty: Rc<HAtomTy> },
     Array { item: Rc<HValTy>, range: Rc<HRange> },
-    Index { range: Rc<HRange> },
     Err,
 }
 

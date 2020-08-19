@@ -410,9 +410,7 @@ fn hir_node_var(atom: &Rc<HDataAtom>) -> HVar {
 fn hir_index_var(range: &Rc<HRange>) -> HVar {
     HVar {
         name: range.index.clone(),
-        ty: Rc::new(HValTy::Index {
-            range: range.clone(),
-        }),
+        ty: range.bound.ty.clone(),
         kind: HVarKind::Index {
             range: range.clone(),
         },

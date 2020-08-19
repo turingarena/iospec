@@ -137,7 +137,6 @@ fn mir_expr_ty(hir: &Rc<HValTy>) -> MExprTy {
         HValTy::Array { item, .. } => MExprTy::Array {
             item: Box::new(mir_expr_ty(item)),
         },
-        HValTy::Index { .. } => MExprTy::Atom { atom: MAtomTy::N32 },
         HValTy::Err => unreachable!(),
     }
 }
