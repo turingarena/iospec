@@ -1,12 +1,14 @@
+use std::ops::Deref;
 use std::sync::Arc;
 
 use annotate_snippets::display_list::{DisplayList, FormatOptions};
 use annotate_snippets::snippet::*;
 use codemap::File;
+use genco::prelude::*;
 use proc_macro2::{LineColumn, Span};
 
 use crate::hir::*;
-use genco::prelude::*;
+use crate::hir_span::*;
 
 /// A compilation session, collecting diagnostics.
 /// To be borrowed as mutable during compilation.
@@ -26,12 +28,36 @@ impl Sess {
 
 #[derive(Debug, Clone)]
 pub enum Diagnostic {
-    ParseError { error: syn::parse::Error },
-    InvalidAtomTy { ident: Rc<HIdent> },
-    UndefVar { ident: Rc<HIdent> },
-    SubscriptIndexNotScalar { array: Rc<HVal>, index: Rc<HVal> },
-    SubscriptArrayNotArray { array: Rc<HVal>, index: Rc<HVal> },
-    SubscriptIndexWrongType { array: Rc<HVal>, index: Rc<HVal> },
+    ParseError {
+        error: syn::parse::Error,
+    },
+    InvalidAtomTy {
+        ident: Rc<HIdent>,
+    },
+    UndefVar {
+        ident: Rc<HIdent>,
+    },
+    RangeBoundNotNatural {
+        val: Rc<HVal>,
+    },
+    AtomNotScalar {
+        val: Rc<HVal>,
+    },
+    SubscriptIndexNotScalar {
+        array: Rc<HVal>,
+        index: Rc<HVal>,
+        bracket: syn::token::Bracket,
+    },
+    SubscriptArrayNotArray {
+        array: Rc<HVal>,
+        index: Rc<HVal>,
+        bracket: syn::token::Bracket,
+    },
+    SubscriptIndexWrongType {
+        array: Rc<HVal>,
+        index: Rc<HVal>,
+        bracket: syn::token::Bracket,
+    },
 }
 
 impl Sess {
@@ -40,7 +66,7 @@ impl Sess {
         line_start as usize + lc.column
     }
 
-    fn range(self: &Self, span: &Span) -> (usize, usize) {
+    fn range(self: &Self, span: Span) -> (usize, usize) {
         (self.pos(span.start()), self.pos(span.end()))
     }
 
@@ -74,25 +100,34 @@ impl Sess {
     }
 }
 
-impl FormatInto<()> for HAtomTy {
-    fn format_into(self, tokens: &mut Tokens) {
-        let ident = self.ident.token.to_string();
-        quote_in!(*tokens => #ident)
+impl FormatInto<()> for &HAtomTy {
+    fn format_into(self: Self, tokens: &mut Tokens) {
+        match self.expr.deref() {
+            HAtomTyExpr::Ident { ident, .. } => quote_in!(*tokens => #(ident.deref())),
+            HAtomTyExpr::Err => quote_in!(*tokens => <<invalid scalar type>>),
+        }
     }
 }
 
-impl FormatInto<()> for HValTy {
-    fn format_into(self, tokens: &mut Tokens) {
+impl FormatInto<()> for &HValTy {
+    fn format_into(self: Self, tokens: &mut Tokens) {
         match self {
-            HValTy::Atom { atom_ty } => quote_in!(*tokens => #*atom_ty),
-            HValTy::Array { item, range } => quote_in!(*tokens => #*item[]),
+            HValTy::Atom { atom_ty } => quote_in!(*tokens => #(atom_ty.deref())),
+            HValTy::Array { item, range } => quote_in!(*tokens => #(item.deref())[]),
             HValTy::Err => {}
         }
     }
 }
 
+impl FormatInto<()> for &HIdent {
+    fn format_into(self: Self, tokens: &mut Tokens) {
+        let ident = self.token.to_string();
+        quote_in!(*tokens => #ident)
+    }
+}
+
 fn quote_string(tokens: Tokens) -> String {
-    tokens.to_file_string().unwrap()
+    tokens.to_string().unwrap()
 }
 
 impl Diagnostic {
@@ -106,38 +141,66 @@ impl Diagnostic {
                 AnnotationType::Error,
                 &error.to_string(),
                 vec![SourceAnnotation {
-                    range: sess.range(&error.span()),
+                    range: sess.range(error.span()),
                     annotation_type: AnnotationType::Error,
                     label: "here",
                 }],
             ),
             Diagnostic::InvalidAtomTy { ident } => sess.diagnostic_message(
                 AnnotationType::Error,
-                &format!("invalid scalar type `{}`", ident.token,),
+                &format!("invalid scalar type `{}`", ident.to_string()),
                 vec![], // TODO
             ),
             Diagnostic::UndefVar { ident } => sess.diagnostic_message(
                 AnnotationType::Error,
                 &format!(
                     "no variable named `{}` found in the current scope",
-                    ident.token
+                    ident.to_string()
                 ),
                 vec![SourceAnnotation {
-                    range: sess.range(&ident.token.span()),
+                    range: sess.range(ident.token.span()),
                     annotation_type: AnnotationType::Error,
                     label: "not found in this scope",
                 }],
             ),
-            Diagnostic::SubscriptArrayNotArray { array, index } => sess.diagnostic_message(
+            Diagnostic::RangeBoundNotNatural { val } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &format!(
+                    "for cycle upper bound must be a natural, got `{}`",
+                    quote_string(quote!(#(val.ty.deref()))),
+                ),
+                vec![SourceAnnotation {
+                    range: sess.range(val.span()),
+                    annotation_type: AnnotationType::Error,
+                    label: "must be a natural",
+                }],
+            ),
+            Diagnostic::AtomNotScalar { val } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &format!(
+                    "input/output data must be scalars, got `{}`",
+                    quote_string(quote!(#(val.ty.deref()))),
+                ),
+                vec![SourceAnnotation {
+                    range: sess.range(val.span()),
+                    annotation_type: AnnotationType::Error,
+                    label: "must be a scalar",
+                }],
+            ),
+            Diagnostic::SubscriptArrayNotArray { array, index, .. } => sess.diagnostic_message(
                 AnnotationType::Error,
                 &format!(
                     "cannot index into a value of non-array type `{}`",
-                    quote_string(quote!(array.ty)),
+                    quote_string(quote!(#(array.ty.deref()))),
                 ),
-                vec![], // TODO
+                vec![SourceAnnotation {
+                    range: sess.range(array.span()),
+                    annotation_type: AnnotationType::Error,
+                    label: "must be an array",
+                }],
             ),
-            Diagnostic::SubscriptIndexNotScalar { array, index } => todo!(),
-            Diagnostic::SubscriptIndexWrongType { array, index } => todo!(),
+            Diagnostic::SubscriptIndexNotScalar { array, index, .. } => todo!(),
+            Diagnostic::SubscriptIndexWrongType { array, index, .. } => todo!(),
         }
     }
 }

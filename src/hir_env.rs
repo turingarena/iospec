@@ -10,6 +10,7 @@
 
 use crate::diagnostic::*;
 use crate::hir::*;
+use crate::hir_err::HErr;
 
 #[derive(Debug, Clone)]
 pub struct Env {
@@ -28,8 +29,8 @@ impl Env {
                 });
                 Rc::new(HVar {
                     name: ident.clone(),
-                    ty: Rc::new(HValTy::Err),
-                    kind: HVarKind::Err,
+                    ty: HErr::err(),
+                    kind: HErr::err(),
                 })
             }
         }

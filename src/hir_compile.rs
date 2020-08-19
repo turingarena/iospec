@@ -11,6 +11,7 @@ use crate::ast::*;
 use crate::diagnostic::*;
 use crate::hir::*;
 use crate::hir_env::*;
+use crate::hir_err::*;
 use crate::ty::*;
 
 trait HirCompileFrom<T, E = Env> {
@@ -229,9 +230,7 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
                 index,
             } => match env.loc.deref() {
                 HDataLoc::For { range, parent } => match *index {
-                    AExpr::Ref { ident }
-                        if ident.token.to_string() == range.index.token.to_string() =>
-                    {
+                    AExpr::Ref { ident } if ident.token.to_string() == range.index.to_string() => {
                         let index = Rc::new(HIndex {
                             name: ident.compile(&(), sess),
                             range: range.clone(),
@@ -274,34 +273,39 @@ impl HValExpr {
     fn ty(self: &Self, sess: &mut Sess) -> Rc<HValTy> {
         match self {
             HValExpr::Var { var, .. } => var.ty.clone(),
-            HValExpr::Subscript { array, index, .. } => match array.ty.deref() {
+            HValExpr::Subscript {
+                array,
+                index,
+                bracket,
+            } => match array.ty.deref() {
                 HValTy::Array { item, range } => {
                     match index.ty.deref() {
                         HValTy::Atom { atom_ty } => {
-                            if atom_ty.ident.token.to_string()
-                                != range.bound.ty.ident.token.to_string()
-                            {
+                            if atom_ty.sem != range.bound.ty.sem {
                                 sess.diagnostics.push(Diagnostic::SubscriptIndexWrongType {
                                     array: array.clone(),
                                     index: index.clone(),
+                                    bracket: bracket.clone(),
                                 })
                             }
                         }
                         _ => sess.diagnostics.push(Diagnostic::SubscriptIndexNotScalar {
                             array: array.clone(),
                             index: index.clone(),
+                            bracket: bracket.clone(),
                         }),
                     }
                     item.clone()
                 }
-                HValTy::Err => Rc::new(HValTy::Err),
+                HValTy::Err => HErr::err(),
                 _ => {
                     sess.diagnostics.push(Diagnostic::SubscriptArrayNotArray {
                         array: array.clone(),
                         index: index.clone(),
+                        bracket: bracket.clone(),
                     });
 
-                    Rc::new(HValTy::Err)
+                    HErr::err()
                 }
             },
         }
@@ -340,16 +344,51 @@ impl HirCompileFrom<AExpr> for HVal {
     }
 }
 
-impl HirCompileFrom<AExpr> for HAtom {
+impl HirCompileFrom<AExpr> for HRangeBound {
     fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
         let val: Rc<HVal> = ast.compile(env, sess);
 
         match val.ty.deref() {
-            HValTy::Atom { atom_ty } => HAtom {
-                ty: atom_ty.clone(),
-                val,
+            HValTy::Atom { atom_ty } => {
+                if let AtomTy::Natural { .. } = &atom_ty.sem {
+                    // OK
+                } else {
+                    sess.diagnostics
+                        .push(Diagnostic::RangeBoundNotNatural { val: val.clone() })
+                }
+
+                HRangeBound {
+                    ty: atom_ty.clone(),
+                    val,
+                }
+            }
+            _ => {
+                sess.diagnostics
+                    .push(Diagnostic::RangeBoundNotNatural { val: val.clone() });
+                HRangeBound {
+                    ty: HErr::err(),
+                    val,
+                }
+            }
+        }
+    }
+}
+
+impl HirCompileFrom<AExpr> for HAtom {
+    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
+        let val: Rc<HVal> = ast.compile(env, sess);
+
+        HAtom {
+            ty: match val.ty.deref() {
+                HValTy::Atom { atom_ty } => atom_ty.clone(),
+                HValTy::Err => HErr::err(),
+                _ => {
+                    sess.diagnostics
+                        .push(Diagnostic::AtomNotScalar { val: val.clone() });
+                    HErr::err()
+                }
             },
-            _ => todo!("recover from aggregate expression instead of atomic"),
+            val,
         }
     }
 }
@@ -381,7 +420,7 @@ impl HirCompileFrom<ATy, ()> for HAtomTy {
         let ident: Rc<HIdent> = ast.ident.compile(&(), sess);
 
         HAtomTy {
-            kind: AtomTy::all()
+            sem: AtomTy::all()
                 .into_iter()
                 .find(|k| k.name() == ident.token.to_string())
                 .unwrap_or_else(|| {
@@ -390,7 +429,7 @@ impl HirCompileFrom<ATy, ()> for HAtomTy {
                     });
                     AtomTy::Err
                 }),
-            ident,
+            expr: Rc::new(HAtomTyExpr::Ident { ident }),
         }
     }
 }
@@ -439,9 +478,9 @@ fn hir_node_var(atom: &Rc<HDataAtom>) -> HVar {
     HVar {
         name: atom.node.root.name.clone(),
         ty: atom.node.root.ty.clone(),
-        kind: HVarKind::Data {
+        kind: Rc::new(HVarKind::Data {
             var: atom.node.root.clone(),
-        },
+        }),
     }
 }
 
@@ -449,8 +488,8 @@ fn hir_index_var(range: &Rc<HRange>) -> HVar {
     HVar {
         name: range.index.clone(),
         ty: range.bound.val.ty.clone(),
-        kind: HVarKind::Index {
+        kind: Rc::new(HVarKind::Index {
             range: range.clone(),
-        },
+        }),
     }
 }

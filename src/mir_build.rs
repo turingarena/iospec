@@ -26,7 +26,7 @@ fn mir_decl_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
         .iter()
         .flat_map(|node| match node.expr.deref() {
             HDataExpr::Var { var } => Some(MInst::Decl {
-                name: var.name.token.to_string(),
+                name: var.name.to_string(),
                 ty: mir_expr_ty(&var.ty),
             }),
             _ => None,
@@ -71,7 +71,7 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
             })
             .collect(),
         HStmt::Call { fun, .. } => vec![MInst::Call {
-            name: fun.name.token.to_string(),
+            name: fun.name.to_string(),
             args: fun.args.iter().map(|a| &a.val).map(mir_val_expr).collect(),
             ret: fun
                 .ret
@@ -80,7 +80,7 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
                 .map(|HDataAtom { node, .. }| mir_node_expr(node)),
         }],
         HStmt::For { range, body, .. } => vec![MInst::For {
-            index_name: range.index.token.to_string(),
+            index_name: range.index.to_string(),
             bound: mir_val_expr(&range.bound.val),
             body: Box::new(mir_exec_insts(body)),
         }],
@@ -90,7 +90,7 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
 fn mir_node_expr(hir: &Rc<HDataNode>) -> MExpr {
     match hir.expr.deref() {
         HDataExpr::Var { var, .. } => MExpr::Var {
-            name: var.name.token.to_string(),
+            name: var.name.to_string(),
         },
         HDataExpr::Subscript { array, index, .. } => MExpr::Subscript {
             array: Box::new(mir_node_expr(array)),
@@ -102,7 +102,7 @@ fn mir_node_expr(hir: &Rc<HDataNode>) -> MExpr {
 fn mir_val_expr(hir: &Rc<HVal>) -> MExpr {
     match hir.expr.deref() {
         HValExpr::Var { ident, .. } => MExpr::Var {
-            name: ident.token.to_string(),
+            name: ident.to_string(),
         },
         HValExpr::Subscript { array, index, .. } => MExpr::Subscript {
             array: Box::new(mir_val_expr(array)),
@@ -113,12 +113,12 @@ fn mir_val_expr(hir: &Rc<HVal>) -> MExpr {
 
 fn mir_index_expr(hir: &Rc<HIndex>) -> MExpr {
     MExpr::Var {
-        name: hir.name.token.to_string(),
+        name: hir.name.to_string(),
     }
 }
 
 fn mir_atom_ty(hir: &Rc<HAtomTy>) -> AtomTy {
-    hir.kind
+    hir.sem
 }
 
 fn mir_expr_ty(hir: &Rc<HValTy>) -> MExprTy {
@@ -137,7 +137,7 @@ fn mir_expr_ty(hir: &Rc<HValTy>) -> MExprTy {
 
 fn mir_fun(hir: &Rc<HFun>) -> MFun {
     MFun {
-        name: hir.name.token.to_string(),
+        name: hir.name.to_string(),
         params: hir.args.iter().map(mir_param).collect(),
         ret: hir.ret.as_ref().map(|r| mir_atom_ty(&r.ty)),
     }
@@ -145,7 +145,7 @@ fn mir_fun(hir: &Rc<HFun>) -> MFun {
 
 fn mir_param(hir: &Rc<HArg>) -> MParam {
     MParam {
-        name: hir.name.token.to_string(),
+        name: hir.name.to_string(),
         ty: mir_expr_ty(&hir.ty),
     }
 }

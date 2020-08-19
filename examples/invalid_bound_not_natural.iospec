@@ -1,0 +1,2 @@
+read N: i32;
+for i upto N {}

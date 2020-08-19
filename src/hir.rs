@@ -133,11 +133,19 @@ pub struct HIndex {
 pub struct HRange {
     pub index: Rc<HIdent>,
     pub upto: kw::upto,
-    pub bound: Rc<HAtom>,
+    pub bound: Rc<HRangeBound>,
 }
 
-/// An atomic value defined by an expression.
+/// Upper bound of a `for ... upto`.
 /// E.g., `A[B[i]][k]` in `... for i upto A[B[j]][k] { ... } ...`.
+#[derive(Debug)]
+pub struct HRangeBound {
+    pub val: Rc<HVal>,
+    pub ty: Rc<HAtomTy>,
+}
+
+/// An atomic I/O value defined by an expression.
+/// E.g., `A[B[i]][k]` in `... write A[B[j]][k]; ...`.
 #[derive(Debug)]
 pub struct HAtom {
     pub val: Rc<HVal>,
@@ -178,8 +186,15 @@ pub enum HValTy {
 /// Type of an atomic value (analysis)
 #[derive(Debug)]
 pub struct HAtomTy {
-    pub ident: Rc<HIdent>,
-    pub kind: AtomTy,
+    pub expr: Rc<HAtomTyExpr>,
+    pub sem: AtomTy,
+}
+
+/// Type of an atomic value (construction)
+#[derive(Debug)]
+pub enum HAtomTyExpr {
+    Ident { ident: Rc<HIdent> },
+    Err,
 }
 
 /// An identifier (in any context)
@@ -188,12 +203,18 @@ pub struct HIdent {
     pub token: proc_macro2::Ident,
 }
 
+impl ToString for HIdent {
+    fn to_string(self: &Self) -> String {
+        self.token.to_string()
+    }
+}
+
 /// A variable, either containing I/O data or an index (analysis).
 #[derive(Debug)]
 pub struct HVar {
     pub name: Rc<HIdent>,
     pub ty: Rc<HValTy>,
-    pub kind: HVarKind,
+    pub kind: Rc<HVarKind>,
 }
 
 /// A variable, either containing I/O data or an index (construction).

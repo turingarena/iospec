@@ -1,5 +1,5 @@
 /// Type of an atomic value (semantics)
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AtomTy {
     /// Boolean, either true or false
     Boolean,
@@ -36,7 +36,7 @@ impl AtomTy {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum BitSize {
     S8,
     S16,

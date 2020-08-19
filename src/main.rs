@@ -37,6 +37,8 @@ mod gen;
 mod hir;
 mod hir_compile;
 mod hir_env;
+mod hir_err;
+mod hir_span;
 mod kw;
 mod mir;
 mod mir_build;
