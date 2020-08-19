@@ -79,35 +79,27 @@ impl Diagnostic {
 
     pub fn diagnostic_message(self: &Self, sess: &Sess) -> String {
         match self {
-            Diagnostic::ParseError { error } => {
-                let message = error.to_string();
-                let span = error.span();
-
-                sess.diagnostic_message(
-                    AnnotationType::Error,
-                    &message,
-                    vec![SourceAnnotation {
-                        range: sess.range(&span),
-                        annotation_type: AnnotationType::Error,
-                        label: "here",
-                    }],
-                )
-            }
-            Diagnostic::UndefVar { ident } => {
-                let message = format!(
+            Diagnostic::ParseError { error } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &error.to_string(),
+                vec![SourceAnnotation {
+                    range: sess.range(&error.span()),
+                    annotation_type: AnnotationType::Error,
+                    label: "here",
+                }],
+            ),
+            Diagnostic::UndefVar { ident } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &format!(
                     "no variable named `{}` found in the current scope",
                     ident.token
-                );
-                sess.diagnostic_message(
-                    AnnotationType::Error,
-                    &message,
-                    vec![SourceAnnotation {
-                        range: sess.range(&ident.token.span()),
-                        annotation_type: AnnotationType::Error,
-                        label: "not found in this scope",
-                    }],
-                )
-            }
+                ),
+                vec![SourceAnnotation {
+                    range: sess.range(&ident.token.span()),
+                    annotation_type: AnnotationType::Error,
+                    label: "not found in this scope",
+                }],
+            ),
         }
     }
 }

@@ -277,14 +277,16 @@ impl HValExpr {
                 HValTy::Array { item, range } => {
                     match index.ty.deref() {
                         HValTy::Atom { atom_ty } => {
-                            if atom_ty.ident.token.to_string() != range.bound.ty.ident.token.to_string() {
+                            if atom_ty.ident.token.to_string()
+                                != range.bound.ty.ident.token.to_string()
+                            {
                                 todo!("wrong index atom type")
                             }
                         }
-                        _ => todo!("wrong index type")
+                        _ => todo!("wrong index type"),
                     }
                     item.clone()
-                },
+                }
                 _ => todo!("recover from invalid array type"),
             },
         }
