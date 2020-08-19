@@ -26,3 +26,9 @@ impl HasSpan for HValExpr {
         }
     }
 }
+
+impl HasSpan for HRange {
+    fn span(self: &Self) -> Span {
+        self.index.span().join(self.bound.val.span()).unwrap()
+    }
+}

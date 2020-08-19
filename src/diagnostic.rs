@@ -49,17 +49,13 @@ pub enum Diagnostic {
         range: Option<Rc<HRange>>,
         name: Option<Rc<HIdent>>,
     },
-    SubscriptIndexNotScalar {
-        array: Rc<HVal>,
-        index: Rc<HVal>,
-        bracket: syn::token::Bracket,
-    },
     SubscriptArrayNotArray {
         array: Rc<HVal>,
         index: Rc<HVal>,
         bracket: syn::token::Bracket,
     },
     SubscriptIndexWrongType {
+        range: Rc<HRange>,
         array: Rc<HVal>,
         index: Rc<HVal>,
         bracket: syn::token::Bracket,
@@ -131,7 +127,7 @@ impl FormatInto<()> for &HValTy {
     fn format_into(self: Self, tokens: &mut Tokens) {
         match self {
             HValTy::Atom { atom_ty } => quote_in!(*tokens => #(atom_ty.deref())),
-            HValTy::Array { item, range } => quote_in!(*tokens => #(item.deref())[]),
+            HValTy::Array { item, .. } => quote_in!(*tokens => #(item.deref())[]),
             HValTy::Err => {}
         }
     }
@@ -209,7 +205,7 @@ impl Diagnostic {
                 ),
                 vec![sess.annotation(AnnotationType::Error, "must be a scalar", val.span())],
             ),
-            Diagnostic::SubscriptArrayNotArray { array, index, .. } => sess.diagnostic_message(
+            Diagnostic::SubscriptArrayNotArray { array, .. } => sess.diagnostic_message(
                 AnnotationType::Error,
                 &format!(
                     "cannot index into a value of non-array type `{}`",
@@ -217,8 +213,22 @@ impl Diagnostic {
                 ),
                 vec![sess.annotation(AnnotationType::Error, "must be an array", array.span())],
             ),
-            Diagnostic::SubscriptIndexNotScalar { array, index, .. } => todo!(),
-            Diagnostic::SubscriptIndexWrongType { array, index, .. } => todo!(),
+            Diagnostic::SubscriptIndexWrongType { range, index, .. } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &format!(
+                    "index must be `{}`, got `{}`",
+                    quote_string(quote!(#(range.bound.ty.deref()))),
+                    quote_string(quote!(#(index.ty.deref()))),
+                ),
+                vec![
+                    sess.annotation(AnnotationType::Error, "invalid index type", index.span()),
+                    sess.annotation(
+                        AnnotationType::Info,
+                        "array range defined here",
+                        range.span(),
+                    ),
+                ],
+            ),
             Diagnostic::SubscriptDefIndexNotMatched {
                 bracket,
                 range,

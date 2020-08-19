@@ -1,0 +1,9 @@
+read N: n32;
+
+for i upto N {
+    read A[i]: i32, B[i]: i32;
+}
+
+for i upto N {
+    write A[B[i]];
+}

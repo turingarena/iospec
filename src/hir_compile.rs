@@ -314,13 +314,15 @@ impl HValExpr {
                         HValTy::Atom { atom_ty } => {
                             if atom_ty.sem != range.bound.ty.sem {
                                 sess.diagnostics.push(Diagnostic::SubscriptIndexWrongType {
+                                    range: range.clone(),
                                     array: array.clone(),
                                     index: index.clone(),
                                     bracket: bracket.clone(),
                                 })
                             }
                         }
-                        _ => sess.diagnostics.push(Diagnostic::SubscriptIndexNotScalar {
+                        _ => sess.diagnostics.push(Diagnostic::SubscriptIndexWrongType {
+                            range: range.clone(),
                             array: array.clone(),
                             index: index.clone(),
                             bracket: bracket.clone(),
