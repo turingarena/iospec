@@ -174,10 +174,74 @@ pub enum HValTy {
     Err,
 }
 
-/// Type of an atomic value
+/// Type of an atomic value (analysis)
 #[derive(Debug)]
 pub struct HAtomTy {
     pub ident: Rc<HIdent>,
+    pub kind: HAtomTyKind,
+}
+
+/// Type of an atomic value (semantics)
+#[derive(Debug, Clone, Copy)]
+pub enum HAtomTyKind {
+    /// Boolean, either true or false
+    Boolean,
+    /// Non-negative integer representable as a *signed* integer of the given bit size
+    Natural {
+        size: HBitSize,
+    },
+    /// Signed integer representable in the given bit size
+    Integer {
+        size: HBitSize,
+    },
+    Err,
+}
+
+impl HAtomTyKind {
+    pub fn all() -> Vec<Self> {
+        use HAtomTyKind::*;
+        let mut all = Vec::new();
+        all.push(Boolean);
+        for size in HBitSize::all() {
+            all.push(HAtomTyKind::Natural { size });
+            all.push(HAtomTyKind::Integer { size });
+        }
+        all
+    }
+
+    pub fn name(self: Self) -> String {
+        match self {
+            HAtomTyKind::Boolean => "bool".into(),
+            HAtomTyKind::Natural { size } => format!("n{}", size.bits()),
+            HAtomTyKind::Integer { size } => format!("i{}", size.bits()),
+            HAtomTyKind::Err => "<invalid scalar type>".into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum HBitSize {
+    S8,
+    S16,
+    S32,
+    S64,
+}
+
+impl HBitSize {
+    pub fn all() -> Vec<Self> {
+        use HBitSize::*;
+        vec![S8, S16, S32, S64]
+    }
+
+    pub fn bits(self: Self) -> u8 {
+        use HBitSize::*;
+        match self {
+            S8 => 8,
+            S16 => 16,
+            S32 => 32,
+            S64 => 64,
+        }
+    }
 }
 
 /// An identifier (in any context)

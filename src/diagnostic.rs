@@ -6,6 +6,7 @@ use codemap::File;
 use proc_macro2::{LineColumn, Span};
 
 use crate::hir::*;
+use genco::prelude::*;
 
 /// A compilation session, collecting diagnostics.
 /// To be borrowed as mutable during compilation.
@@ -26,7 +27,11 @@ impl Sess {
 #[derive(Debug, Clone)]
 pub enum Diagnostic {
     ParseError { error: syn::parse::Error },
+    InvalidAtomTy { ident: Rc<HIdent> },
     UndefVar { ident: Rc<HIdent> },
+    SubscriptIndexNotScalar { array: Rc<HVal>, index: Rc<HVal> },
+    SubscriptArrayNotArray { array: Rc<HVal>, index: Rc<HVal> },
+    SubscriptIndexWrongType { array: Rc<HVal>, index: Rc<HVal> },
 }
 
 impl Sess {
@@ -69,12 +74,30 @@ impl Sess {
     }
 }
 
+impl FormatInto<()> for HAtomTy {
+    fn format_into(self, tokens: &mut Tokens) {
+        let ident = self.ident.token.to_string();
+        quote_in!(*tokens => #ident)
+    }
+}
+
+impl FormatInto<()> for HValTy {
+    fn format_into(self, tokens: &mut Tokens) {
+        match self {
+            HValTy::Atom { atom_ty } => quote_in!(*tokens => #*atom_ty),
+            HValTy::Array { item, range } => quote_in!(*tokens => #*item[]),
+            HValTy::Err => {}
+        }
+    }
+}
+
+fn quote_string(tokens: Tokens) -> String {
+    tokens.to_file_string().unwrap()
+}
+
 impl Diagnostic {
     pub fn is_critical(self: &Self) -> bool {
-        match self {
-            Diagnostic::ParseError { .. } => true,
-            Diagnostic::UndefVar { .. } => true,
-        }
+        true
     }
 
     pub fn diagnostic_message(self: &Self, sess: &Sess) -> String {
@@ -88,6 +111,11 @@ impl Diagnostic {
                     label: "here",
                 }],
             ),
+            Diagnostic::InvalidAtomTy { ident } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &format!("invalid scalar type `{}`", ident.token,),
+                vec![], // TODO
+            ),
             Diagnostic::UndefVar { ident } => sess.diagnostic_message(
                 AnnotationType::Error,
                 &format!(
@@ -100,6 +128,16 @@ impl Diagnostic {
                     label: "not found in this scope",
                 }],
             ),
+            Diagnostic::SubscriptArrayNotArray { array, index } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &format!(
+                    "cannot index into a value of non-array type `{}`",
+                    quote_string(quote!(array.ty)),
+                ),
+                vec![], // TODO
+            ),
+            Diagnostic::SubscriptIndexNotScalar { array, index } => todo!(),
+            Diagnostic::SubscriptIndexWrongType { array, index } => todo!(),
         }
     }
 }

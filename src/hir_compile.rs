@@ -270,7 +270,7 @@ impl HirCompileFrom<AIdent, HDefEnv> for HDataVar {
 }
 
 impl HValExpr {
-    fn ty(self: &Self) -> Rc<HValTy> {
+    fn ty(self: &Self, sess: &mut Sess) -> Rc<HValTy> {
         match self {
             HValExpr::Var { var, .. } => var.ty.clone(),
             HValExpr::Subscript { array, index, .. } => match array.ty.deref() {
@@ -280,14 +280,28 @@ impl HValExpr {
                             if atom_ty.ident.token.to_string()
                                 != range.bound.ty.ident.token.to_string()
                             {
-                                todo!("wrong index atom type")
+                                sess.diagnostics.push(Diagnostic::SubscriptIndexWrongType {
+                                    array: array.clone(),
+                                    index: index.clone(),
+                                })
                             }
                         }
-                        _ => todo!("wrong index type"),
+                        _ => sess.diagnostics.push(Diagnostic::SubscriptIndexNotScalar {
+                            array: array.clone(),
+                            index: index.clone(),
+                        }),
                     }
                     item.clone()
                 }
-                _ => todo!("recover from invalid array type"),
+                HValTy::Err => Rc::new(HValTy::Err),
+                _ => {
+                    sess.diagnostics.push(Diagnostic::SubscriptArrayNotArray {
+                        array: array.clone(),
+                        index: index.clone(),
+                    });
+
+                    Rc::new(HValTy::Err)
+                }
             },
         }
     }
@@ -319,7 +333,7 @@ impl HirCompileFrom<AExpr> for HVal {
         let expr: Rc<HValExpr> = ast.compile(env, sess);
 
         HVal {
-            ty: expr.ty(),
+            ty: expr.ty(sess),
             expr,
         }
     }
@@ -363,8 +377,19 @@ impl HirCompileFrom<AExpr> for HValExpr {
 
 impl HirCompileFrom<ATy, ()> for HAtomTy {
     fn compile(ast: ATy, _: &(), sess: &mut Sess) -> Self {
+        let ident: Rc<HIdent> = ast.ident.compile(&(), sess);
+
         HAtomTy {
-            ident: ast.ident.compile(&(), sess),
+            kind: HAtomTyKind::all()
+                .into_iter()
+                .find(|k| k.name() == ident.token.to_string())
+                .unwrap_or_else(|| {
+                    sess.diagnostics.push(Diagnostic::InvalidAtomTy {
+                        ident: ident.clone(),
+                    });
+                    HAtomTyKind::Err
+                }),
+            ident,
         }
     }
 }

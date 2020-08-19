@@ -1,0 +1,2 @@
+read N: n32, A: n32;
+write A[N];
