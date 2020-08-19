@@ -313,6 +313,20 @@ impl HirCompileFrom<AExpr> for HVal {
     }
 }
 
+impl HirCompileFrom<AExpr> for HAtom {
+    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
+        let val: Rc<HVal> = ast.compile(env, sess);
+
+        match val.ty.deref() {
+            HValTy::Atom { atom_ty } => HAtom {
+                ty: atom_ty.clone(),
+                val,
+            },
+            _ => todo!("recover from aggregate expression instead of atomic"),
+        }
+    }
+}
+
 impl HirCompileFrom<AExpr> for HValExpr {
     fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
         match ast {

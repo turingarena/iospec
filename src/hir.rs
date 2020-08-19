@@ -33,7 +33,7 @@ pub enum HStmt {
     },
     Write {
         kw: kw::write,
-        args: Vec<Rc<HVal>>,
+        args: Vec<Rc<HAtom>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
@@ -127,7 +127,7 @@ pub struct HIndex {
 }
 
 /// Range in a `for` statement.
-/// E.g., `i to A[B[i]]` in `... for i upto A[B[i]] { ... } ...`.
+/// E.g., `i to A[B[i]][k]` in `... for i upto A[B[j]][k] { ... } ...`.
 #[derive(Debug)]
 pub struct HRange {
     pub index: Rc<HIdent>,
@@ -135,16 +135,24 @@ pub struct HRange {
     pub bound: Rc<HVal>,
 }
 
-/// A value (rvalue) defined by an expression (analysis).
-/// E.g., `A[B[i]]` in `... for i upto A[B[i]] { ... } ...`.
+/// An atomic value defined by an expression.
+/// E.g., `A[B[i]][k]` in `... for i upto A[B[j]][k] { ... } ...`.
+#[derive(Debug)]
+pub struct HAtom {
+    pub val: Rc<HVal>,
+    pub ty: Rc<HAtomTy>,
+}
+
+/// A value (rvalue, atomic or aggregate) defined by an expression (analysis).
+/// E.g., `A[B[i]]` in `... for i upto A[B[j]][k] { ... } ...`.
 #[derive(Debug)]
 pub struct HVal {
     pub expr: Rc<HValExpr>,
     pub ty: Rc<HValTy>,
 }
 
-/// A value (rvalue) defined by an expression (construction).
-/// E.g., `A[B[i]]` in `... for i upto A[B[i]] { ... } ...`.
+/// A value (rvalue, atomic or aggregate) defined by an expression (construction).
+/// E.g., `A[B[i]]` in `... for i upto A[B[j]][k] { ... } ...`.
 #[derive(Debug)]
 pub enum HValExpr {
     Var {

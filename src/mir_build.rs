@@ -64,12 +64,9 @@ fn mir_exec_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
             .collect(),
         HStmt::Write { args, .. } => args
             .iter()
-            .map(|val| MInst::Write {
-                ty: mir_atom_ty(match val.ty.as_ref() {
-                    HValTy::Atom { atom_ty } => atom_ty,
-                    _ => todo!("recover"),
-                }),
-                arg: mir_val_expr(val),
+            .map(|atom| MInst::Write {
+                ty: mir_atom_ty(&atom.ty),
+                arg: mir_val_expr(&atom.val),
             })
             .collect(),
         HStmt::Call { fun, .. } => vec![MInst::Call {
