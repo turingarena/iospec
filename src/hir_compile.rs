@@ -18,25 +18,25 @@ trait HirCompileFrom<T, E = Env> {
     fn compile(ast: T, env: &E, sess: &mut Sess) -> Self;
 }
 
-impl<T, U, E> HirCompileFrom<Box<T>, E> for U
+impl<T, U, E> HirCompileFrom<T, E> for Rc<U>
 where
     U: HirCompileFrom<T, E>,
 {
-    fn compile(ast: Box<T>, env: &E, sess: &mut Sess) -> Self {
-        U::compile(*ast, env, sess)
+    fn compile(ast: T, env: &E, sess: &mut Sess) -> Self {
+        Rc::new(U::compile(ast, env, sess))
     }
 }
 
-trait HirCompileInto<T, E> {
-    fn compile(self: Self, env: &E, sess: &mut Sess) -> Rc<T>;
+trait HirCompileInto<T, E = Env> {
+    fn compile(self: Self, env: &E, sess: &mut Sess) -> T;
 }
 
 impl<U, T, E> HirCompileInto<U, E> for T
 where
     U: HirCompileFrom<T, E>,
 {
-    fn compile(self: Self, env: &E, sess: &mut Sess) -> Rc<U> {
-        Rc::new(U::compile(self, env, sess))
+    fn compile(self: Self, env: &E, sess: &mut Sess) -> U {
+        U::compile(self, env, sess)
     }
 }
 
@@ -74,19 +74,8 @@ impl HStmtExpr {
     }
 }
 
-impl HirCompileFrom<ABlock> for HStmt {
-    fn compile(ast: ABlock, env: &Env, sess: &mut Sess) -> Self {
-        let expr: Rc<HStmtExpr> = ast.compile(env, sess);
-        HStmt {
-            allocs: expr.allocs(),
-            expr,
-        }
-    }
-}
-
-impl HirCompileFrom<AStmt> for HStmt {
-    // TODO: manage to deduplicate
-    fn compile(ast: AStmt, env: &Env, sess: &mut Sess) -> Self {
+impl<T: HirCompileInto<Rc<HStmtExpr>>> HirCompileFrom<T> for HStmt {
+    fn compile(ast: T, env: &Env, sess: &mut Sess) -> Self {
         let expr: Rc<HStmtExpr> = ast.compile(env, sess);
         HStmt {
             allocs: expr.allocs(),
@@ -262,7 +251,7 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataExpr {
                             });
 
                             HDataExpr::Subscript {
-                                array: array.compile(
+                                array: (*array).compile(
                                     &HDefEnv {
                                         env: env.env.clone(),
                                         ty: Rc::new(HValTy::Array {
@@ -465,8 +454,8 @@ impl HirCompileFrom<AExpr> for HValExpr {
                 bracket,
                 index,
             } => HValExpr::Subscript {
-                array: array.compile(env, sess),
-                index: index.compile(env, sess),
+                array: (*array).compile(env, sess),
+                index: (*index).compile(env, sess),
                 bracket,
             },
         }
