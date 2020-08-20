@@ -49,18 +49,18 @@ impl LirFrom<HStep> for Vec<LStmt> {
                 .iter()
                 .flat_map::<Vec<LStmt>, _>(LirInto::lir)
                 .collect(),
-            HStepExpr::Read { args, .. } => args
-                .iter()
-                .flat_map(|atom| {
-                    std::iter::empty()
-                        .chain(node_decl(&atom.node).map(|h| h.lir()))
-                        .chain(node_alloc(&atom.node).map(|h| h.lir()))
-                        .chain(std::iter::once(LStmt::Read {
-                            ty: atom.ty.lir(),
-                            arg: atom.node.lir(),
-                        }))
-                })
-                .collect(),
+            HStepExpr::Read { args, .. } => vec![
+                LStmt::Read {
+                    args: args
+                        .iter()
+                        .map(|atom| LReadArg {
+                            decl: node_decl(&atom.node).map(|h| h.lir()),
+                            expr: atom.node.lir(),
+                            ty: atom.ty.lir()
+                        })
+                        .collect()
+                }
+            ],
             HStepExpr::Write { args, .. } => args
                 .iter()
                 .cloned()
@@ -110,6 +110,18 @@ impl LirFrom<HVarDef> for LStmt {
         LStmt::Decl {
             name: match &var.expr {
                 HVarDefExpr::Name { name } => name.to_string(),
+                _ => unreachable!(),
+            },
+            ty: var.ty.lir(),
+        }
+    }
+}
+
+impl LirFrom<HVarDef> for LDecl {
+    fn lir_from(var: &HVarDef) -> Self {
+        LDecl {
+            name: match &var.expr {
+                    HVarDefExpr::Name { name } => name.to_string(),
                 _ => unreachable!(),
             },
             ty: var.ty.lir(),

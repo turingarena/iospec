@@ -89,7 +89,7 @@ fn main() {
             let generated = parse_spec(sess.file.clone().source(), &mut dgns)
                 .and_then(|spec| compile_hir(spec, &mut dgns))
                 .map(|spec| build_lir(spec))
-                .map(|spec| code::gen_file(spec));
+                .map(|spec| code::gen_file(&spec));
 
             for d in dgns {
                 eprintln!("{}", d.diagnostic_message(&sess));

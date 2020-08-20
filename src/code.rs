@@ -14,9 +14,9 @@ impl Lang for CppLang {
     type Item = ();
 }
 
-impl FormatInto<CppLang> for LSpec {
+impl FormatInto<CppLang> for &LSpec {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
-        let Self { funs, main } = self;
+        let LSpec { funs, main } = self;
         quote_in! {*tokens =>
             ##include <cstdio>
             ##include <cstdint>
@@ -33,9 +33,9 @@ impl FormatInto<CppLang> for LSpec {
     }
 }
 
-impl FormatInto<CppLang> for LFun {
+impl FormatInto<CppLang> for &LFun {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
-        let Self { name, params, ret } = self;
+        let LFun { name, params, ret } = self;
         quote_in! {*tokens =>
             #(match ret {
                 Some(ret) => #ret,
@@ -48,38 +48,38 @@ impl FormatInto<CppLang> for LFun {
     }
 }
 
-impl FormatInto<CppLang> for LParam {
+impl FormatInto<CppLang> for &LParam {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
-        let Self { name, ty } = self;
+        let LParam { name, ty } = self;
         quote_in! { *tokens =>
             #ty #name
         }
     }
 }
 
-impl FormatInto<CppLang> for LBlock {
+impl FormatInto<CppLang> for &LBlock {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
-        let Self { stmts } = self;
+        let LBlock { stmts } = self;
         quote_in! { *tokens =>
             #(for stmt in stmts join (#<push>) => #stmt)
         }
     }
 }
 
-impl FormatInto<CppLang> for LExpr {
+impl FormatInto<CppLang> for &LExpr {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         match self {
             LExpr::Var { name } => quote_in! { *tokens =>
                 #name
             },
             LExpr::Subscript { array, index } => quote_in! { *tokens =>
-                #(*array)[#(*index)]
+                #(array.as_ref())[#(index.as_ref())]
             },
         }
     }
 }
 
-impl FormatInto<CppLang> for AtomTy {
+impl FormatInto<CppLang> for &AtomTy {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         match self {
             AtomTy::Boolean => quote_in!(*tokens => bool),
@@ -91,31 +91,31 @@ impl FormatInto<CppLang> for AtomTy {
     }
 }
 
-struct Format(AtomTy);
+struct Format<'a>(&'a AtomTy);
 
-impl FormatInto<CppLang> for Format {
+impl FormatInto<CppLang> for Format<'_> {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         match self.0 {
-            AtomTy::Boolean => quote_in!(*tokens => "%d"),
+            AtomTy::Boolean => quote_in!(*tokens => %d),
             AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
-                BitSize::S8 | BitSize::S16 | BitSize::S32 => quote_in!(*tokens => "%d"),
-                BitSize::S64 => quote_in!(*tokens => "%lld"),
+                BitSize::S8 | BitSize::S16 | BitSize::S32 => quote_in!(*tokens => %d),
+                BitSize::S64 => quote_in!(*tokens => %lld),
             },
             AtomTy::Err => unreachable!(),
         }
     }
 }
 
-impl FormatInto<CppLang> for LTy {
+impl FormatInto<CppLang> for &LTy {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         match self {
             LTy::Atom { atom } => quote_in!(*tokens => #atom),
-            LTy::Array { item } => quote_in!(*tokens => #(*item)*),
+            LTy::Array { item } => quote_in!(*tokens => #(item.as_ref())*),
         }
     }
 }
 
-impl FormatInto<CppLang> for LStmt {
+impl FormatInto<CppLang> for &LStmt {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         match self {
             LStmt::Decl { name, ty } => quote_in! { *tokens =>
@@ -129,10 +129,20 @@ impl FormatInto<CppLang> for LStmt {
                 #array = new #item_ty[#size];
             },
             LStmt::Write { arg, ty } => quote_in! { *tokens =>
-                printf(#(Format(ty)) " ", #arg);
+                printf(#_(#(Format(ty))) " ", #arg);
             },
-            LStmt::Read { arg, ty } => quote_in! { *tokens =>
-                scanf(#(Format(ty)), &#arg);
+            LStmt::Read { args } => quote_in! { *tokens =>
+                #(
+                    for arg in args join (#<push>) =>
+                    #(arg.decl.as_ref())
+                )
+                scanf(#(quoted(quote!(#(
+                    for arg in args join () =>
+                    #(Format(&arg.ty))
+                )))), #(
+                    for arg in args join (, ) =>
+                    &#(&arg.expr)
+                ));
             },
             LStmt::Call { name, args, ret } => match ret {
                 Some(ret) => quote_in! { *tokens =>
@@ -148,11 +158,10 @@ impl FormatInto<CppLang> for LStmt {
             },
             // TODO: bound type?
             LStmt::For {
-                index_name,
+                index_name: i,
                 bound,
                 body,
             } => {
-                let i = &index_name;
                 quote_in! { *tokens =>
                     for(int #i = 0; #i < #bound; #i++) {
                         #body
@@ -163,7 +172,17 @@ impl FormatInto<CppLang> for LStmt {
     }
 }
 
-pub fn gen_file(spec: LSpec) -> String {
+impl FormatInto<CppLang> for &LDecl {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        let LDecl { ty, name } = self;
+        quote_in! { *tokens =>
+            #ty #name;
+        }
+    }
+}
+
+
+pub fn gen_file(spec: &LSpec) -> String {
     let tokens: Tokens<CppLang> = quote!(#spec);
     tokens.to_file_string().unwrap()
 }

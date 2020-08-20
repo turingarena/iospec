@@ -42,8 +42,7 @@ pub enum LStmt {
         size: LExpr,
     },
     Read {
-        arg: LExpr,
-        ty: AtomTy,
+        args: Vec<LReadArg>,
     },
     Write {
         arg: LExpr,
@@ -59,6 +58,19 @@ pub enum LStmt {
         bound: LExpr,
         body: LBlock,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct LDecl {
+    pub ty: LTy,
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct LReadArg {
+    pub decl: Option<LDecl>,
+    pub expr: LExpr,
+    pub ty: AtomTy,
 }
 
 #[derive(Debug, Clone)]
