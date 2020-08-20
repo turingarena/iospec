@@ -2,10 +2,10 @@ extern crate genco;
 
 use genco::prelude::*;
 
-use crate::mir::*;
+use crate::lir::*;
 use crate::ty::*;
 
-fn gen_spec(spec: &MSpec) -> Tokens {
+fn gen_spec(spec: &LSpec) -> Tokens {
     quote! {
         ##include <cstdio>
         ##include <cstdint>
@@ -18,7 +18,7 @@ fn gen_spec(spec: &MSpec) -> Tokens {
     }
 }
 
-fn gen_fun(fun: &MFun) -> Tokens {
+fn gen_fun(fun: &LFun) -> Tokens {
     let ret = match &fun.ret {
         Some(ret) => gen_atom_ty(ret),
         None => quote!(void),
@@ -33,23 +33,23 @@ fn gen_fun(fun: &MFun) -> Tokens {
     }
 }
 
-fn gen_param(param: &MParam) -> Tokens {
+fn gen_param(param: &LParam) -> Tokens {
     let t = gen_expr_ty(&param.ty);
     let x = &param.name;
 
     quote!(#(t) #(x))
 }
 
-fn gen_block(block: &MBlock) -> Tokens {
+fn gen_block(block: &LBlock) -> Tokens {
     quote! {
         #(for i in block.iter() join (#<push>) => #(gen_inst(i)))
     }
 }
 
-fn gen_expr(expr: &MExpr) -> Tokens {
+fn gen_expr(expr: &LExpr) -> Tokens {
     match expr {
-        MExpr::Var { name } => quote!(#(name)),
-        MExpr::Subscript { array, index } => {
+        LExpr::Var { name } => quote!(#(name)),
+        LExpr::Subscript { array, index } => {
             let a = gen_expr(array);
             let i = gen_expr(index);
 
@@ -93,19 +93,19 @@ fn gen_atom_ty(ty: &AtomTy) -> Tokens {
     }
 }
 
-fn gen_expr_ty(ty: &MExprTy) -> Tokens {
+fn gen_expr_ty(ty: &LTy) -> Tokens {
     match ty {
-        MExprTy::Atom { atom } => gen_atom_ty(atom),
-        MExprTy::Array { item } => quote!(#(gen_expr_ty(item))*),
+        LTy::Atom { atom } => gen_atom_ty(atom),
+        LTy::Array { item } => quote!(#(gen_expr_ty(item))*),
     }
 }
 
-fn gen_inst(inst: &MInst) -> Tokens {
+fn gen_inst(inst: &LStmt) -> Tokens {
     match inst {
-        MInst::Decl { name, ty } => quote! {
+        LStmt::Decl { name, ty } => quote! {
             #(gen_expr_ty(ty)) #(name);
         },
-        MInst::Alloc { array, ty, size } => {
+        LStmt::Alloc { array, ty, size } => {
             let a = gen_expr(array);
             let t = gen_expr_ty(ty);
             let n = gen_expr(size);
@@ -114,13 +114,13 @@ fn gen_inst(inst: &MInst) -> Tokens {
                 #(a) = new #(t)[#(n)];
             ]
         }
-        MInst::Write { arg, ty } => quote! {
+        LStmt::Write { arg, ty } => quote! {
             printf(#(gen_printf_format(ty)), #(gen_expr(arg)));
         },
-        MInst::Read { arg, ty } => quote! {
+        LStmt::Read { arg, ty } => quote! {
             scanf(#(gen_scanf_format(ty)), &#(gen_expr(arg)));
         },
-        MInst::Call {
+        LStmt::Call {
             name,
             args,
             ret: None,
@@ -129,7 +129,7 @@ fn gen_inst(inst: &MInst) -> Tokens {
                 for a in args join (, ) => #(gen_expr(a))
             ));
         },
-        MInst::Call {
+        LStmt::Call {
             name,
             args,
             ret: Some(ret),
@@ -138,7 +138,7 @@ fn gen_inst(inst: &MInst) -> Tokens {
                 for a in args join (, ) => #(gen_expr(a))
             ));
         },
-        MInst::For {
+        LStmt::For {
             index_name,
             bound,
             body,
@@ -155,6 +155,6 @@ fn gen_inst(inst: &MInst) -> Tokens {
     }
 }
 
-pub fn gen_file(spec: &MSpec) -> String {
+pub fn gen_file(spec: &LSpec) -> String {
     gen_spec(spec).to_file_string().unwrap()
 }

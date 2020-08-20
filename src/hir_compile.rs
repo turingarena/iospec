@@ -480,7 +480,7 @@ impl HirCompileFrom<AIdent, ()> for HIdent {
     }
 }
 
-pub fn compile_hir(ast: ASpec, sess: &mut Sess) -> Result<HSpec, ()> {
+pub fn compile_hir(ast: ASpec, sess: &mut Sess) -> Result<Rc<HSpec>, ()> {
     let main: Rc<HStmt> = ast.main.compile(
         &Env {
             refs: Vec::new(),
@@ -494,10 +494,10 @@ pub fn compile_hir(ast: ASpec, sess: &mut Sess) -> Result<HSpec, ()> {
         Err(())?
     }
 
-    Ok(HSpec {
+    Ok(Rc::new(HSpec {
         funs: main.funs(),
         main,
-    })
+    }))
 }
 
 fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<U>) {

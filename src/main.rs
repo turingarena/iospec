@@ -10,6 +10,7 @@ use structopt::StructOpt;
 use crate::ast_parse::parse_spec;
 use crate::diagnostic::Sess;
 use crate::hir_compile::compile_hir;
+use crate::lir_build::build_lir;
 use crate::mir_build::build_mir;
 
 #[derive(Debug, StructOpt)]
@@ -30,19 +31,27 @@ enum App {
     },
 }
 
+mod diagnostic;
+
 mod ast;
 mod ast_parse;
-mod diagnostic;
-mod gen;
+mod kw;
+
+mod ty;
+
 mod hir;
 mod hir_compile;
 mod hir_env;
 mod hir_err;
 mod hir_span;
-mod kw;
+
 mod mir;
 mod mir_build;
-mod ty;
+
+mod lir;
+mod lir_build;
+
+mod gen;
 
 fn create_sess(spec_file: &PathBuf) -> Sess {
     let mut code_map = codemap::CodeMap::new();
@@ -78,6 +87,7 @@ fn main() {
             let generated = parse_spec(sess.file.clone().source(), &mut sess)
                 .and_then(|spec| compile_hir(spec, &mut sess))
                 .map(|spec| build_mir(&spec))
+                .map(|spec| build_lir(spec))
                 .map(|spec| gen::gen_file(&spec));
 
             display_diagnostics(&mut sess);
