@@ -25,7 +25,7 @@ enum App {
         spec_file: PathBuf,
     },
     #[structopt(about = "Generates code (parser, template, etc.)")]
-    Gen {
+    Code {
         #[structopt(long, parse(from_os_str), default_value = "./iospec")]
         spec_file: PathBuf,
     },
@@ -51,7 +51,7 @@ mod mir_build;
 mod lir;
 mod lir_build;
 
-mod gen;
+mod code;
 
 fn create_sess(spec_file: &PathBuf) -> Sess {
     let mut code_map = codemap::CodeMap::new();
@@ -81,14 +81,14 @@ fn main() {
             display_diagnostics(&mut sess);
         }
 
-        App::Gen { spec_file } => {
+        App::Code { spec_file } => {
             let mut sess = create_sess(&spec_file);
 
             let generated = parse_spec(sess.file.clone().source(), &mut sess)
                 .and_then(|spec| compile_hir(spec, &mut sess))
                 .map(|spec| build_mir(&spec))
                 .map(|spec| build_lir(spec))
-                .map(|spec| gen::gen_file(&spec));
+                .map(|spec| code::gen_file(&spec));
 
             display_diagnostics(&mut sess);
 
