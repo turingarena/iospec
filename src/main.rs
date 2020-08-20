@@ -88,7 +88,7 @@ fn main() {
                 .and_then(|spec| compile_hir(spec, &mut sess))
                 .map(|spec| build_mir(&spec))
                 .map(|spec| build_lir(spec))
-                .map(|spec| code::gen_file(&spec));
+                .map(|spec| code::gen_file(spec));
 
             display_diagnostics(&mut sess);
 

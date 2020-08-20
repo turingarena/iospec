@@ -5,156 +5,161 @@ use genco::prelude::*;
 use crate::lir::*;
 use crate::ty::*;
 
-fn gen_spec(spec: &LSpec) -> Tokens {
-    quote! {
-        ##include <cstdio>
-        ##include <cstdint>
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CppLang;
 
-        #(for f in spec.funs.iter() join (#<line>) => #(gen_fun(f)))
+impl Lang for CppLang {
+    type Config = ();
+    type Format = ();
+    type Item = ();
+}
 
-        int main() {
-            #(gen_block(&spec.main))
+impl FormatInto<CppLang> for LSpec {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        let Self { funs, main } = self;
+        quote_in! {*tokens =>
+            ##include <cstdio>
+            ##include <cstdint>
+
+            #(
+                for f in funs join (#<line>) =>
+                #f
+            )
+
+            int main() {
+                #main
+            }
         }
     }
 }
 
-fn gen_fun(fun: &LFun) -> Tokens {
-    let ret = match &fun.ret {
-        Some(ret) => gen_atom_ty(ret),
-        None => quote!(void),
-    };
-
-    let params = fun.params.iter().map(gen_param);
-
-    let f = &fun.name;
-
-    quote! {
-        #(ret) #(f)(#(for p in params join (, ) => #(p)));
-    }
-}
-
-fn gen_param(param: &LParam) -> Tokens {
-    let t = gen_expr_ty(&param.ty);
-    let x = &param.name;
-
-    quote!(#(t) #(x))
-}
-
-fn gen_block(block: &LBlock) -> Tokens {
-    quote! {
-        #(for i in block.iter() join (#<push>) => #(gen_inst(i)))
-    }
-}
-
-fn gen_expr(expr: &LExpr) -> Tokens {
-    match expr {
-        LExpr::Var { name } => quote!(#(name)),
-        LExpr::Subscript { array, index } => {
-            let a = gen_expr(array);
-            let i = gen_expr(index);
-
-            quote!(#(a)[#(i)])
-        }
-    }
-}
-
-fn gen_scanf_format(ty: &AtomTy) -> Tokens {
-    match ty {
-        AtomTy::Boolean => quote!("%d"),
-        AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
-            BitSize::S8 | BitSize::S16 | BitSize::S32 => quote!("%d"),
-            BitSize::S64 => quote!("%lld"),
-        },
-        AtomTy::Err => unreachable!(),
-    }
-}
-
-fn gen_printf_format(ty: &AtomTy) -> Tokens {
-    match ty {
-        AtomTy::Boolean => quote!("%d "),
-        AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
-            BitSize::S8 | BitSize::S16 | BitSize::S32 => quote!("%d "),
-            BitSize::S64 => quote!("%lld "),
-        },
-        AtomTy::Err => unreachable!(),
-    }
-}
-
-fn gen_atom_ty(ty: &AtomTy) -> Tokens {
-    match ty {
-        AtomTy::Boolean => quote!(bool),
-        AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
-            BitSize::S8 => quote!(int8_t),
-            BitSize::S16 => quote!(int16_t),
-            BitSize::S32 => quote!(int32_t),
-            BitSize::S64 => quote!(int64_t),
-        },
-        AtomTy::Err => unreachable!(),
-    }
-}
-
-fn gen_expr_ty(ty: &LTy) -> Tokens {
-    match ty {
-        LTy::Atom { atom } => gen_atom_ty(atom),
-        LTy::Array { item } => quote!(#(gen_expr_ty(item))*),
-    }
-}
-
-fn gen_inst(inst: &LStmt) -> Tokens {
-    match inst {
-        LStmt::Decl { name, ty } => quote! {
-            #(gen_expr_ty(ty)) #(name);
-        },
-        LStmt::Alloc { array, ty, size } => {
-            let a = gen_expr(array);
-            let t = gen_expr_ty(ty);
-            let n = gen_expr(size);
-
-            quote![
-                #(a) = new #(t)[#(n)];
-            ]
-        }
-        LStmt::Write { arg, ty } => quote! {
-            printf(#(gen_printf_format(ty)), #(gen_expr(arg)));
-        },
-        LStmt::Read { arg, ty } => quote! {
-            scanf(#(gen_scanf_format(ty)), &#(gen_expr(arg)));
-        },
-        LStmt::Call {
-            name,
-            args,
-            ret: None,
-        } => quote! {
-            #(name)(#(
-                for a in args join (, ) => #(gen_expr(a))
+impl FormatInto<CppLang> for LFun {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        let Self { name, params, ret } = self;
+        quote_in! {*tokens =>
+            #(match ret {
+                Some(ret) => #ret,
+                None => void,
+            }) #name(#(
+                for p in params join (, ) =>
+                #p
             ));
-        },
-        LStmt::Call {
-            name,
-            args,
-            ret: Some(ret),
-        } => quote! {
-            #(gen_expr(ret)) = #(name)(#(
-                for a in args join (, ) => #(gen_expr(a))
-            ));
-        },
-        LStmt::For {
-            index_name,
-            bound,
-            body,
-        } => {
-            let i = index_name;
-            let n = gen_expr(bound);
+        }
+    }
+}
 
-            quote![
-                for(int #(i) = 0; #(i) < #(n); #(i)++) {
-                    #(gen_block(body))
+impl FormatInto<CppLang> for LParam {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        let Self { name, ty } = self;
+        quote_in! { *tokens =>
+            #ty #name
+        }
+    }
+}
+
+impl FormatInto<CppLang> for LBlock {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        let Self { stmts } = self;
+        quote_in! { *tokens =>
+            #(for stmt in stmts join (#<push>) => #stmt)
+        }
+    }
+}
+
+impl FormatInto<CppLang> for LExpr {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        match self {
+            LExpr::Var { name } => quote_in! { *tokens =>
+                #name
+            },
+            LExpr::Subscript { array, index } => quote_in! { *tokens =>
+                #(*array)[#(*index)]
+            },
+        }
+    }
+}
+
+impl FormatInto<CppLang> for AtomTy {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        match self {
+            AtomTy::Boolean => quote_in!(*tokens => bool),
+            AtomTy::Natural { size } | AtomTy::Integer { size } => {
+                quote_in!(*tokens => int#(size.bits())_t)
+            }
+            AtomTy::Err => unreachable!(),
+        }
+    }
+}
+
+struct Format(AtomTy);
+
+impl FormatInto<CppLang> for Format {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        match self.0 {
+            AtomTy::Boolean => quote_in!(*tokens => "%d"),
+            AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
+                BitSize::S8 | BitSize::S16 | BitSize::S32 => quote_in!(*tokens => "%d"),
+                BitSize::S64 => quote_in!(*tokens => "%lld"),
+            },
+            AtomTy::Err => unreachable!(),
+        }
+    }
+}
+
+impl FormatInto<CppLang> for LTy {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        match self {
+            LTy::Atom { atom } => quote_in!(*tokens => #atom),
+            LTy::Array { item } => quote_in!(*tokens => #(*item)*),
+        }
+    }
+}
+
+impl FormatInto<CppLang> for LStmt {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        match self {
+            LStmt::Decl { name, ty } => quote_in! { *tokens =>
+                #ty #name;
+            },
+            LStmt::Alloc { array, ty, size } => quote_in! { *tokens =>
+                #array = new #ty[#size];
+            },
+            LStmt::Write { arg, ty } => quote_in! { *tokens =>
+                printf(#(Format(ty)) " ", #arg);
+            },
+            LStmt::Read { arg, ty } => quote_in! { *tokens =>
+                scanf(#(Format(ty)), &#arg);
+            },
+            LStmt::Call { name, args, ret } => match ret {
+                Some(ret) => quote_in! { *tokens =>
+                    #ret = #name(#(
+                        for a in args join (, ) => #a
+                    ));
+                },
+                None => quote_in! { *tokens =>
+                    #name(#(
+                        for a in args join (, ) => #a
+                    ));
+                },
+            },
+            // TODO: bound type?
+            LStmt::For {
+                index_name,
+                bound,
+                body,
+            } => {
+                let i = &index_name;
+                quote_in! { *tokens =>
+                    for(int #i = 0; #i < #bound; #i++) {
+                        #body
+                    }
                 }
-            ]
+            }
         }
     }
 }
 
-pub fn gen_file(spec: &LSpec) -> String {
-    gen_spec(spec).to_file_string().unwrap()
+pub fn gen_file(spec: LSpec) -> String {
+    let tokens: Tokens<CppLang> = quote!(#spec);
+    tokens.to_file_string().unwrap()
 }

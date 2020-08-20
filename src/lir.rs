@@ -25,7 +25,10 @@ pub struct LParam {
     pub ty: LTy,
 }
 
-pub type LBlock = Vec<LStmt>;
+#[derive(Debug, Clone)]
+pub struct LBlock {
+    pub stmts: Vec<LStmt>,
+}
 
 #[derive(Debug, Clone)]
 pub enum LStmt {
