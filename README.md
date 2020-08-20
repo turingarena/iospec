@@ -40,24 +40,24 @@ In IOspec, the format is described in a language *similar to a programming langu
 An example is worth a thousand words. Here is the I/O specification for the problem of finding a cycle in a graph encoded as an edge list.
 
 ```
-read N:n32, M:n32;
+read N: n32, M: n32;
 
 assume 2 <= N && N <= 100_000;
 assume 1 <= M && M <= 1_000_000;
 
-for i to M {
-    read A[i]:n32, B[i]:n32;
+for i upto M {
+    read A[i]: n32, B[i]: n32;
 
     assume 0 <= A[i] && A[i] < B[i] && B[i] < N;
 }
 
-call find_cycle(N, M, A, B) -> cycle_len:n32;
+call find_cycle(N, M, A, B) -> cycle_len: n32;
 assert 2 <= cycle_len && cycle_len <= N;
 
 write cycle_len;
 
-for i to cycle_len {
-    call get_cycle_node(i) -> u:n32;
+for i upto cycle_len {
+    call get_cycle_node(i) -> u: n32;
     assert 0 <= u && u < N;
 
     write u;
@@ -90,7 +90,8 @@ Restrictions:
 ### Linting I/O specification
 
 ```
-    turingarena-iospec lint <spec-file>
+    turingarena-iospec lint
+        [--spec-file <spec-file>]
 ```
 
 Parses and lints the I/O specification in `<spec-file>`.
@@ -98,25 +99,28 @@ Parses and lints the I/O specification in `<spec-file>`.
 ### Validating input and output files/streams
 
 ```
-    turingarena-iospec validate <spec-file> <input-file-or-pipe> [<output-file-or-pipe>]
-        [--fail-on-input-error] [--ignore-assumptions]
-        [--fail-on-output-error] [--ignore-assertions]
-        [--canonicalize-input] [--canonicalize-input-to-file <dest-file-or-pipe>]
-        [--canonicalize-output] [--canonicalize-output-to-file <dest-file-or-pipe>]
-        [--explain] [--explain-to-file <dest-file-or-pipe>]
+    turingarena-iospec run
+        [--spec-file <spec-file>]
+        [--input-source <input-file-or-pipe>]
+        [--output-source <output-file-or-pipe>]
+        [--input-target <input-file-or-pipe>]
+        [--output-target <output-file-or-pipe>]
+        [--ignore-assumptions]
+        [--ignore-assertions]
 ```
 
 Parses and checks input, and optionally output, files or streams, according to an I/O specification.
 Issues are reported on stderr.
-If desired, canonicalize the input or the output, or explain how the streams were parsed (showing values of the variables, and so on).
+If desired, generate the canonicalized for of the input or the output.
 
 ### Generating code
 
 ```
-    turingarena-iospec codegen <spec-file>
-        [--target skeleton|template]
+    turingarena-iospec code
+        [--spec-file <spec-file>]
+        [--target <file>]
+        [--kind skeleton|template]
         [--language <lang>]
-        [--output-file <file>]
 ```
 
 Generates skeleton or template code for a given language.
