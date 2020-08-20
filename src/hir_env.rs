@@ -72,9 +72,9 @@ impl Env {
             refs: vec![Rc::new(HVar {
                 name: range.index.clone(),
                 ty: range.bound.val.ty.clone(),
-                expr: Rc::new(HVarExpr::Index {
+                expr: HVarExpr::Index {
                     range: range.clone(),
-                }),
+                },
             })],
             outer: Some(Box::new(self.clone())),
             loc: Rc::new(HDataLoc::For {

@@ -22,7 +22,7 @@ fn lir_block(insts: Vec<MInst>) -> LBlock {
 
 fn lir_stmt(inst: MInst) -> LStmt {
     match inst {
-        MInst::Decl(var) => match var.expr.deref() {
+        MInst::Decl(var) => match &var.expr {
             HVarDefExpr::Name { name } => LStmt::Decl {
                 name: name.to_string(),
                 ty: lir_expr_ty(&var.ty),
@@ -60,9 +60,9 @@ fn lir_stmt(inst: MInst) -> LStmt {
 }
 
 fn lir_data_node_expr(hir: &Rc<HNodeDef>) -> LExpr {
-    match hir.expr.deref() {
+    match &hir.expr {
         HNodeDefExpr::Var { var, .. } => LExpr::Var {
-            name: match var.expr.deref() {
+            name: match &var.expr {
                 HVarDefExpr::Name { name } => name.to_string(),
                 _ => unreachable!(),
             },
@@ -76,7 +76,7 @@ fn lir_data_node_expr(hir: &Rc<HNodeDef>) -> LExpr {
 }
 
 fn lir_val_expr(hir: &Rc<HVal>) -> LExpr {
-    match hir.expr.deref() {
+    match &hir.expr {
         HValExpr::Var { name, .. } => LExpr::Var {
             name: name.to_string(),
         },
@@ -115,7 +115,7 @@ fn lir_fun(hir: &Rc<HFun>) -> LFun {
 
 fn lir_param(hir: &Rc<HArg>) -> LParam {
     LParam {
-        name: match hir.expr.deref() {
+        name: match &hir.expr {
             HArgExpr::Name { name } => name.to_string(),
             HArgExpr::Err => unreachable!(),
         },

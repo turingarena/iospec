@@ -13,7 +13,7 @@ pub fn build_mir(spec: &Rc<HSpec>) -> MSpec {
 }
 
 fn mir_stmt_insts(hir: &Rc<HStep>) -> Vec<MInst> {
-    match hir.expr.deref() {
+    match &hir.expr {
         HStepExpr::Seq { steps } => steps.iter().flat_map(mir_stmt_insts).collect(),
         HStepExpr::Read { args, .. } => args
             .iter()
@@ -42,7 +42,7 @@ fn mir_stmt_insts(hir: &Rc<HStep>) -> Vec<MInst> {
 
 fn mir_data_node_insts(node: &Rc<HNodeDef>) -> impl Iterator<Item = MInst> + '_ {
     std::iter::empty()
-        .chain(match node.expr.deref() {
+        .chain(match &node.expr {
             HNodeDefExpr::Var { var } => Some(MInst::Decl(var.clone())),
             _ => None,
         })

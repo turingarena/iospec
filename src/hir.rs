@@ -29,7 +29,7 @@ pub struct HSpec {
 /// An executable part of the spec, i.e., either a statement or block (analysis).
 #[derive(Debug)]
 pub struct HStep {
-    pub expr: Rc<HStepExpr>,
+    pub expr: HStepExpr,
     /// Data nodes defined inside this statement/block
     pub nodes: Vec<Rc<HNodeDef>>,
     /// Functions called inside this statement/block
@@ -84,7 +84,7 @@ pub struct HFun {
 /// E.g., `A` in `... call f(A, B) -> C: i32; ...`.
 #[derive(Debug)]
 pub struct HArg {
-    pub expr: Rc<HArgExpr>,
+    pub expr: HArgExpr,
     pub val: Rc<HVal>,
 }
 
@@ -109,7 +109,7 @@ pub struct HAtomDef {
 /// E.g., `A`, `A[i]` and `A[i][j]` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
 pub struct HNodeDef {
-    pub expr: Rc<HNodeDefExpr>,
+    pub expr: HNodeDefExpr,
     pub ty: Rc<HValTy>,
     pub root_var: Rc<HVarDef>,
 }
@@ -133,7 +133,7 @@ pub enum HNodeDefExpr {
 /// E.g., `A` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
 pub struct HVarDef {
-    pub expr: Rc<HVarDefExpr>,
+    pub expr: HVarDefExpr,
     pub ty: Rc<HValTy>,
 }
 
@@ -174,7 +174,7 @@ pub struct HAtom {
 /// E.g., `A[B[i]]` in `... for i upto A[B[j]][k] { ... } ...`.
 #[derive(Debug)]
 pub struct HVal {
-    pub expr: Rc<HValExpr>,
+    pub expr: HValExpr,
     pub ty: Rc<HValTy>,
 }
 
@@ -204,7 +204,7 @@ pub enum HValTy {
 /// Type of an atomic value (analysis)
 #[derive(Debug)]
 pub struct HAtomTy {
-    pub expr: Rc<HAtomTyExpr>,
+    pub expr: HAtomTyExpr,
     pub sem: AtomTy,
 }
 
@@ -220,7 +220,7 @@ pub enum HAtomTyExpr {
 pub struct HVar {
     pub name: Rc<HName>,
     pub ty: Rc<HValTy>,
-    pub expr: Rc<HVarExpr>,
+    pub expr: HVarExpr,
 }
 
 /// Binding of name to a data variable or an index (construction).

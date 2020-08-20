@@ -52,7 +52,7 @@ pub enum Diagnostic {
 
 impl FormatInto<()> for &HAtomTy {
     fn format_into(self: Self, tokens: &mut Tokens) {
-        match self.expr.deref() {
+        match &self.expr {
             HAtomTyExpr::Name { name, .. } => quote_in!(*tokens => #(name.deref())),
             HAtomTyExpr::Err => quote_in!(*tokens => <<invalid scalar type>>),
         }
@@ -117,7 +117,7 @@ impl Diagnostic {
                 {
                     let mut anns = vec![sess.error_ann("must be a natural", val.span())];
                     if let Some(atom_ty) = atom_ty {
-                        if let HAtomTyExpr::Name { name } = atom_ty.expr.deref() {
+                        if let HAtomTyExpr::Name { name } = &atom_ty.expr {
                             anns.push(sess.help_ann("type defined here", name.span()))
                         }
                     }
