@@ -3,22 +3,18 @@
 use crate::hir::*;
 use crate::ty::*;
 
-pub trait HirCreateErr {
-    fn create_err() -> Self;
-}
-
 pub trait HErr {
-    fn err() -> Rc<Self>;
+    fn err() -> Self;
 }
 
-impl<T: HirCreateErr> HErr for T {
-    fn err() -> Rc<Self> {
-        Rc::new(Self::create_err())
+impl<T: HErr> HErr for Rc<T> {
+    fn err() -> Self {
+        Rc::new(T::err())
     }
 }
 
-impl HirCreateErr for HAtomTy {
-    fn create_err() -> Self {
+impl HErr for HAtomTy {
+    fn err() -> Self {
         HAtomTy {
             expr: HErr::err(),
             sem: AtomTy::Err,
@@ -26,32 +22,32 @@ impl HirCreateErr for HAtomTy {
     }
 }
 
-impl HirCreateErr for HValTy {
-    fn create_err() -> Self {
+impl HErr for HValTy {
+    fn err() -> Self {
         HValTy::Err
     }
 }
 
-impl HirCreateErr for HVarExpr {
-    fn create_err() -> Self {
+impl HErr for HVarExpr {
+    fn err() -> Self {
         HVarExpr::Err
     }
 }
 
-impl HirCreateErr for HAtomTyExpr {
-    fn create_err() -> Self {
+impl HErr for HAtomTyExpr {
+    fn err() -> Self {
         HAtomTyExpr::Err
     }
 }
 
-impl HirCreateErr for HNodeDefExpr {
-    fn create_err() -> Self {
+impl HErr for HNodeDefExpr {
+    fn err() -> Self {
         HNodeDefExpr::Err
     }
 }
 
-impl HirCreateErr for HNodeDef {
-    fn create_err() -> Self {
+impl HErr for HNodeDef {
+    fn err() -> Self {
         HNodeDef {
             expr: HErr::err(),
             root_var: HErr::err(),
@@ -61,8 +57,8 @@ impl HirCreateErr for HNodeDef {
     }
 }
 
-impl HirCreateErr for HVarDef {
-    fn create_err() -> Self {
+impl HErr for HVarDef {
+    fn err() -> Self {
         HVarDef {
             expr: HErr::err(),
             ty: HErr::err(),
@@ -70,14 +66,14 @@ impl HirCreateErr for HVarDef {
     }
 }
 
-impl HirCreateErr for HVarDefExpr {
-    fn create_err() -> Self {
+impl HErr for HVarDefExpr {
+    fn err() -> Self {
         HVarDefExpr::Err
     }
 }
 
-impl HirCreateErr for HArgExpr {
-    fn create_err() -> Self {
+impl HErr for HArgExpr {
+    fn err() -> Self {
         HArgExpr::Err
     }
 }

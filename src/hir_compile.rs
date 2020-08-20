@@ -264,7 +264,7 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
                                     range: Some(range.clone()),
                                     name: Some(name.clone()),
                                 });
-                            HNodeDefExpr::Err
+                            HErr::err()
                         }
                     }
                     _ => {
@@ -274,7 +274,7 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
                                 bracket: bracket.clone(),
                                 name: None,
                             });
-                        HNodeDefExpr::Err
+                        HErr::err()
                     }
                 },
                 _ => {
@@ -284,7 +284,7 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
                             bracket: bracket.clone(),
                             name: None,
                         });
-                    HNodeDefExpr::Err
+                    HErr::err()
                 }
             },
         }
