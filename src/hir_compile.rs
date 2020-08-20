@@ -108,12 +108,15 @@ impl HirCompileFrom<ABlock> for HStmtExpr {
             let stmt: Rc<HStmt> = stmt.compile(&env, sess);
             for var in stmt.data_vars() {
                 match var.expr.deref() {
-                    HDataVarExpr::Name { name } => env.declare(&Rc::new(HVar {
-                        kind: Rc::new(HVarKind::Data { var: var.clone() }),
-                        ty: var.ty.clone(),
-                        name: name.clone()
-                    }), sess),
-                    _ => ()
+                    HDataVarExpr::Name { name } => env.declare(
+                        &Rc::new(HVar {
+                            kind: Rc::new(HVarKind::Data { var: var.clone() }),
+                            ty: var.ty.clone(),
+                            name: name.clone(),
+                        }),
+                        sess,
+                    ),
+                    _ => (),
                 };
             }
             stmts.push(stmt);
@@ -181,7 +184,6 @@ impl HirCompileFrom<AStmt> for HStmtExpr {
                 body_brace,
                 body,
             } => {
-                // TODO: check bound is a natural number
                 let range = Rc::new(HRange {
                     index: index.compile(&(), sess),
                     upto,
@@ -190,17 +192,7 @@ impl HirCompileFrom<AStmt> for HStmtExpr {
 
                 HStmtExpr::For {
                     kw,
-                    body: body.compile(
-                        &Env {
-                            refs: vec![Rc::new(hir_index_var(&range))],
-                            outer: Some(Box::new((*env).clone())),
-                            loc: Rc::new(HDataLoc::For {
-                                range: range.clone(),
-                                parent: env.loc.clone(),
-                            }),
-                        },
-                        sess,
-                    ),
+                    body: body.compile(&env.for_body(range.clone()), sess),
                     range,
                     body_brace,
                 }
@@ -511,14 +503,7 @@ impl HirCompileFrom<AIdent, ()> for HIdent {
 }
 
 pub fn compile_hir(ast: ASpec, sess: &mut Sess) -> Result<Rc<HSpec>, ()> {
-    let main: Rc<HStmt> = ast.main.compile(
-        &Env {
-            refs: Vec::new(),
-            outer: None,
-            loc: Rc::new(HDataLoc::Main),
-        },
-        sess,
-    );
+    let main: Rc<HStmt> = ast.main.compile(&Env::main(), sess);
 
     if sess.diagnostics.iter().any(|d| d.is_critical()) {
         Err(())?
@@ -541,14 +526,4 @@ fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<
         }
     }
     (args, puncts)
-}
-
-fn hir_index_var(range: &Rc<HRange>) -> HVar {
-    HVar {
-        name: range.index.clone(),
-        ty: range.bound.val.ty.clone(),
-        kind: Rc::new(HVarKind::Index {
-            range: range.clone(),
-        }),
-    }
 }

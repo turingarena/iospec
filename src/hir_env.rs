@@ -14,12 +14,21 @@ use crate::hir_err::HErr;
 
 #[derive(Debug, Clone)]
 pub struct Env {
-    pub refs: Vec<Rc<HVar>>,
-    pub outer: Option<Box<Env>>,
+    refs: Vec<Rc<HVar>>,
+    outer: Option<Box<Env>>,
+
     pub loc: Rc<HDataLoc>,
 }
 
 impl Env {
+    pub fn main() -> Self {
+        Env {
+            refs: Vec::new(),
+            outer: None,
+            loc: Rc::new(HDataLoc::Main),
+        }
+    }
+
     pub fn declare(self: &mut Self, var: &Rc<HVar>, sess: &mut Sess) {
         match self.maybe_resolve(&var.name) {
             None => {
@@ -56,6 +65,23 @@ impl Env {
             .find(|r| r.name.token == ident.token)
             .map(|r| r.clone())
             .or(self.outer.as_ref().and_then(|s| s.maybe_resolve(ident)))
+    }
+
+    pub fn for_body(self: &Self, range: Rc<HRange>) -> Self {
+        Self {
+            refs: vec![Rc::new(HVar {
+                name: range.index.clone(),
+                ty: range.bound.val.ty.clone(),
+                kind: Rc::new(HVarKind::Index {
+                    range: range.clone(),
+                }),
+            })],
+            outer: Some(Box::new(self.clone())),
+            loc: Rc::new(HDataLoc::For {
+                range: range.clone(),
+                parent: self.loc.clone(),
+            }),
+        }
     }
 }
 
