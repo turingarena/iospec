@@ -1,17 +1,17 @@
-read N: n32;
+read N: n32; // number of nodes
 
 for u upto N {
-    read D[u]: n32;
+    read D[u]: n32; // degree of u
     for i upto D[u] {
-        read A[u][i]: n32;
+        read A[u][i]: n32; // adjacency list
     }
 }
 
-call find_cycle(N, D, A) -> L: n32;
+call find_cycle(N, D, A) -> L: n32; // length of cycle
 
 write L;
 
 for i upto L {
-    call get_cycle_node(i) -> u:n32;
+    call get_cycle_node(i) -> u: n32; // i-th node in the cycle
     write u;
 }

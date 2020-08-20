@@ -130,3 +130,66 @@ Generates skeleton or template code for a given language.
 Turingarena IOspec is implemented in Rust.
 
 It parses the specification language exploting the parsing framework commonly used to implement Rust procedural macros.
+
+## Example of generated code
+
+An example of generated code for a probjem asking to find a cycle in a graph, already encoded in the input as adjacency lists.
+
+Spec file:
+
+```
+read N: n32; // number of nodes
+
+for u upto N {
+    read D[u]: n32; // degree of u
+    for i upto D[u] {
+        read A[u][i]: n32; // adjacency list
+    }
+}
+
+call find_cycle(N, D, A) -> L: n32; // length of cycle
+
+write L;
+
+for i upto L {
+    call get_cycle_node(i) -> u: n32; // i-th node in the cycle
+    write u;
+}
+```
+
+Generated C++ code:
+
+```c++
+#include <cstdio>
+#include <cstdint>
+
+int32_t find_cycle(int32_t N, int32_t* D, int32_t** A);
+
+int32_t get_cycle_node(int32_t i);
+
+int main() {
+    int32_t N;
+    scanf("%d", &N);
+
+    int32_t* D = new int32_t[N];
+    int32_t** A = new int32_t*[N];
+    for(int u = 0; u < N; u++) {
+        scanf("%d", &D[u]);
+
+        A[u] = new int32_t[D[u]];
+        for(int i = 0; i < D[u]; i++) {
+            scanf("%d", &A[u][i]);
+        }
+    }
+
+    int32_t L = find_cycle(N, D, A);
+
+    printf("%d\n", L);
+
+    for(int i = 0; i < L; i++) {
+        int32_t u = get_cycle_node(i);
+
+        printf("%d\n", u);
+    }
+}
+```
