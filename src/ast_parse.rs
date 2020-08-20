@@ -6,14 +6,14 @@ use syn::punctuated::Punctuated;
 use syn::Error;
 
 use crate::ast::*;
-use crate::diagnostic::{Diagnostic, Sess};
+use crate::diagnostic::Diagnostic;
 use crate::kw;
 
-pub fn parse_spec(source: &str, sess: &mut Sess) -> Result<ASpec, ()> {
+pub fn parse_spec(source: &str, dgns: &mut Vec<Diagnostic>) -> Result<ASpec, ()> {
     match syn::parse_str(source) {
         Ok(spec) => Ok(spec),
         Err(error) => {
-            sess.diagnostics.push(Diagnostic::ParseError { error });
+            dgns.push(Diagnostic::ParseError { error });
             Err(())
         }
     }

@@ -8,10 +8,10 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 use crate::ast_parse::parse_spec;
-use crate::diagnostic::Sess;
 use crate::hir_compile::compile_hir;
 use crate::lir_build::build_lir;
 use crate::mir_build::build_mir;
+use crate::sess::Sess;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -32,6 +32,7 @@ enum App {
 }
 
 mod diagnostic;
+mod sess;
 
 mod ast;
 mod ast_parse;
@@ -72,35 +73,35 @@ fn main() {
 
     match app {
         App::Lint { spec_file } => {
-            let mut sess = create_sess(&spec_file);
+            let sess = create_sess(&spec_file);
+            let mut dgns = Vec::new();
 
-            parse_spec(sess.file.clone().source(), &mut sess)
-                .and_then(|spec| compile_hir(spec, &mut sess))
+            parse_spec(sess.file.clone().source(), &mut dgns)
+                .and_then(|spec| compile_hir(spec, &mut dgns))
                 .ok();
 
-            display_diagnostics(&mut sess);
+            for d in dgns {
+                eprintln!("{}", d.diagnostic_message(&sess));
+            }
         }
 
         App::Code { spec_file } => {
-            let mut sess = create_sess(&spec_file);
+            let sess = create_sess(&spec_file);
+            let mut dgns = Vec::new();
 
-            let generated = parse_spec(sess.file.clone().source(), &mut sess)
-                .and_then(|spec| compile_hir(spec, &mut sess))
+            let generated = parse_spec(sess.file.clone().source(), &mut dgns)
+                .and_then(|spec| compile_hir(spec, &mut dgns))
                 .map(|spec| build_mir(&spec))
                 .map(|spec| build_lir(spec))
                 .map(|spec| code::gen_file(spec));
 
-            display_diagnostics(&mut sess);
+            for d in dgns {
+                eprintln!("{}", d.diagnostic_message(&sess));
+            }
 
             if let Ok(generated) = generated {
                 print!("{}", generated);
             }
         }
-    }
-}
-
-fn display_diagnostics(sess: &mut Sess) {
-    for d in sess.diagnostics.iter() {
-        eprintln!("{}", d.diagnostic_message(&sess));
     }
 }

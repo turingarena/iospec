@@ -15,34 +15,34 @@ use crate::hir_err::*;
 use crate::ty::*;
 
 trait HirCompileFrom<T, E = Env> {
-    fn compile(ast: T, env: &E, sess: &mut Sess) -> Self;
+    fn compile(ast: T, env: &E, dgns: &mut Vec<Diagnostic>) -> Self;
 }
 
 impl<T, U, E> HirCompileFrom<T, E> for Rc<U>
 where
     U: HirCompileFrom<T, E>,
 {
-    fn compile(ast: T, env: &E, sess: &mut Sess) -> Self {
-        Rc::new(U::compile(ast, env, sess))
+    fn compile(ast: T, env: &E, dgns: &mut Vec<Diagnostic>) -> Self {
+        Rc::new(U::compile(ast, env, dgns))
     }
 }
 
 trait HirCompileInto<T, E = Env> {
-    fn compile(self: Self, env: &E, sess: &mut Sess) -> T;
+    fn compile(self: Self, env: &E, dgns: &mut Vec<Diagnostic>) -> T;
 }
 
 impl<U, T, E> HirCompileInto<U, E> for T
 where
     U: HirCompileFrom<T, E>,
 {
-    fn compile(self: Self, env: &E, sess: &mut Sess) -> U {
-        U::compile(self, env, sess)
+    fn compile(self: Self, env: &E, dgns: &mut Vec<Diagnostic>) -> U {
+        U::compile(self, env, dgns)
     }
 }
 
 impl<T: HirCompileInto<Rc<HStepExpr>>> HirCompileFrom<T> for HStep {
-    fn compile(ast: T, env: &Env, sess: &mut Sess) -> Self {
-        let expr: Rc<HStepExpr> = ast.compile(env, sess);
+    fn compile(ast: T, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
+        let expr: Rc<HStepExpr> = ast.compile(env, dgns);
         HStep {
             nodes: match expr.deref() {
                 HStepExpr::Seq { steps } => {
@@ -74,12 +74,12 @@ impl<T: HirCompileInto<Rc<HStepExpr>>> HirCompileFrom<T> for HStep {
 }
 
 impl HirCompileFrom<ABlock> for HStepExpr {
-    fn compile(ast: ABlock, env: &Env, sess: &mut Sess) -> Self {
+    fn compile(ast: ABlock, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
         let mut env = env.clone();
         let mut steps = Vec::new();
 
         for stmt in ast.stmts {
-            let stmt: Rc<HStep> = stmt.compile(&env, sess);
+            let stmt: Rc<HStep> = stmt.compile(&env, dgns);
             for node in stmt.nodes.iter() {
                 let var = &node.root_var;
                 match var.expr.deref() {
@@ -89,7 +89,7 @@ impl HirCompileFrom<ABlock> for HStepExpr {
                             ty: var.ty.clone(),
                             name: name.clone(),
                         }),
-                        sess,
+                        dgns,
                     ),
                     _ => (),
                 };
@@ -102,14 +102,14 @@ impl HirCompileFrom<ABlock> for HStepExpr {
 }
 
 impl HirCompileFrom<AStmt> for HStepExpr {
-    fn compile(ast: AStmt, env: &Env, sess: &mut Sess) -> Self {
+    fn compile(ast: AStmt, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
         match ast {
             AStmt::Read { kw, args, semi } => {
                 let (args, arg_commas) = unzip_punctuated(args);
 
                 HStepExpr::Read {
                     kw,
-                    args: args.into_iter().map(|a| a.compile(env, sess)).collect(),
+                    args: args.into_iter().map(|a| a.compile(env, dgns)).collect(),
                     arg_commas,
                     semi,
                 }
@@ -119,7 +119,7 @@ impl HirCompileFrom<AStmt> for HStepExpr {
 
                 HStepExpr::Write {
                     kw,
-                    args: args.into_iter().map(|a| a.compile(env, sess)).collect(),
+                    args: args.into_iter().map(|a| a.compile(env, dgns)).collect(),
                     arg_commas,
                     semi,
                 }
@@ -134,15 +134,15 @@ impl HirCompileFrom<AStmt> for HStepExpr {
             } => {
                 let (args, arg_commas) = unzip_punctuated(args);
                 let (ret_rarrow, ret) = match ret {
-                    Some((a, r)) => (Some(a), Some(r.compile(env, sess))),
+                    Some((a, r)) => (Some(a), Some(r.compile(env, dgns))),
                     None => (None, None),
                 };
 
                 HStepExpr::Call {
                     kw,
                     fun: Rc::new(HFun {
-                        name: name.compile(&(), sess),
-                        args: args.into_iter().map(|a| a.compile(env, sess)).collect(),
+                        name: name.compile(&(), dgns),
+                        args: args.into_iter().map(|a| a.compile(env, dgns)).collect(),
                         ret,
                         args_paren,
                         arg_commas,
@@ -160,14 +160,14 @@ impl HirCompileFrom<AStmt> for HStepExpr {
                 body,
             } => {
                 let range = Rc::new(HRange {
-                    index: index.compile(&(), sess),
+                    index: index.compile(&(), dgns),
                     upto,
-                    bound: bound.compile(env, sess),
+                    bound: bound.compile(env, dgns),
                 });
 
                 HStepExpr::For {
                     kw,
-                    body: body.compile(&env.for_body(range.clone()), sess),
+                    body: body.compile(&env.for_body(range.clone()), dgns),
                     range,
                     body_brace,
                 }
@@ -177,9 +177,9 @@ impl HirCompileFrom<AStmt> for HStepExpr {
 }
 
 impl HirCompileFrom<ADef> for HAtomDef {
-    fn compile(ast: ADef, env: &Env, sess: &mut Sess) -> Self {
+    fn compile(ast: ADef, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
         let ADef { expr, colon, ty } = ast;
-        let ty: Rc<HAtomTy> = ty.compile(&(), sess);
+        let ty: Rc<HAtomTy> = ty.compile(&(), dgns);
 
         HAtomDef {
             colon,
@@ -191,7 +191,7 @@ impl HirCompileFrom<ADef> for HAtomDef {
                     }),
                     loc: env.loc.clone(),
                 },
-                sess,
+                dgns,
             ),
             ty,
         }
@@ -199,8 +199,8 @@ impl HirCompileFrom<ADef> for HAtomDef {
 }
 
 impl HirCompileFrom<AExpr, HDefEnv> for HNodeDef {
-    fn compile(ast: AExpr, env: &HDefEnv, sess: &mut Sess) -> Self {
-        let expr: Rc<HNodeDefExpr> = ast.compile(env, sess);
+    fn compile(ast: AExpr, env: &HDefEnv, dgns: &mut Vec<Diagnostic>) -> Self {
+        let expr: Rc<HNodeDefExpr> = ast.compile(env, dgns);
 
         HNodeDef {
             ty: env.ty.clone(),
@@ -215,10 +215,10 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDef {
 }
 
 impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
-    fn compile(ast: AExpr, env: &HDefEnv, sess: &mut Sess) -> Self {
+    fn compile(ast: AExpr, env: &HDefEnv, dgns: &mut Vec<Diagnostic>) -> Self {
         match ast {
             AExpr::Ref { ident } => HNodeDefExpr::Var {
-                var: ident.compile(env, sess),
+                var: ident.compile(env, dgns),
             },
             AExpr::Subscript {
                 array,
@@ -227,7 +227,7 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
             } => match env.loc.deref() {
                 HDataLoc::For { range, parent } => match *index {
                     AExpr::Ref { ident } => {
-                        let name: Rc<HName> = ident.compile(&(), sess);
+                        let name: Rc<HName> = ident.compile(&(), dgns);
 
                         if name.to_string() == range.index.to_string() {
                             let index = Rc::new(HIndex {
@@ -245,38 +245,35 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
                                         }),
                                         loc: parent.clone(),
                                     },
-                                    sess,
+                                    dgns,
                                 ),
                                 bracket,
                                 index,
                             }
                         } else {
-                            sess.diagnostics
-                                .push(Diagnostic::SubscriptDefIndexNotMatched {
-                                    bracket: bracket.clone(),
-                                    range: Some(range.clone()),
-                                    name: Some(name.clone()),
-                                });
+                            dgns.push(Diagnostic::SubscriptDefIndexNotMatched {
+                                bracket: bracket.clone(),
+                                range: Some(range.clone()),
+                                name: Some(name.clone()),
+                            });
                             HErr::err()
                         }
                     }
                     _ => {
-                        sess.diagnostics
-                            .push(Diagnostic::SubscriptDefIndexNotMatched {
-                                range: Some(range.clone()),
-                                bracket: bracket.clone(),
-                                name: None,
-                            });
+                        dgns.push(Diagnostic::SubscriptDefIndexNotMatched {
+                            range: Some(range.clone()),
+                            bracket: bracket.clone(),
+                            name: None,
+                        });
                         HErr::err()
                     }
                 },
                 _ => {
-                    sess.diagnostics
-                        .push(Diagnostic::SubscriptDefIndexNotMatched {
-                            range: None,
-                            bracket: bracket.clone(),
-                            name: None,
-                        });
+                    dgns.push(Diagnostic::SubscriptDefIndexNotMatched {
+                        range: None,
+                        bracket: bracket.clone(),
+                        name: None,
+                    });
                     HErr::err()
                 }
             },
@@ -285,10 +282,10 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
 }
 
 impl HirCompileFrom<AIdent, HDefEnv> for HVarDef {
-    fn compile(ast: AIdent, env: &HDefEnv, sess: &mut Sess) -> Self {
+    fn compile(ast: AIdent, env: &HDefEnv, dgns: &mut Vec<Diagnostic>) -> Self {
         HVarDef {
             expr: Rc::new(HVarDefExpr::Name {
-                name: ast.compile(&(), sess),
+                name: ast.compile(&(), dgns),
             }),
             ty: env.ty.clone(),
         }
@@ -296,8 +293,8 @@ impl HirCompileFrom<AIdent, HDefEnv> for HVarDef {
 }
 
 impl HirCompileFrom<AExpr> for HArg {
-    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
-        let val: Rc<HVal> = ast.compile(env, sess);
+    fn compile(ast: AExpr, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
+        let val: Rc<HVal> = ast.compile(env, dgns);
 
         HArg {
             val: val.clone(),
@@ -306,8 +303,7 @@ impl HirCompileFrom<AExpr> for HArg {
                     name: var.name.clone(),
                 }),
                 _ => {
-                    sess.diagnostics
-                        .push(Diagnostic::ArgumentNotVariable { val: val.clone() });
+                    dgns.push(Diagnostic::ArgumentNotVariable { val: val.clone() });
                     HErr::err()
                 }
             },
@@ -316,8 +312,8 @@ impl HirCompileFrom<AExpr> for HArg {
 }
 
 impl HirCompileFrom<AExpr> for HVal {
-    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
-        let expr: Rc<HValExpr> = ast.compile(env, sess);
+    fn compile(ast: AExpr, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
+        let expr: Rc<HValExpr> = ast.compile(env, dgns);
 
         HVal {
             ty: match expr.deref() {
@@ -330,7 +326,7 @@ impl HirCompileFrom<AExpr> for HVal {
                     HValTy::Array { item, range } => {
                         match index.ty.deref() {
                             HValTy::Atom { atom_ty } if atom_ty.sem == range.bound.ty.sem => (),
-                            _ => sess.diagnostics.push(Diagnostic::SubscriptIndexWrongType {
+                            _ => dgns.push(Diagnostic::SubscriptIndexWrongType {
                                 range: range.clone(),
                                 array: array.clone(),
                                 index: index.clone(),
@@ -341,7 +337,7 @@ impl HirCompileFrom<AExpr> for HVal {
                     }
                     HValTy::Err => HErr::err(),
                     _ => {
-                        sess.diagnostics.push(Diagnostic::SubscriptArrayNotArray {
+                        dgns.push(Diagnostic::SubscriptArrayNotArray {
                             array: array.clone(),
                             index: index.clone(),
                             bracket: bracket.clone(),
@@ -357,15 +353,15 @@ impl HirCompileFrom<AExpr> for HVal {
 }
 
 impl HirCompileFrom<AExpr> for HRangeBound {
-    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
-        let val: Rc<HVal> = ast.compile(env, sess);
+    fn compile(ast: AExpr, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
+        let val: Rc<HVal> = ast.compile(env, dgns);
 
         match val.ty.deref() {
             HValTy::Atom { atom_ty } => {
                 if let AtomTy::Natural { .. } = &atom_ty.sem {
                     // OK
                 } else {
-                    sess.diagnostics.push(Diagnostic::RangeBoundNotNatural {
+                    dgns.push(Diagnostic::RangeBoundNotNatural {
                         val: val.clone(),
                         atom_ty: Some(atom_ty.clone()),
                     })
@@ -377,7 +373,7 @@ impl HirCompileFrom<AExpr> for HRangeBound {
                 }
             }
             _ => {
-                sess.diagnostics.push(Diagnostic::RangeBoundNotNatural {
+                dgns.push(Diagnostic::RangeBoundNotNatural {
                     val: val.clone(),
                     atom_ty: None,
                 });
@@ -391,16 +387,15 @@ impl HirCompileFrom<AExpr> for HRangeBound {
 }
 
 impl HirCompileFrom<AExpr> for HAtom {
-    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
-        let val: Rc<HVal> = ast.compile(env, sess);
+    fn compile(ast: AExpr, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
+        let val: Rc<HVal> = ast.compile(env, dgns);
 
         HAtom {
             ty: match val.ty.deref() {
                 HValTy::Atom { atom_ty } => atom_ty.clone(),
                 HValTy::Err => HErr::err(),
                 _ => {
-                    sess.diagnostics
-                        .push(Diagnostic::AtomNotScalar { val: val.clone() });
+                    dgns.push(Diagnostic::AtomNotScalar { val: val.clone() });
                     HErr::err()
                 }
             },
@@ -410,11 +405,11 @@ impl HirCompileFrom<AExpr> for HAtom {
 }
 
 impl HirCompileFrom<AExpr> for HValExpr {
-    fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
+    fn compile(ast: AExpr, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
         match ast {
             AExpr::Ref { ident } => {
-                let ident = ident.compile(&(), sess);
-                let var = env.resolve(&ident, sess);
+                let ident = ident.compile(&(), dgns);
+                let var = env.resolve(&ident, dgns);
 
                 HValExpr::Var { var, ident }
             }
@@ -423,8 +418,8 @@ impl HirCompileFrom<AExpr> for HValExpr {
                 bracket,
                 index,
             } => HValExpr::Subscript {
-                array: (*array).compile(env, sess),
-                index: (*index).compile(env, sess),
+                array: (*array).compile(env, dgns),
+                index: (*index).compile(env, dgns),
                 bracket,
             },
         }
@@ -432,15 +427,15 @@ impl HirCompileFrom<AExpr> for HValExpr {
 }
 
 impl HirCompileFrom<ATy, ()> for HAtomTy {
-    fn compile(ast: ATy, _: &(), sess: &mut Sess) -> Self {
-        let name: Rc<HName> = ast.ident.compile(&(), sess);
+    fn compile(ast: ATy, _: &(), dgns: &mut Vec<Diagnostic>) -> Self {
+        let name: Rc<HName> = ast.ident.compile(&(), dgns);
 
         HAtomTy {
             sem: AtomTy::all()
                 .into_iter()
                 .find(|k| k.name() == name.ident.to_string())
                 .unwrap_or_else(|| {
-                    sess.diagnostics.push(Diagnostic::InvalidAtomTy {
+                    dgns.push(Diagnostic::InvalidAtomTy {
                         ident: name.clone(),
                     });
                     AtomTy::Err
@@ -451,16 +446,16 @@ impl HirCompileFrom<ATy, ()> for HAtomTy {
 }
 
 impl HirCompileFrom<AIdent, ()> for HName {
-    fn compile(ast: AIdent, _: &(), _sess: &mut Sess) -> Self {
+    fn compile(ast: AIdent, _: &(), _dgns: &mut Vec<Diagnostic>) -> Self {
         let AIdent { token } = ast;
         HName { ident: token }
     }
 }
 
-pub fn compile_hir(ast: ASpec, sess: &mut Sess) -> Result<Rc<HSpec>, ()> {
-    let main: Rc<HStep> = ast.main.compile(&Env::main(), sess);
+pub fn compile_hir(ast: ASpec, dgns: &mut Vec<Diagnostic>) -> Result<Rc<HSpec>, ()> {
+    let main: Rc<HStep> = ast.main.compile(&Env::main(), dgns);
 
-    if sess.diagnostics.iter().any(|d| d.is_critical()) {
+    if dgns.iter().any(|d| d.is_critical()) {
         Err(())?
     }
 

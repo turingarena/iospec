@@ -29,13 +29,13 @@ impl Env {
         }
     }
 
-    pub fn declare(self: &mut Self, var: &Rc<HVar>, sess: &mut Sess) {
+    pub fn declare(self: &mut Self, var: &Rc<HVar>, diagnostics: &mut Vec<Diagnostic>) {
         match self.maybe_resolve(&var.name) {
             None => {
                 self.refs.push(var.clone());
             }
             Some(old_var) => {
-                sess.diagnostics.push(Diagnostic::AlreadyDefinedVar {
+                diagnostics.push(Diagnostic::AlreadyDefinedVar {
                     new_var: var.clone(),
                     old_var,
                 });
@@ -43,11 +43,11 @@ impl Env {
         }
     }
 
-    pub fn resolve(self: &Self, ident: &Rc<HName>, sess: &mut Sess) -> Rc<HVar> {
+    pub fn resolve(self: &Self, ident: &Rc<HName>, diagnostics: &mut Vec<Diagnostic>) -> Rc<HVar> {
         match self.maybe_resolve(ident) {
             Some(var) => var,
             None => {
-                sess.diagnostics.push(Diagnostic::UndefVar {
+                diagnostics.push(Diagnostic::UndefVar {
                     ident: ident.clone(),
                 });
                 Rc::new(HVar {
