@@ -49,10 +49,6 @@ impl HStmt {
             _ => Vec::new(),
         }
     }
-
-    fn data_vars(self: &Self) -> Vec<Rc<HDataVar>> {
-        self.allocs.iter().map(|a| a.root_var.clone()).collect()
-    }
 }
 
 impl HStmtExpr {
@@ -106,7 +102,8 @@ impl HirCompileFrom<ABlock> for HStmtExpr {
 
         for stmt in ast.stmts {
             let stmt: Rc<HStmt> = stmt.compile(&env, sess);
-            for var in stmt.data_vars() {
+            for node in stmt.allocs.iter() {
+                let var = &node.root_var;
                 match var.expr.deref() {
                     HDataVarExpr::Name { name } => env.declare(
                         &Rc::new(HVar {
