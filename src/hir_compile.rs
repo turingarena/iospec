@@ -302,51 +302,6 @@ impl HirCompileFrom<AIdent, HDefEnv> for HVarDef {
     }
 }
 
-impl HValExpr {
-    fn ty(self: &Self, sess: &mut Sess) -> Rc<HValTy> {
-        match self {
-            HValExpr::Var { var, .. } => var.ty.clone(),
-            HValExpr::Subscript {
-                array,
-                index,
-                bracket,
-            } => match array.ty.deref() {
-                HValTy::Array { item, range } => {
-                    match index.ty.deref() {
-                        HValTy::Atom { atom_ty } => {
-                            if atom_ty.sem != range.bound.ty.sem {
-                                sess.diagnostics.push(Diagnostic::SubscriptIndexWrongType {
-                                    range: range.clone(),
-                                    array: array.clone(),
-                                    index: index.clone(),
-                                    bracket: bracket.clone(),
-                                })
-                            }
-                        }
-                        _ => sess.diagnostics.push(Diagnostic::SubscriptIndexWrongType {
-                            range: range.clone(),
-                            array: array.clone(),
-                            index: index.clone(),
-                            bracket: bracket.clone(),
-                        }),
-                    }
-                    item.clone()
-                }
-                HValTy::Err => HErr::err(),
-                _ => {
-                    sess.diagnostics.push(Diagnostic::SubscriptArrayNotArray {
-                        array: array.clone(),
-                        index: index.clone(),
-                        bracket: bracket.clone(),
-                    });
-
-                    HErr::err()
-                }
-            },
-        }
-    }
-}
-
 impl HirCompileFrom<AExpr> for HArg {
     fn compile(ast: AExpr, env: &Env, sess: &mut Sess) -> Self {
         let val: Rc<HVal> = ast.compile(env, sess);
@@ -373,7 +328,37 @@ impl HirCompileFrom<AExpr> for HVal {
         let expr: Rc<HValExpr> = ast.compile(env, sess);
 
         HVal {
-            ty: expr.ty(sess),
+            ty: match expr.deref() {
+                HValExpr::Var { var, .. } => var.ty.clone(),
+                HValExpr::Subscript {
+                    array,
+                    index,
+                    bracket,
+                } => match array.ty.deref() {
+                    HValTy::Array { item, range } => {
+                        match index.ty.deref() {
+                            HValTy::Atom { atom_ty } if atom_ty.sem == range.bound.ty.sem => (),
+                            _ => sess.diagnostics.push(Diagnostic::SubscriptIndexWrongType {
+                                range: range.clone(),
+                                array: array.clone(),
+                                index: index.clone(),
+                                bracket: bracket.clone(),
+                            }),
+                        }
+                        item.clone()
+                    }
+                    HValTy::Err => HErr::err(),
+                    _ => {
+                        sess.diagnostics.push(Diagnostic::SubscriptArrayNotArray {
+                            array: array.clone(),
+                            index: index.clone(),
+                            bracket: bracket.clone(),
+                        });
+
+                        HErr::err()
+                    }
+                },
+            },
             expr,
         }
     }
