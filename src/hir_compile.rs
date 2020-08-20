@@ -50,18 +50,8 @@ impl HStmt {
         }
     }
 
-    fn vars(self: &Self) -> Vec<Rc<HVar>> {
-        match self.expr.deref() {
-            HStmtExpr::Block { stmts } => stmts.iter().flat_map(|s| s.vars()).collect(),
-            HStmtExpr::Read { args, .. } => {
-                args.iter().flat_map(hir_node_var).map(Rc::new).collect()
-            }
-            HStmtExpr::Call { fun, .. } => {
-                fun.ret.iter().flat_map(hir_node_var).map(Rc::new).collect()
-            }
-            HStmtExpr::For { body, .. } => body.vars(),
-            _ => Vec::new(),
-        }
+    fn data_vars(self: &Self) -> Vec<Rc<HDataVar>> {
+        self.allocs.iter().map(|a| a.root_var.clone()).collect()
     }
 }
 
@@ -116,8 +106,15 @@ impl HirCompileFrom<ABlock> for HStmtExpr {
 
         for stmt in ast.stmts {
             let stmt: Rc<HStmt> = stmt.compile(&env, sess);
-            for var in stmt.vars() {
-                env.declare(&var, sess);
+            for var in stmt.data_vars() {
+                match var.expr.deref() {
+                    HDataVarExpr::Name { name } => env.declare(&Rc::new(HVar {
+                        kind: Rc::new(HVarKind::Data { var: var.clone() }),
+                        ty: var.ty.clone(),
+                        name: name.clone()
+                    }), sess),
+                    _ => ()
+                };
             }
             stmts.push(stmt);
         }
@@ -544,20 +541,6 @@ fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<
         }
     }
     (args, puncts)
-}
-
-fn hir_node_var(atom: &Rc<HDataAtom>) -> Option<HVar> {
-    if let HDataVarExpr::Name { name } = atom.node.root_var.expr.deref() {
-        Some(HVar {
-            name: name.clone(),
-            ty: atom.node.root_var.ty.clone(),
-            kind: Rc::new(HVarKind::Data {
-                var: atom.node.root_var.clone(),
-            }),
-        })
-    } else {
-        None
-    }
 }
 
 fn hir_index_var(range: &Rc<HRange>) -> HVar {
