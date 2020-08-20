@@ -30,7 +30,8 @@ pub enum Diagnostic {
     },
     SubscriptDefIndexNotMatched {
         bracket: syn::token::Bracket,
-        range: Option<Rc<HRange>>,
+        expected_range: Option<Rc<HRange>>,
+        actual_range: Option<Rc<HRange>>,
         name: Option<Rc<HName>>,
     },
     SubscriptArrayNotArray {
@@ -150,25 +151,26 @@ impl Diagnostic {
             ),
             Diagnostic::SubscriptDefIndexNotMatched {
                 bracket,
-                range,
+                expected_range,
+                actual_range: _,
                 name,
             } => sess.error(
-                &match range {
-                    Some(range) => match name {
+                &match expected_range {
+                    Some(expected_range) => match name {
                         Some(name) => format!(
                             "index must match enclosing for, expecting `{}`, got `{}`",
-                            quote_string(quote!(#(range.index.deref()))),
+                            quote_string(quote!(#(expected_range.index.deref()))),
                             quote_string(quote!(#(name.deref()))),
                         ),
                         None => format!(
                             "index must match enclosing for, expecting `{}`, got an expression",
-                            quote_string(quote!(#(range.index.deref()))),
+                            quote_string(quote!(#(expected_range.index.deref()))),
                         ),
                     },
                     None => format!("index must match an enclosing for, but no for was found"),
                 },
-                match range {
-                    Some(range) => vec![
+                match expected_range {
+                    Some(expected_range) => vec![
                         match name {
                             Some(name) => {
                                 sess.error_ann("does not match enclosing for index", name.span())
@@ -177,7 +179,7 @@ impl Diagnostic {
                                 sess.error_ann("complex expressions not allowed here", bracket.span)
                             }
                         },
-                        sess.help_ann("must match this index", range.index.span()),
+                        sess.help_ann("must match this index", expected_range.index.span()),
                     ],
                     None => {
                         vec![sess.error_ann("subscript without an enclosing `for`", bracket.span)]

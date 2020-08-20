@@ -124,7 +124,7 @@ pub enum HNodeDefExpr {
     Subscript {
         array: Rc<HNodeDef>,
         bracket: syn::token::Bracket,
-        index: Rc<HIndex>,
+        index: Rc<HVal>,
     },
     Err,
 }
@@ -143,14 +143,6 @@ pub struct HVarDef {
 pub enum HVarDefExpr {
     Name { name: Rc<HName> },
     Err,
-}
-
-/// An index used in definition of input/output data.
-/// E.g., `i`, and `j` in `... read A[i][j]: n32; ...`.
-#[derive(Debug)]
-pub struct HIndex {
-    pub name: Rc<HName>,
-    pub range: Rc<HRange>,
 }
 
 /// Range in a `for` statement.
@@ -192,7 +184,7 @@ pub struct HVal {
 pub enum HValExpr {
     Var {
         var: Rc<HVar>,
-        ident: Rc<HName>,
+        name: Rc<HName>,
     },
     Subscript {
         array: Rc<HVal>,

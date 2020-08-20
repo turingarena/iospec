@@ -69,7 +69,7 @@ fn lir_data_node_expr(hir: &Rc<HNodeDef>) -> LExpr {
         },
         HNodeDefExpr::Subscript { array, index, .. } => LExpr::Subscript {
             array: Box::new(lir_data_node_expr(array)),
-            index: Box::new(lir_index_expr(index)),
+            index: Box::new(lir_val_expr(index)),
         },
         HNodeDefExpr::Err => unreachable!(),
     }
@@ -77,19 +77,13 @@ fn lir_data_node_expr(hir: &Rc<HNodeDef>) -> LExpr {
 
 fn lir_val_expr(hir: &Rc<HVal>) -> LExpr {
     match hir.expr.deref() {
-        HValExpr::Var { ident, .. } => LExpr::Var {
-            name: ident.to_string(),
+        HValExpr::Var { name, .. } => LExpr::Var {
+            name: name.to_string(),
         },
         HValExpr::Subscript { array, index, .. } => LExpr::Subscript {
             array: Box::new(lir_val_expr(array)),
             index: Box::new(lir_val_expr(index)),
         },
-    }
-}
-
-fn lir_index_expr(hir: &Rc<HIndex>) -> LExpr {
-    LExpr::Var {
-        name: hir.name.to_string(),
     }
 }
 

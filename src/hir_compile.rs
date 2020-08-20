@@ -224,59 +224,75 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
                 array,
                 bracket,
                 index,
-            } => match env.loc.deref() {
-                HDataLoc::For { range, parent } => match *index {
-                    AExpr::Ref { ident } => {
-                        let name: Rc<HName> = ident.compile(&(), dgns);
+            } => {
+                let index: Rc<HVal> = (*index).compile(&env.env, &mut Vec::new()); // ignore diagnostics
 
-                        if name.to_string() == range.index.to_string() {
-                            let index = Rc::new(HIndex {
-                                name: name.clone(),
-                                range: range.clone(),
-                            });
-
-                            HNodeDefExpr::Subscript {
-                                array: (*array).compile(
-                                    &HDefEnv {
-                                        env: env.env.clone(),
-                                        ty: Rc::new(HValTy::Array {
-                                            item: env.ty.clone(),
-                                            range: range.clone(),
-                                        }),
-                                        loc: parent.clone(),
-                                    },
-                                    dgns,
-                                ),
-                                bracket,
-                                index,
+                match env.loc.deref() {
+                    HDataLoc::For {
+                        range: expected_range,
+                        parent,
+                    } => match index.expr.deref() {
+                        HValExpr::Var { name, var } => match var.expr.deref() {
+                            HVarExpr::Index {
+                                range: actual_range,
+                            } => {
+                                if Rc::ptr_eq(&expected_range, &actual_range) {
+                                    HNodeDefExpr::Subscript {
+                                        array: (*array).compile(
+                                            &HDefEnv {
+                                                env: env.env.clone(),
+                                                ty: Rc::new(HValTy::Array {
+                                                    item: env.ty.clone(),
+                                                    range: expected_range.clone(),
+                                                }),
+                                                loc: parent.clone(),
+                                            },
+                                            dgns,
+                                        ),
+                                        bracket,
+                                        index,
+                                    }
+                                } else {
+                                    dgns.push(Diagnostic::SubscriptDefIndexNotMatched {
+                                        bracket: bracket.clone(),
+                                        expected_range: Some(expected_range.clone()),
+                                        actual_range: Some(actual_range.clone()),
+                                        name: Some(name.clone()),
+                                    });
+                                    HErr::err()
+                                }
                             }
-                        } else {
+                            _ => {
+                                dgns.push(Diagnostic::SubscriptDefIndexNotMatched {
+                                    expected_range: Some(expected_range.clone()),
+                                    actual_range: None,
+                                    bracket: bracket.clone(),
+                                    name: None,
+                                });
+                                HErr::err()
+                            }
+                        },
+                        _ => {
                             dgns.push(Diagnostic::SubscriptDefIndexNotMatched {
+                                expected_range: Some(expected_range.clone()),
+                                actual_range: None,
                                 bracket: bracket.clone(),
-                                range: Some(range.clone()),
-                                name: Some(name.clone()),
+                                name: None,
                             });
                             HErr::err()
                         }
-                    }
+                    },
                     _ => {
                         dgns.push(Diagnostic::SubscriptDefIndexNotMatched {
-                            range: Some(range.clone()),
+                            expected_range: None,
+                            actual_range: None,
                             bracket: bracket.clone(),
                             name: None,
                         });
                         HErr::err()
                     }
-                },
-                _ => {
-                    dgns.push(Diagnostic::SubscriptDefIndexNotMatched {
-                        range: None,
-                        bracket: bracket.clone(),
-                        name: None,
-                    });
-                    HErr::err()
                 }
-            },
+            }
         }
     }
 }
@@ -408,10 +424,10 @@ impl HirCompileFrom<AExpr> for HValExpr {
     fn compile(ast: AExpr, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
         match ast {
             AExpr::Ref { ident } => {
-                let ident = ident.compile(&(), dgns);
-                let var = env.resolve(&ident, dgns);
+                let name = ident.compile(&(), dgns);
+                let var = env.resolve(&name, dgns);
 
-                HValExpr::Var { var, ident }
+                HValExpr::Var { var, name }
             }
             AExpr::Subscript {
                 array,
