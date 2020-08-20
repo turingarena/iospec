@@ -68,7 +68,7 @@ pub enum HStepExpr {
 }
 
 /// A called function.
-/// E.g., `f(A, B) -> D: i32` in `... call f(A, B) -> C: i32; ...`
+/// E.g., `f(A, B) -> C: i32` in `... call f(A, B) -> C: i32; ...`
 #[derive(Debug)]
 pub struct HFun {
     pub name: Rc<HName>,
