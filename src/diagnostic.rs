@@ -37,6 +37,10 @@ pub enum Diagnostic {
     UndefVar {
         ident: Rc<HIdent>,
     },
+    AlreadyDefinedVar {
+        old_var: Rc<HVar>,
+        new_var: Rc<HVar>,
+    },
     RangeBoundNotNatural {
         val: Rc<HVal>,
         atom_ty: Option<Rc<HAtomTy>>,
@@ -172,6 +176,22 @@ impl Diagnostic {
                     "not found in this scope",
                     ident.token.span(),
                 )],
+            ),
+            Diagnostic::AlreadyDefinedVar { old_var, new_var } => sess.diagnostic_message(
+                AnnotationType::Error,
+                &format!("variable `{}` already defined", new_var.name.to_string()),
+                vec![
+                    sess.annotation(
+                        AnnotationType::Error,
+                        "cannot re-define a variable in scope",
+                        new_var.name.span(),
+                    ),
+                    sess.annotation(
+                        AnnotationType::Info,
+                        "was defined here",
+                        old_var.name.span(),
+                    ),
+                ],
             ),
             Diagnostic::RangeBoundNotNatural { val, atom_ty } => sess.diagnostic_message(
                 AnnotationType::Error,

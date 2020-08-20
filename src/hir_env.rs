@@ -20,6 +20,20 @@ pub struct Env {
 }
 
 impl Env {
+    pub fn declare(self: &mut Self, var: &Rc<HVar>, sess: &mut Sess) {
+        match self.maybe_resolve(&var.name) {
+            None => {
+                self.refs.push(var.clone());
+            }
+            Some(old_var) => {
+                sess.diagnostics.push(Diagnostic::AlreadyDefinedVar {
+                    new_var: var.clone(),
+                    old_var,
+                });
+            }
+        }
+    }
+
     pub fn resolve(self: &Self, ident: &Rc<HIdent>, sess: &mut Sess) -> Rc<HVar> {
         match self.maybe_resolve(ident) {
             Some(var) => var,

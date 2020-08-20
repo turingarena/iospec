@@ -87,7 +87,9 @@ impl HirCompileFrom<ABlock> for HStmt {
 
         for stmt in ast.stmts {
             let stmt: Rc<HStmt> = stmt.compile(&env, sess);
-            env.refs.extend(stmt.vars().into_iter());
+            for var in stmt.vars() {
+                env.declare(&var, sess);
+            }
             stmts.push(stmt);
         }
 
