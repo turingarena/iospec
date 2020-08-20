@@ -42,35 +42,43 @@ where
 
 impl HStmt {
     fn funs(self: &Self) -> Vec<Rc<HFun>> {
-        match self {
-            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.funs()).collect(),
-            HStmt::Call { fun, .. } => vec![fun.clone()],
-            HStmt::For { body, .. } => body.funs(),
+        match self.expr.deref() {
+            HStmtExpr::Block { stmts } => stmts.iter().flat_map(|s| s.funs()).collect(),
+            HStmtExpr::Call { fun, .. } => vec![fun.clone()],
+            HStmtExpr::For { body, .. } => body.funs(),
             _ => Vec::new(),
         }
     }
 
     fn vars(self: &Self) -> Vec<Rc<HVar>> {
-        match self {
-            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.vars()).collect(),
-            HStmt::Read { args, .. } => args.iter().flat_map(hir_node_var).map(Rc::new).collect(),
-            HStmt::Call { fun, .. } => fun.ret.iter().flat_map(hir_node_var).map(Rc::new).collect(),
-            HStmt::For { body, .. } => body.vars(),
+        match self.expr.deref() {
+            HStmtExpr::Block { stmts } => stmts.iter().flat_map(|s| s.vars()).collect(),
+            HStmtExpr::Read { args, .. } => {
+                args.iter().flat_map(hir_node_var).map(Rc::new).collect()
+            }
+            HStmtExpr::Call { fun, .. } => {
+                fun.ret.iter().flat_map(hir_node_var).map(Rc::new).collect()
+            }
+            HStmtExpr::For { body, .. } => body.vars(),
             _ => Vec::new(),
         }
     }
+}
 
-    // TODO: make private?
-    pub fn allocs(self: &Self) -> Vec<Rc<HDataNode>> {
+impl HStmtExpr {
+    fn allocs(self: &Self) -> Vec<Rc<HDataNode>> {
         match self {
-            HStmt::Block { stmts } => stmts.iter().flat_map(|s| s.allocs()).collect(),
-            HStmt::Read { args, .. } => args.iter().map(|d| d.node.clone()).collect(),
-            HStmt::Call { fun, .. } => fun.ret.iter().map(|d| d.node.clone()).collect(),
-            HStmt::For { body, .. } => body
-                .allocs()
-                .into_iter()
+            HStmtExpr::Block { stmts } => stmts
+                .iter()
+                .flat_map(|s| s.allocs.iter())
+                .cloned()
+                .collect(),
+            HStmtExpr::Read { args, .. } => args.iter().map(|d| d.node.clone()).collect(),
+            HStmtExpr::Call { fun, .. } => fun.ret.iter().map(|d| d.node.clone()).collect(),
+            HStmtExpr::For { body, .. } => body
+                .allocs
+                .iter()
                 .flat_map(|node| match node.expr.deref() {
-                    // TODO: check index somewhere?
                     HDataExpr::Subscript { array, .. } => Some(array.clone()),
                     _ => None,
                 })
@@ -81,6 +89,27 @@ impl HStmt {
 }
 
 impl HirCompileFrom<ABlock> for HStmt {
+    fn compile(ast: ABlock, env: &Env, sess: &mut Sess) -> Self {
+        let expr: Rc<HStmtExpr> = ast.compile(env, sess);
+        HStmt {
+            allocs: expr.allocs(),
+            expr,
+        }
+    }
+}
+
+impl HirCompileFrom<AStmt> for HStmt {
+    // TODO: manage to deduplicate
+    fn compile(ast: AStmt, env: &Env, sess: &mut Sess) -> Self {
+        let expr: Rc<HStmtExpr> = ast.compile(env, sess);
+        HStmt {
+            allocs: expr.allocs(),
+            expr,
+        }
+    }
+}
+
+impl HirCompileFrom<ABlock> for HStmtExpr {
     fn compile(ast: ABlock, env: &Env, sess: &mut Sess) -> Self {
         let mut env = env.clone();
         let mut stmts = Vec::new();
@@ -93,17 +122,17 @@ impl HirCompileFrom<ABlock> for HStmt {
             stmts.push(stmt);
         }
 
-        HStmt::Block { stmts }
+        HStmtExpr::Block { stmts }
     }
 }
 
-impl HirCompileFrom<AStmt> for HStmt {
+impl HirCompileFrom<AStmt> for HStmtExpr {
     fn compile(ast: AStmt, env: &Env, sess: &mut Sess) -> Self {
         match ast {
             AStmt::Read { kw, args, semi } => {
                 let (args, arg_commas) = unzip_punctuated(args);
 
-                HStmt::Read {
+                HStmtExpr::Read {
                     kw,
                     args: args.into_iter().map(|a| a.compile(env, sess)).collect(),
                     arg_commas,
@@ -113,7 +142,7 @@ impl HirCompileFrom<AStmt> for HStmt {
             AStmt::Write { kw, args, semi } => {
                 let (args, arg_commas) = unzip_punctuated(args);
 
-                HStmt::Write {
+                HStmtExpr::Write {
                     kw,
                     args: args.into_iter().map(|a| a.compile(env, sess)).collect(),
                     arg_commas,
@@ -134,7 +163,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                     None => (None, None),
                 };
 
-                HStmt::Call {
+                HStmtExpr::Call {
                     kw,
                     fun: Rc::new(HFun {
                         name: name.compile(&(), sess),
@@ -162,7 +191,7 @@ impl HirCompileFrom<AStmt> for HStmt {
                     bound: bound.compile(env, sess),
                 });
 
-                HStmt::For {
+                HStmtExpr::For {
                     kw,
                     body: body.compile(
                         &Env {

@@ -26,9 +26,16 @@ pub struct HSpec {
     pub funs: Vec<Rc<HFun>>,
 }
 
-/// An executable part of the spec, i.e., either a statement or block.
+/// An executable part of the spec, i.e., either a statement or block (analysis).
 #[derive(Debug)]
-pub enum HStmt {
+pub struct HStmt {
+    pub expr: Rc<HStmtExpr>,
+    pub allocs: Vec<Rc<HDataNode>>,
+}
+
+/// An executable part of the spec, i.e., either a statement or block (construction).
+#[derive(Debug)]
+pub enum HStmtExpr {
     Block {
         stmts: Vec<Rc<HStmt>>,
     },
