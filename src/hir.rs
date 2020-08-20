@@ -23,7 +23,6 @@ use crate::ty::*;
 #[derive(Debug)]
 pub struct HSpec {
     pub main: Rc<HStep>,
-    pub funs: Vec<Rc<HFun>>,
 }
 
 /// An executable part of the spec, i.e., either a statement or block (analysis).

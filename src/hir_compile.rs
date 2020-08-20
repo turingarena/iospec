@@ -476,10 +476,7 @@ pub fn compile_hir(ast: ASpec, dgns: &mut Vec<Diagnostic>) -> Result<Rc<HSpec>, 
         Err(())?
     }
 
-    Ok(Rc::new(HSpec {
-        funs: main.funs.clone(),
-        main,
-    }))
+    Ok(Rc::new(HSpec { main }))
 }
 
 fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<U>) {

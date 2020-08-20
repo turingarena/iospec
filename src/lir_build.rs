@@ -9,7 +9,7 @@ use crate::ty::*;
 
 pub fn build_lir(spec: MSpec) -> LSpec {
     LSpec {
-        funs: spec.hir.funs.iter().map(lir_fun).collect(),
+        funs: spec.hir.main.funs.iter().map(lir_fun).collect(),
         main: lir_block(spec.main),
     }
 }
