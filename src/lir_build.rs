@@ -125,6 +125,6 @@ fn lir_param(hir: &Rc<HArg>) -> LParam {
             HArgExpr::Name { name } => name.to_string(),
             HArgExpr::Err => unreachable!(),
         },
-        ty: lir_expr_ty(&hir.ty),
+        ty: lir_expr_ty(&hir.val.ty),
     }
 }

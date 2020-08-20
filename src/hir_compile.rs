@@ -61,7 +61,9 @@ impl<T: HirCompileInto<Rc<HStepExpr>>> HirCompileFrom<T> for HStep {
                 _ => Vec::new(),
             },
             funs: match expr.deref() {
-                HStepExpr::Seq { steps } => steps.iter().flat_map(|s| s.funs.iter()).cloned().collect(),
+                HStepExpr::Seq { steps } => {
+                    steps.iter().flat_map(|s| s.funs.iter()).cloned().collect()
+                }
                 HStepExpr::Call { fun, .. } => vec![fun.clone()],
                 HStepExpr::For { body, .. } => body.funs.clone(),
                 _ => Vec::new(),
@@ -207,10 +209,6 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDef {
                 HNodeDefExpr::Subscript { array, .. } => array.root_var.clone(),
                 HNodeDefExpr::Err => HErr::err(),
             },
-            var: match expr.deref() {
-                HNodeDefExpr::Var { var } => Some(var.clone()),
-                _ => None,
-            },
             expr,
         }
     }
@@ -303,7 +301,6 @@ impl HirCompileFrom<AExpr> for HArg {
 
         HArg {
             val: val.clone(),
-            ty: val.ty.clone(),
             expr: match val.expr.deref() {
                 HValExpr::Var { var, .. } => Rc::new(HArgExpr::Name {
                     name: var.name.clone(),

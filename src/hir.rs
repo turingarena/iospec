@@ -85,7 +85,6 @@ pub struct HFun {
 #[derive(Debug)]
 pub struct HArg {
     pub expr: Rc<HArgExpr>,
-    pub ty: Rc<HValTy>,
     pub val: Rc<HVal>,
 }
 
@@ -112,7 +111,6 @@ pub struct HAtomDef {
 pub struct HNodeDef {
     pub expr: Rc<HNodeDefExpr>,
     pub ty: Rc<HValTy>,
-    pub var: Option<Rc<HVarDef>>,
     pub root_var: Rc<HVarDef>,
 }
 

@@ -42,7 +42,10 @@ fn mir_stmt_insts(hir: &Rc<HStep>) -> Vec<MInst> {
 
 fn mir_data_node_insts(node: &Rc<HNodeDef>) -> impl Iterator<Item = MInst> + '_ {
     std::iter::empty()
-        .chain(node.var.iter().cloned().map(MInst::Decl))
+        .chain(match node.expr.deref() {
+            HNodeDefExpr::Var { var } => Some(MInst::Decl(var.clone())),
+            _ => None,
+        })
         .chain(match node.ty.deref() {
             HValTy::Array { item, range } => Some(MInst::Alloc {
                 array: node.clone(),

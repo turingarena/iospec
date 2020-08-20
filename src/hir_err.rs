@@ -52,7 +52,6 @@ impl HErr for HNodeDef {
             expr: HErr::err(),
             root_var: HErr::err(),
             ty: HErr::err(),
-            var: None,
         }
     }
 }
