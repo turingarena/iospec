@@ -8,18 +8,18 @@ use crate::mir::*;
 pub fn build_mir(spec: &Rc<HSpec>) -> MSpec {
     MSpec {
         hir: spec.clone(),
-        main: mir_insts(&spec.main),
+        main: mir_stmt_insts(&spec.main),
     }
 }
 
-fn mir_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
+fn mir_stmt_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
     match hir.deref() {
-        HStmt::Block { stmts } => stmts.iter().flat_map(mir_insts).collect(),
+        HStmt::Block { stmts } => stmts.iter().flat_map(mir_stmt_insts).collect(),
         HStmt::Read { args, .. } => args
             .iter()
             .flat_map(|a| {
                 std::iter::empty()
-                    .chain(a.node.var.iter().cloned().map(MInst::Decl))
+                    .chain(mir_data_node_insts(&a.node))
                     .chain(std::iter::once(MInst::Read(a.clone())))
             })
             .collect(),
@@ -27,26 +27,28 @@ fn mir_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
         HStmt::Call { fun, .. } => fun
             .ret
             .iter()
-            .map(|r| MInst::Decl(r.node.root_var.clone()))
+            .flat_map(|ret| mir_data_node_insts(&ret.node))
             .chain(std::iter::once(MInst::Call(fun.clone())))
             .collect(),
         HStmt::For { range, body, .. } => std::iter::empty()
-            .chain(hir.allocs().iter().flat_map(|node| {
-                std::iter::empty()
-                    .chain(node.var.iter().cloned().map(MInst::Decl))
-                    .chain(match node.ty.deref() {
-                        HValTy::Array { item, range } => Some(MInst::Alloc {
-                            array: node.clone(),
-                            ty: item.clone(),
-                            size: range.bound.val.clone(),
-                        }),
-                        _ => None,
-                    })
-            }))
+            .chain(hir.allocs().iter().flat_map(mir_data_node_insts))
             .chain(std::iter::once(MInst::For {
                 range: range.clone(),
-                body: mir_insts(body),
+                body: mir_stmt_insts(body),
             }))
             .collect(),
     }
+}
+
+fn mir_data_node_insts(node: &Rc<HDataNode>) -> impl Iterator<Item = MInst> + '_ {
+    std::iter::empty()
+        .chain(node.var.iter().cloned().map(MInst::Decl))
+        .chain(match node.ty.deref() {
+            HValTy::Array { item, range } => Some(MInst::Alloc {
+                array: node.clone(),
+                ty: item.clone(),
+                size: range.bound.val.clone(),
+            }),
+            _ => None,
+        })
 }
