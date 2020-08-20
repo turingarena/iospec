@@ -121,8 +121,12 @@ impl FormatInto<CppLang> for LStmt {
             LStmt::Decl { name, ty } => quote_in! { *tokens =>
                 #ty #name;
             },
-            LStmt::Alloc { array, ty, size } => quote_in! { *tokens =>
-                #array = new #ty[#size];
+            LStmt::Alloc {
+                array,
+                item_ty,
+                size,
+            } => quote_in! { *tokens =>
+                #array = new #item_ty[#size];
             },
             LStmt::Write { arg, ty } => quote_in! { *tokens =>
                 printf(#(Format(ty)) " ", #arg);

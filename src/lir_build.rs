@@ -3,6 +3,7 @@
 use std::ops::Deref;
 
 use crate::hir::*;
+use crate::hir_sem::HAlloc;
 use crate::lir::*;
 use crate::mir::*;
 use crate::ty::*;
@@ -29,10 +30,14 @@ fn lir_stmt(inst: MInst) -> LStmt {
             },
             _ => unreachable!(),
         },
-        MInst::Alloc { array, size, ty } => LStmt::Alloc {
+        MInst::Alloc(HAlloc {
+            array,
+            size,
+            item_ty,
+        }) => LStmt::Alloc {
             array: lir_data_node_expr(&array),
             size: lir_val_expr(&size),
-            ty: lir_expr_ty(&ty),
+            item_ty: lir_expr_ty(&item_ty),
         },
         MInst::Read(atom) => LStmt::Read {
             ty: lir_atom_ty(&atom.ty),

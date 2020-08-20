@@ -5,6 +5,7 @@
 //! for declaration of variables, allocation and de-allocation of arrays, and so on.
 
 use crate::hir::*;
+use crate::hir_sem::HAlloc;
 
 #[derive(Debug, Clone)]
 pub struct MSpec {
@@ -17,16 +18,9 @@ pub type MBlock = Vec<MInst>;
 #[derive(Debug, Clone)]
 pub enum MInst {
     Decl(Rc<HVarDef>),
-    Alloc {
-        array: Rc<HNodeDef>,
-        ty: Rc<HValTy>,
-        size: Rc<HVal>,
-    },
+    Alloc(HAlloc),
     Read(Rc<HAtomDef>),
     Write(Rc<HAtom>),
     Call(Rc<HFun>),
-    For {
-        range: Rc<HRange>,
-        body: MBlock,
-    },
+    For { range: Rc<HRange>, body: MBlock },
 }

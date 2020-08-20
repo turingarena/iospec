@@ -38,7 +38,7 @@ pub enum LStmt {
     },
     Alloc {
         array: LExpr,
-        ty: LTy,
+        item_ty: LTy,
         size: LExpr,
     },
     Read {
