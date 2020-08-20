@@ -7,149 +7,190 @@ use crate::hir_sem::*;
 use crate::lir::*;
 use crate::ty::*;
 
-pub fn build_lir(spec: Rc<HSpec>) -> LSpec {
-    LSpec {
-        funs: spec.main.funs.iter().map(lir_fun).collect(),
-        main: lir_block(&spec.main),
+trait LirFrom<T> {
+    fn lir_from(hir: &T) -> Self;
+}
+
+impl<T, U: LirFrom<T>> LirFrom<Rc<T>> for U {
+    fn lir_from(hir: &Rc<T>) -> Self {
+        U::lir_from(hir.deref())
     }
 }
 
-fn lir_block(step: &Rc<HStep>) -> LBlock {
-    LBlock {
-        stmts: lir_stmts(step),
+trait LirInto<U> {
+    fn lir(self: &Self) -> U;
+}
+
+impl<T, U: LirFrom<T>> LirInto<U> for T {
+    fn lir(self: &Self) -> U {
+        U::lir_from(self)
     }
 }
 
-fn lir_stmts(step: &Rc<HStep>) -> Vec<LStmt> {
-    match &step.expr {
-        HStepExpr::Seq { steps } => steps.iter().flat_map(lir_stmts).collect(),
-        HStepExpr::Read { args, .. } => args
-            .iter()
-            .flat_map(|atom| {
-                std::iter::empty()
-                    .chain(node_decl(&atom.node).map(lir_decl))
-                    .chain(node_alloc(&atom.node).map(lir_alloc))
-                    .chain(std::iter::once(LStmt::Read {
-                        ty: lir_atom_ty(&atom.ty),
-                        arg: lir_def_expr(&atom.node),
-                    }))
-            })
-            .collect(),
-        HStepExpr::Write { args, .. } => args
-            .iter()
-            .cloned()
-            .map(|atom| LStmt::Write {
-                ty: lir_atom_ty(&atom.ty),
-                arg: lir_val_expr(&atom.val),
-            })
-            .collect(),
-        HStepExpr::Call { fun, .. } => fun
-            .ret
-            .iter()
-            .flat_map(|ret| node_decl(&ret.node).map(lir_decl))
-            .chain(std::iter::once(LStmt::Call {
-                name: fun.name.to_string(),
-                args: fun.args.iter().map(|a| &a.val).map(lir_val_expr).collect(),
-                ret: fun
-                    .ret
-                    .as_ref()
-                    .map(Deref::deref)
-                    .map(|a| lir_def_expr(&a.node)),
-            }))
-            .collect(),
-        HStepExpr::For { range, body, .. } => std::iter::empty()
-            .chain(step.nodes.iter().flat_map(|node| {
-                std::iter::empty()
-                    .chain(node_decl(&node).map(lir_decl))
-                    .chain(node_alloc(&node).map(lir_alloc))
-            }))
-            .chain(std::iter::once(LStmt::For {
-                index_name: range.index.to_string(),
-                bound: lir_val_expr(&range.bound.val),
-                body: lir_block(body),
-            }))
-            .collect(),
+impl LirFrom<HSpec> for LSpec {
+    fn lir_from(hir: &HSpec) -> Self {
+        LSpec {
+            funs: hir.main.funs.iter().map(|f| f.lir()).collect(),
+            main: hir.main.lir(),
+        }
     }
 }
 
-fn lir_alloc(alloc: HAlloc) -> LStmt {
-    LStmt::Alloc {
-        array: lir_def_expr(&alloc.array),
-        item_ty: lir_expr_ty(&alloc.item_ty),
-        size: lir_val_expr(&alloc.size),
+impl LirFrom<HStep> for LBlock {
+    fn lir_from(hir: &HStep) -> Self {
+        LBlock { stmts: hir.lir() }
     }
 }
 
-fn lir_decl(var: Rc<HVarDef>) -> LStmt {
-    LStmt::Decl {
-        name: match &var.expr {
-            HVarDefExpr::Name { name } => name.to_string(),
-            _ => unreachable!(),
-        },
-        ty: lir_expr_ty(&var.ty),
+impl LirFrom<HStep> for Vec<LStmt> {
+    fn lir_from(hir: &HStep) -> Self {
+        match &hir.expr {
+            HStepExpr::Seq { steps } => steps
+                .iter()
+                .flat_map::<Vec<LStmt>, _>(LirInto::lir)
+                .collect(),
+            HStepExpr::Read { args, .. } => args
+                .iter()
+                .flat_map(|atom| {
+                    std::iter::empty()
+                        .chain(node_decl(&atom.node).map(|h| h.lir()))
+                        .chain(node_alloc(&atom.node).map(|h| h.lir()))
+                        .chain(std::iter::once(LStmt::Read {
+                            ty: atom.ty.lir(),
+                            arg: atom.node.lir(),
+                        }))
+                })
+                .collect(),
+            HStepExpr::Write { args, .. } => args
+                .iter()
+                .cloned()
+                .map(|atom| LStmt::Write {
+                    ty: atom.ty.lir(),
+                    arg: atom.val.lir(),
+                })
+                .collect(),
+            HStepExpr::Call { fun, .. } => fun
+                .ret
+                .iter()
+                .flat_map(|ret| node_decl(&ret.node).map(|h| h.lir()))
+                .chain(std::iter::once(LStmt::Call {
+                    name: fun.name.to_string(),
+                    args: fun.args.iter().map(|a| a.val.lir()).collect(),
+                    ret: fun.ret.as_ref().map(Deref::deref).map(|a| a.node.lir()),
+                }))
+                .collect(),
+            HStepExpr::For { range, body, .. } => std::iter::empty()
+                .chain(hir.nodes.iter().flat_map(|node| {
+                    std::iter::empty()
+                        .chain(node_decl(&node).map(|h| h.lir()))
+                        .chain(node_alloc(&node).map(|h| h.lir()))
+                }))
+                .chain(std::iter::once(LStmt::For {
+                    index_name: range.index.to_string(),
+                    bound: range.bound.val.lir(),
+                    body: body.lir(),
+                }))
+                .collect(),
+        }
     }
 }
 
-fn lir_def_expr(hir: &Rc<HNodeDef>) -> LExpr {
-    match &hir.expr {
-        HNodeDefExpr::Var { var, .. } => LExpr::Var {
+impl LirFrom<HAlloc> for LStmt {
+    fn lir_from(alloc: &HAlloc) -> Self {
+        LStmt::Alloc {
+            array: alloc.array.lir(),
+            item_ty: alloc.item_ty.lir(),
+            size: alloc.size.lir(),
+        }
+    }
+}
+
+impl LirFrom<HVarDef> for LStmt {
+    fn lir_from(var: &HVarDef) -> Self {
+        LStmt::Decl {
             name: match &var.expr {
                 HVarDefExpr::Name { name } => name.to_string(),
                 _ => unreachable!(),
             },
-        },
-        HNodeDefExpr::Subscript { array, index, .. } => LExpr::Subscript {
-            array: Box::new(lir_def_expr(array)),
-            index: Box::new(lir_val_expr(index)),
-        },
-        HNodeDefExpr::Err => unreachable!(),
+            ty: var.ty.lir(),
+        }
     }
 }
 
-fn lir_val_expr(hir: &Rc<HVal>) -> LExpr {
-    match &hir.expr {
-        HValExpr::Var { name, .. } => LExpr::Var {
-            name: name.to_string(),
-        },
-        HValExpr::Subscript { array, index, .. } => LExpr::Subscript {
-            array: Box::new(lir_val_expr(array)),
-            index: Box::new(lir_val_expr(index)),
-        },
+impl LirFrom<HNodeDef> for LExpr {
+    fn lir_from(node: &HNodeDef) -> Self {
+        match &node.expr {
+            HNodeDefExpr::Var { var, .. } => LExpr::Var {
+                name: match &var.expr {
+                    HVarDefExpr::Name { name } => name.to_string(),
+                    _ => unreachable!(),
+                },
+            },
+            HNodeDefExpr::Subscript { array, index, .. } => LExpr::Subscript {
+                array: Box::new(array.lir()),
+                index: Box::new(index.lir()),
+            },
+            HNodeDefExpr::Err => unreachable!(),
+        }
     }
 }
 
-fn lir_atom_ty(hir: &Rc<HAtomTy>) -> AtomTy {
-    hir.sem
-}
-
-fn lir_expr_ty(hir: &Rc<HValTy>) -> LTy {
-    let hir: &HValTy = hir.deref();
-
-    match hir {
-        HValTy::Atom { atom_ty } => LTy::Atom {
-            atom: lir_atom_ty(atom_ty),
-        },
-        HValTy::Array { item, .. } => LTy::Array {
-            item: Box::new(lir_expr_ty(item)),
-        },
-        HValTy::Err => unreachable!(),
+impl LirFrom<HVal> for LExpr {
+    fn lir_from(val: &HVal) -> Self {
+        match &val.expr {
+            HValExpr::Var { name, .. } => LExpr::Var {
+                name: name.to_string(),
+            },
+            HValExpr::Subscript { array, index, .. } => LExpr::Subscript {
+                array: Box::new(array.lir()),
+                index: Box::new(index.lir()),
+            },
+        }
     }
 }
 
-fn lir_fun(hir: &Rc<HFun>) -> LFun {
-    LFun {
-        name: hir.name.to_string(),
-        params: hir.args.iter().map(lir_param).collect(),
-        ret: hir.ret.as_ref().map(|r| lir_atom_ty(&r.ty)),
+impl LirFrom<HAtomTy> for AtomTy {
+    fn lir_from(ty: &HAtomTy) -> Self {
+        ty.sem
     }
 }
 
-fn lir_param(hir: &Rc<HArg>) -> LParam {
-    LParam {
-        name: match &hir.expr {
-            HArgExpr::Name { name } => name.to_string(),
-            HArgExpr::Err => unreachable!(),
-        },
-        ty: lir_expr_ty(&hir.val.ty),
+impl LirFrom<HValTy> for LTy {
+    fn lir_from(ty: &HValTy) -> Self {
+        match ty {
+            HValTy::Atom { atom_ty } => LTy::Atom {
+                atom: atom_ty.lir(),
+            },
+            HValTy::Array { item, .. } => LTy::Array {
+                item: Box::new(item.lir()),
+            },
+            HValTy::Err => unreachable!(),
+        }
     }
+}
+
+impl LirFrom<HFun> for LFun {
+    fn lir_from(fun: &HFun) -> Self {
+        LFun {
+            name: fun.name.to_string(),
+            params: fun.args.iter().map(|p| p.lir()).collect(),
+            ret: fun.ret.as_ref().map(|r| r.ty.lir()),
+        }
+    }
+}
+
+impl LirFrom<HArg> for LParam {
+    fn lir_from(arg: &HArg) -> Self {
+        LParam {
+            name: match &arg.expr {
+                HArgExpr::Name { name } => name.to_string(),
+                HArgExpr::Err => unreachable!(),
+            },
+            ty: arg.val.ty.lir(),
+        }
+    }
+}
+
+pub fn build_lir(spec: Rc<HSpec>) -> LSpec {
+    spec.lir()
 }

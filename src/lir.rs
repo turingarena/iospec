@@ -1,7 +1,7 @@
 //! Low-level Intermediate Representation (LIR), used for code generation.
 //!
 //! LIR is meant to be directly translated into parser code.
-//! It is a tree without references to higher level nodes (MIR or HIR).
+//! It is a tree without references to higher level nodes (HIR).
 //! Thus, it can be easily traversed structurally and translated into code.
 
 use crate::ty::*;
