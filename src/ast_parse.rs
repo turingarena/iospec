@@ -39,19 +39,20 @@ impl Parse for ABlock {
 
 impl Parse for AStmt {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        if input.peek(kw::read) {
+        let lookahead = input.lookahead1();
+        if lookahead.peek(kw::read) {
             Ok(AStmt::Read {
                 kw: input.parse()?,
                 args: Punctuated::parse_separated_nonempty(input)?,
                 semi: input.parse()?,
             })
-        } else if input.peek(kw::write) {
+        } else if lookahead.peek(kw::write) {
             Ok(AStmt::Write {
                 kw: input.parse()?,
                 args: Punctuated::parse_separated_nonempty(input)?,
                 semi: input.parse()?,
             })
-        } else if input.peek(kw::call) {
+        } else if lookahead.peek(kw::call) {
             let args_input;
 
             Ok(AStmt::Call {
@@ -66,7 +67,7 @@ impl Parse for AStmt {
                 },
                 semi: input.parse()?,
             })
-        } else if input.peek(syn::Token![for]) {
+        } else if lookahead.peek(syn::Token![for]) {
             let body_input;
             Ok(AStmt::For {
                 kw: input.parse()?,
@@ -77,7 +78,7 @@ impl Parse for AStmt {
                 body: body_input.parse()?,
             })
         } else {
-            Err(Error::new(input.span(), "statement expected"))
+            Err(lookahead.error())
         }
     }
 }
