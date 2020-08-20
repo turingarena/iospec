@@ -10,7 +10,6 @@ use structopt::StructOpt;
 use crate::ast_parse::parse_spec;
 use crate::hir_compile::compile_hir;
 use crate::lir_build::build_lir;
-use crate::mir_build::build_mir;
 use crate::sess::Sess;
 
 #[derive(Debug, StructOpt)]
@@ -46,9 +45,6 @@ mod hir_env;
 mod hir_err;
 mod hir_sem;
 mod hir_span;
-
-mod mir;
-mod mir_build;
 
 mod lir;
 mod lir_build;
@@ -92,7 +88,6 @@ fn main() {
 
             let generated = parse_spec(sess.file.clone().source(), &mut dgns)
                 .and_then(|spec| compile_hir(spec, &mut dgns))
-                .map(|spec| build_mir(&spec))
                 .map(|spec| build_lir(spec))
                 .map(|spec| code::gen_file(spec));
 

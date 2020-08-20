@@ -1,70 +1,96 @@
-//! Build MIR from HIR.
+//! Build LIR from HIR.
 
 use std::ops::Deref;
 
 use crate::hir::*;
-use crate::hir_sem::HAlloc;
+use crate::hir_sem::*;
 use crate::lir::*;
-use crate::mir::*;
 use crate::ty::*;
 
-pub fn build_lir(spec: MSpec) -> LSpec {
+pub fn build_lir(spec: Rc<HSpec>) -> LSpec {
     LSpec {
-        funs: spec.hir.main.funs.iter().map(lir_fun).collect(),
-        main: lir_block(spec.main),
+        funs: spec.main.funs.iter().map(lir_fun).collect(),
+        main: lir_block(&spec.main),
     }
 }
 
-fn lir_block(insts: Vec<MInst>) -> LBlock {
+fn lir_block(step: &Rc<HStep>) -> LBlock {
     LBlock {
-        stmts: insts.into_iter().map(lir_stmt).collect(),
+        stmts: lir_stmts(step),
     }
 }
 
-fn lir_stmt(inst: MInst) -> LStmt {
-    match inst {
-        MInst::Decl(var) => match &var.expr {
-            HVarDefExpr::Name { name } => LStmt::Decl {
-                name: name.to_string(),
-                ty: lir_expr_ty(&var.ty),
-            },
+fn lir_stmts(step: &Rc<HStep>) -> Vec<LStmt> {
+    match &step.expr {
+        HStepExpr::Seq { steps } => steps.iter().flat_map(lir_stmts).collect(),
+        HStepExpr::Read { args, .. } => args
+            .iter()
+            .flat_map(|atom| {
+                std::iter::empty()
+                    .chain(node_decl(&atom.node).map(lir_decl))
+                    .chain(node_alloc(&atom.node).map(lir_alloc))
+                    .chain(std::iter::once(LStmt::Read {
+                        ty: lir_atom_ty(&atom.ty),
+                        arg: lir_def_expr(&atom.node),
+                    }))
+            })
+            .collect(),
+        HStepExpr::Write { args, .. } => args
+            .iter()
+            .cloned()
+            .map(|atom| LStmt::Write {
+                ty: lir_atom_ty(&atom.ty),
+                arg: lir_val_expr(&atom.val),
+            })
+            .collect(),
+        HStepExpr::Call { fun, .. } => fun
+            .ret
+            .iter()
+            .flat_map(|ret| node_decl(&ret.node).map(lir_decl))
+            .chain(std::iter::once(LStmt::Call {
+                name: fun.name.to_string(),
+                args: fun.args.iter().map(|a| &a.val).map(lir_val_expr).collect(),
+                ret: fun
+                    .ret
+                    .as_ref()
+                    .map(Deref::deref)
+                    .map(|a| lir_def_expr(&a.node)),
+            }))
+            .collect(),
+        HStepExpr::For { range, body, .. } => std::iter::empty()
+            .chain(step.nodes.iter().flat_map(|node| {
+                std::iter::empty()
+                    .chain(node_decl(&node).map(lir_decl))
+                    .chain(node_alloc(&node).map(lir_alloc))
+            }))
+            .chain(std::iter::once(LStmt::For {
+                index_name: range.index.to_string(),
+                bound: lir_val_expr(&range.bound.val),
+                body: lir_block(body),
+            }))
+            .collect(),
+    }
+}
+
+fn lir_alloc(alloc: HAlloc) -> LStmt {
+    LStmt::Alloc {
+        array: lir_def_expr(&alloc.array),
+        item_ty: lir_expr_ty(&alloc.item_ty),
+        size: lir_val_expr(&alloc.size),
+    }
+}
+
+fn lir_decl(var: Rc<HVarDef>) -> LStmt {
+    LStmt::Decl {
+        name: match &var.expr {
+            HVarDefExpr::Name { name } => name.to_string(),
             _ => unreachable!(),
         },
-        MInst::Alloc(HAlloc {
-            array,
-            size,
-            item_ty,
-        }) => LStmt::Alloc {
-            array: lir_data_node_expr(&array),
-            size: lir_val_expr(&size),
-            item_ty: lir_expr_ty(&item_ty),
-        },
-        MInst::Read(atom) => LStmt::Read {
-            ty: lir_atom_ty(&atom.ty),
-            arg: lir_data_node_expr(&atom.node),
-        },
-        MInst::Write(atom) => LStmt::Write {
-            ty: lir_atom_ty(&atom.ty),
-            arg: lir_val_expr(&atom.val),
-        },
-        MInst::Call(fun) => LStmt::Call {
-            name: fun.name.to_string(),
-            args: fun.args.iter().map(|a| &a.val).map(lir_val_expr).collect(),
-            ret: fun
-                .ret
-                .as_ref()
-                .map(Deref::deref)
-                .map(|a| lir_data_node_expr(&a.node)),
-        },
-        MInst::For { range, body } => LStmt::For {
-            index_name: range.index.to_string(),
-            bound: lir_val_expr(&range.bound.val),
-            body: lir_block(body),
-        },
+        ty: lir_expr_ty(&var.ty),
     }
 }
 
-fn lir_data_node_expr(hir: &Rc<HNodeDef>) -> LExpr {
+fn lir_def_expr(hir: &Rc<HNodeDef>) -> LExpr {
     match &hir.expr {
         HNodeDefExpr::Var { var, .. } => LExpr::Var {
             name: match &var.expr {
@@ -73,7 +99,7 @@ fn lir_data_node_expr(hir: &Rc<HNodeDef>) -> LExpr {
             },
         },
         HNodeDefExpr::Subscript { array, index, .. } => LExpr::Subscript {
-            array: Box::new(lir_data_node_expr(array)),
+            array: Box::new(lir_def_expr(array)),
             index: Box::new(lir_val_expr(index)),
         },
         HNodeDefExpr::Err => unreachable!(),
