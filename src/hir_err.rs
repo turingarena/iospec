@@ -32,9 +32,9 @@ impl HirCreateErr for HValTy {
     }
 }
 
-impl HirCreateErr for HVarKind {
+impl HirCreateErr for HBindingKind {
     fn create_err() -> Self {
-        HVarKind::Err
+        HBindingKind::Err
     }
 }
 
@@ -44,15 +44,15 @@ impl HirCreateErr for HAtomTyExpr {
     }
 }
 
-impl HirCreateErr for HDataExpr {
+impl HirCreateErr for HNodeDefExpr {
     fn create_err() -> Self {
-        HDataExpr::Err
+        HNodeDefExpr::Err
     }
 }
 
-impl HirCreateErr for HDataNode {
+impl HirCreateErr for HNodeDef {
     fn create_err() -> Self {
-        HDataNode {
+        HNodeDef {
             expr: HErr::err(),
             root_var: HErr::err(),
             ty: HErr::err(),
@@ -61,18 +61,18 @@ impl HirCreateErr for HDataNode {
     }
 }
 
-impl HirCreateErr for HDataVar {
+impl HirCreateErr for HVarDef {
     fn create_err() -> Self {
-        HDataVar {
+        HVarDef {
             expr: HErr::err(),
             ty: HErr::err(),
         }
     }
 }
 
-impl HirCreateErr for HDataVarExpr {
+impl HirCreateErr for HVarDefExpr {
     fn create_err() -> Self {
-        HDataVarExpr::Err
+        HVarDefExpr::Err
     }
 }
 

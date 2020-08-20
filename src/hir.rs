@@ -22,22 +22,23 @@ use crate::ty::*;
 
 #[derive(Debug)]
 pub struct HSpec {
-    pub main: Rc<HStmt>,
+    pub main: Rc<HStep>,
     pub funs: Vec<Rc<HFun>>,
 }
 
 /// An executable part of the spec, i.e., either a statement or block (analysis).
 #[derive(Debug)]
-pub struct HStmt {
-    pub expr: Rc<HStmtExpr>,
-    pub allocs: Vec<Rc<HDataNode>>,
+pub struct HStep {
+    pub expr: Rc<HStepExpr>,
+    /// Data nodes defined inside this statement/block
+    pub nodes: Vec<Rc<HNodeDef>>,
 }
 
 /// An executable part of the spec, i.e., either a statement or block (construction).
 #[derive(Debug)]
-pub enum HStmtExpr {
-    Block {
-        stmts: Vec<Rc<HStmt>>,
+pub enum HStepExpr {
+    Seq {
+        steps: Vec<Rc<HStep>>,
     },
     Write {
         kw: kw::write,
@@ -47,7 +48,7 @@ pub enum HStmtExpr {
     },
     Read {
         kw: kw::read,
-        args: Vec<Rc<HDataAtom>>,
+        args: Vec<Rc<HAtomDef>>,
         arg_commas: Vec<syn::Token![,]>,
         semi: syn::Token![;],
     },
@@ -60,7 +61,7 @@ pub enum HStmtExpr {
         kw: syn::Token![for],
         range: Rc<HRange>,
         body_brace: syn::token::Brace,
-        body: Rc<HStmt>,
+        body: Rc<HStep>,
     },
 }
 
@@ -68,16 +69,16 @@ pub enum HStmtExpr {
 /// E.g., `f(A, B) -> D: i32` in `... call f(A, B) -> C: i32; ...`
 #[derive(Debug)]
 pub struct HFun {
-    pub name: Rc<HIdent>,
+    pub name: Rc<HName>,
     pub args: Vec<Rc<HArg>>,
-    pub ret: Option<Rc<HDataAtom>>,
+    pub ret: Option<Rc<HAtomDef>>,
 
     pub args_paren: syn::token::Paren,
     pub arg_commas: Vec<syn::Token![,]>,
     pub ret_rarrow: Option<syn::Token![->]>,
 }
 
-/// An argument of a called function.
+/// An argument of a called function (analysis).
 /// E.g., `A` in `... call f(A, B) -> C: i32; ...`.
 #[derive(Debug)]
 pub struct HArg {
@@ -86,69 +87,69 @@ pub struct HArg {
     pub val: Rc<HVal>,
 }
 
-/// An argument of a called function.
+/// An argument of a called function (construction).
 /// E.g., `A` in `... call f(A, B) -> C: i32; ...`.
 #[derive(Debug)]
 pub enum HArgExpr {
-    Name { name: Rc<HIdent> },
+    Name { name: Rc<HName> },
     Err,
 }
 
-/// An atomic value in input/output data.
+/// Definition of an atomic value in input/output data.
 /// E.g., `A[i][j]: n32` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
-pub struct HDataAtom {
-    pub node: Rc<HDataNode>,
+pub struct HAtomDef {
+    pub node: Rc<HNodeDef>,
     pub colon: syn::Token![:],
     pub ty: Rc<HAtomTy>,
 }
 
-/// A value (either atomic or aggregate) in input/output data (analysis).
+/// Definition of a value (either atomic or aggregate) in input/output data (analysis).
 /// E.g., `A`, `A[i]` and `A[i][j]` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
-pub struct HDataNode {
-    pub expr: Rc<HDataExpr>,
+pub struct HNodeDef {
+    pub expr: Rc<HNodeDefExpr>,
     pub ty: Rc<HValTy>,
-    pub var: Option<Rc<HDataVar>>,
-    pub root_var: Rc<HDataVar>,
+    pub var: Option<Rc<HVarDef>>,
+    pub root_var: Rc<HVarDef>,
 }
 
-/// A value (either atomic or aggregate) in input/output data (construction).
+/// Definition of a value (either atomic or aggregate) in input/output data (construction).
 /// E.g., `A`, `A[i]` and `A[i][j]` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
-pub enum HDataExpr {
+pub enum HNodeDefExpr {
     Var {
-        var: Rc<HDataVar>,
+        var: Rc<HVarDef>,
     },
     Subscript {
-        array: Rc<HDataNode>,
+        array: Rc<HNodeDef>,
         bracket: syn::token::Bracket,
         index: Rc<HIndex>,
     },
     Err,
 }
 
-/// A variable in input/output data (analysis).
+/// Definition of a variable containing input/output data (analysis).
 /// E.g., `A` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
-pub struct HDataVar {
-    pub expr: Rc<HDataVarExpr>,
+pub struct HVarDef {
+    pub expr: Rc<HVarDefExpr>,
     pub ty: Rc<HValTy>,
 }
 
-/// A variable in input/output data (construction).
+/// Definition of a variable containing input/output data (construction).
 /// E.g., `A` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
-pub enum HDataVarExpr {
-    Name { name: Rc<HIdent> },
+pub enum HVarDefExpr {
+    Name { name: Rc<HName> },
     Err,
 }
 
-/// An index used in a data node expression.
+/// An index used in definition of input/output data.
 /// E.g., `i`, and `j` in `... read A[i][j]: n32; ...`.
 #[derive(Debug)]
 pub struct HIndex {
-    pub name: Rc<HIdent>,
+    pub name: Rc<HName>,
     pub range: Rc<HRange>,
 }
 
@@ -156,7 +157,7 @@ pub struct HIndex {
 /// E.g., `i to A[B[i]][k]` in `... for i upto A[B[j]][k] { ... } ...`.
 #[derive(Debug)]
 pub struct HRange {
-    pub index: Rc<HIdent>,
+    pub index: Rc<HName>,
     pub upto: kw::upto,
     pub bound: Rc<HRangeBound>,
 }
@@ -169,7 +170,7 @@ pub struct HRangeBound {
     pub ty: Rc<HAtomTy>,
 }
 
-/// An atomic I/O value defined by an expression.
+/// Reference to an atomic value of input/output data.
 /// E.g., `A[B[i]][k]` in `... write A[B[j]][k]; ...`.
 #[derive(Debug)]
 pub struct HAtom {
@@ -190,8 +191,8 @@ pub struct HVal {
 #[derive(Debug)]
 pub enum HValExpr {
     Var {
-        var: Rc<HVar>,
-        ident: Rc<HIdent>,
+        var: Rc<HBinding>,
+        ident: Rc<HName>,
     },
     Subscript {
         array: Rc<HVal>,
@@ -218,34 +219,34 @@ pub struct HAtomTy {
 /// Type of an atomic value (construction)
 #[derive(Debug)]
 pub enum HAtomTyExpr {
-    Ident { ident: Rc<HIdent> },
+    Name { name: Rc<HName> },
     Err,
 }
 
 /// An identifier (in any context)
 #[derive(Debug)]
-pub struct HIdent {
-    pub token: proc_macro2::Ident,
+pub struct HName {
+    pub ident: proc_macro2::Ident,
 }
 
-impl ToString for HIdent {
+impl ToString for HName {
     fn to_string(self: &Self) -> String {
-        self.token.to_string()
+        self.ident.to_string()
     }
 }
 
-/// A variable, either containing I/O data or an index (analysis).
+/// Binding of name to a variable or an index (analysis).
 #[derive(Debug)]
-pub struct HVar {
-    pub name: Rc<HIdent>,
+pub struct HBinding {
+    pub name: Rc<HName>,
     pub ty: Rc<HValTy>,
-    pub kind: Rc<HVarKind>,
+    pub kind: Rc<HBindingKind>,
 }
 
-/// A variable, either containing I/O data or an index (construction).
+/// Binding of name to a variable or an index (construction).
 #[derive(Debug)]
-pub enum HVarKind {
-    Data { var: Rc<HDataVar> },
+pub enum HBindingKind {
+    Data { var: Rc<HVarDef> },
     Index { range: Rc<HRange> },
     Err,
 }

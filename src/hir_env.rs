@@ -14,7 +14,7 @@ use crate::hir_err::HErr;
 
 #[derive(Debug, Clone)]
 pub struct Env {
-    refs: Vec<Rc<HVar>>,
+    refs: Vec<Rc<HBinding>>,
     outer: Option<Box<Env>>,
 
     pub loc: Rc<HDataLoc>,
@@ -29,7 +29,7 @@ impl Env {
         }
     }
 
-    pub fn declare(self: &mut Self, var: &Rc<HVar>, sess: &mut Sess) {
+    pub fn declare(self: &mut Self, var: &Rc<HBinding>, sess: &mut Sess) {
         match self.maybe_resolve(&var.name) {
             None => {
                 self.refs.push(var.clone());
@@ -43,14 +43,14 @@ impl Env {
         }
     }
 
-    pub fn resolve(self: &Self, ident: &Rc<HIdent>, sess: &mut Sess) -> Rc<HVar> {
+    pub fn resolve(self: &Self, ident: &Rc<HName>, sess: &mut Sess) -> Rc<HBinding> {
         match self.maybe_resolve(ident) {
             Some(var) => var,
             None => {
                 sess.diagnostics.push(Diagnostic::UndefVar {
                     ident: ident.clone(),
                 });
-                Rc::new(HVar {
+                Rc::new(HBinding {
                     name: ident.clone(),
                     ty: HErr::err(),
                     kind: HErr::err(),
@@ -59,20 +59,20 @@ impl Env {
         }
     }
 
-    fn maybe_resolve(self: &Self, ident: &Rc<HIdent>) -> Option<Rc<HVar>> {
+    fn maybe_resolve(self: &Self, ident: &Rc<HName>) -> Option<Rc<HBinding>> {
         self.refs
             .iter()
-            .find(|r| r.name.token == ident.token)
+            .find(|r| r.name.ident == ident.ident)
             .map(|r| r.clone())
             .or(self.outer.as_ref().and_then(|s| s.maybe_resolve(ident)))
     }
 
     pub fn for_body(self: &Self, range: Rc<HRange>) -> Self {
         Self {
-            refs: vec![Rc::new(HVar {
+            refs: vec![Rc::new(HBinding {
                 name: range.index.clone(),
                 ty: range.bound.val.ty.clone(),
-                kind: Rc::new(HVarKind::Index {
+                kind: Rc::new(HBindingKind::Index {
                     range: range.clone(),
                 }),
             })],

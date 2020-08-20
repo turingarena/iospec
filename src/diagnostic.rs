@@ -32,14 +32,14 @@ pub enum Diagnostic {
         error: syn::parse::Error,
     },
     InvalidAtomTy {
-        ident: Rc<HIdent>,
+        ident: Rc<HName>,
     },
     UndefVar {
-        ident: Rc<HIdent>,
+        ident: Rc<HName>,
     },
     AlreadyDefinedVar {
-        old_var: Rc<HVar>,
-        new_var: Rc<HVar>,
+        old_var: Rc<HBinding>,
+        new_var: Rc<HBinding>,
     },
     RangeBoundNotNatural {
         val: Rc<HVal>,
@@ -51,7 +51,7 @@ pub enum Diagnostic {
     SubscriptDefIndexNotMatched {
         bracket: syn::token::Bracket,
         range: Option<Rc<HRange>>,
-        name: Option<Rc<HIdent>>,
+        name: Option<Rc<HName>>,
     },
     SubscriptArrayNotArray {
         array: Rc<HVal>,
@@ -121,7 +121,7 @@ impl Sess {
 impl FormatInto<()> for &HAtomTy {
     fn format_into(self: Self, tokens: &mut Tokens) {
         match self.expr.deref() {
-            HAtomTyExpr::Ident { ident, .. } => quote_in!(*tokens => #(ident.deref())),
+            HAtomTyExpr::Name { name, .. } => quote_in!(*tokens => #(name.deref())),
             HAtomTyExpr::Err => quote_in!(*tokens => <<invalid scalar type>>),
         }
     }
@@ -137,9 +137,9 @@ impl FormatInto<()> for &HValTy {
     }
 }
 
-impl FormatInto<()> for &HIdent {
+impl FormatInto<()> for &HName {
     fn format_into(self: Self, tokens: &mut Tokens) {
-        let ident = self.token.to_string();
+        let ident = self.ident.to_string();
         quote_in!(*tokens => #ident)
     }
 }
@@ -174,7 +174,7 @@ impl Diagnostic {
                 vec![sess.annotation(
                     AnnotationType::Error,
                     "not found in this scope",
-                    ident.token.span(),
+                    ident.ident.span(),
                 )],
             ),
             Diagnostic::AlreadyDefinedVar { old_var, new_var } => sess.diagnostic_message(
@@ -206,11 +206,11 @@ impl Diagnostic {
                         val.span(),
                     )];
                     if let Some(atom_ty) = atom_ty {
-                        if let HAtomTyExpr::Ident { ident } = atom_ty.expr.deref() {
+                        if let HAtomTyExpr::Name { name } = atom_ty.expr.deref() {
                             anns.push(sess.annotation(
                                 AnnotationType::Note,
                                 "type defined here",
-                                ident.span(),
+                                name.span(),
                             ))
                         }
                     }

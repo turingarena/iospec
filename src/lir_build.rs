@@ -23,7 +23,7 @@ fn lir_block(insts: Vec<MInst>) -> LBlock {
 fn lir_stmt(inst: MInst) -> LStmt {
     match inst {
         MInst::Decl(var) => match var.expr.deref() {
-            HDataVarExpr::Name { name } => LStmt::Decl {
+            HVarDefExpr::Name { name } => LStmt::Decl {
                 name: name.to_string(),
                 ty: lir_expr_ty(&var.ty),
             },
@@ -59,19 +59,19 @@ fn lir_stmt(inst: MInst) -> LStmt {
     }
 }
 
-fn lir_data_node_expr(hir: &Rc<HDataNode>) -> LExpr {
+fn lir_data_node_expr(hir: &Rc<HNodeDef>) -> LExpr {
     match hir.expr.deref() {
-        HDataExpr::Var { var, .. } => LExpr::Var {
+        HNodeDefExpr::Var { var, .. } => LExpr::Var {
             name: match var.expr.deref() {
-                HDataVarExpr::Name { name } => name.to_string(),
+                HVarDefExpr::Name { name } => name.to_string(),
                 _ => unreachable!(),
             },
         },
-        HDataExpr::Subscript { array, index, .. } => LExpr::Subscript {
+        HNodeDefExpr::Subscript { array, index, .. } => LExpr::Subscript {
             array: Box::new(lir_data_node_expr(array)),
             index: Box::new(lir_index_expr(index)),
         },
-        HDataExpr::Err => unreachable!(),
+        HNodeDefExpr::Err => unreachable!(),
     }
 }
 

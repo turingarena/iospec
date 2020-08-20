@@ -16,13 +16,13 @@ pub type MBlock = Vec<MInst>;
 
 #[derive(Debug, Clone)]
 pub enum MInst {
-    Decl(Rc<HDataVar>),
+    Decl(Rc<HVarDef>),
     Alloc {
-        array: Rc<HDataNode>,
+        array: Rc<HNodeDef>,
         ty: Rc<HValTy>,
         size: Rc<HVal>,
     },
-    Read(Rc<HDataAtom>),
+    Read(Rc<HAtomDef>),
     Write(Rc<HAtom>),
     Call(Rc<HFun>),
     For {

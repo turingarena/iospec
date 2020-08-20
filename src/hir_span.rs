@@ -6,9 +6,9 @@ pub trait HasSpan {
     fn span(self: &Self) -> Span;
 }
 
-impl HasSpan for HIdent {
+impl HasSpan for HName {
     fn span(self: &Self) -> Span {
-        self.token.span()
+        self.ident.span()
     }
 }
 
@@ -21,7 +21,7 @@ impl HasSpan for HVal {
 impl HasSpan for HValExpr {
     fn span(self: &Self) -> Span {
         match self {
-            HValExpr::Var { ident, .. } => ident.token.span(),
+            HValExpr::Var { ident, .. } => ident.ident.span(),
             HValExpr::Subscript { array, bracket, .. } => array.span().join(bracket.span).unwrap(),
         }
     }
