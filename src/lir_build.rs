@@ -76,7 +76,7 @@ impl LirFrom<HStep> for Vec<LStmt> {
                 .chain(std::iter::once(LStmt::Call {
                     name: fun.name.to_string(),
                     args: fun.args.iter().map(|a| a.val.lir()).collect(),
-                    ret: fun.ret.as_ref().map(Deref::deref).map(|a| a.node.lir()),
+                    ret: fun.ret.as_ref().map(|a| a.node.lir()),
                 }))
                 .collect(),
             HStepExpr::For { range, body, .. } => std::iter::empty()
