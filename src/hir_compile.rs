@@ -40,17 +40,6 @@ where
     }
 }
 
-impl HStep {
-    fn funs(self: &Self) -> Vec<Rc<HFun>> {
-        match self.expr.deref() {
-            HStepExpr::Seq { steps } => steps.iter().flat_map(|s| s.funs()).collect(),
-            HStepExpr::Call { fun, .. } => vec![fun.clone()],
-            HStepExpr::For { body, .. } => body.funs(),
-            _ => Vec::new(),
-        }
-    }
-}
-
 impl<T: HirCompileInto<Rc<HStepExpr>>> HirCompileFrom<T> for HStep {
     fn compile(ast: T, env: &Env, sess: &mut Sess) -> Self {
         let expr: Rc<HStepExpr> = ast.compile(env, sess);
@@ -69,6 +58,12 @@ impl<T: HirCompileInto<Rc<HStepExpr>>> HirCompileFrom<T> for HStep {
                         _ => None,
                     })
                     .collect(),
+                _ => Vec::new(),
+            },
+            funs: match expr.deref() {
+                HStepExpr::Seq { steps } => steps.iter().flat_map(|s| s.funs.iter()).cloned().collect(),
+                HStepExpr::Call { fun, .. } => vec![fun.clone()],
+                HStepExpr::For { body, .. } => body.funs.clone(),
                 _ => Vec::new(),
             },
             expr,
@@ -473,7 +468,7 @@ pub fn compile_hir(ast: ASpec, sess: &mut Sess) -> Result<Rc<HSpec>, ()> {
     }
 
     Ok(Rc::new(HSpec {
-        funs: main.funs(),
+        funs: main.funs.clone(),
         main,
     }))
 }

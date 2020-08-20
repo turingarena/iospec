@@ -32,6 +32,8 @@ pub struct HStep {
     pub expr: Rc<HStepExpr>,
     /// Data nodes defined inside this statement/block
     pub nodes: Vec<Rc<HNodeDef>>,
+    /// Functions called inside this statement/block
+    pub funs: Vec<Rc<HFun>>,
 }
 
 /// An executable part of the spec, i.e., either a statement or block (construction).
