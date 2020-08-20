@@ -51,34 +51,28 @@ impl HStmt {
     }
 }
 
-impl HStmtExpr {
-    fn allocs(self: &Self) -> Vec<Rc<HDataNode>> {
-        match self {
-            HStmtExpr::Block { stmts } => stmts
-                .iter()
-                .flat_map(|s| s.allocs.iter())
-                .cloned()
-                .collect(),
-            HStmtExpr::Read { args, .. } => args.iter().map(|d| d.node.clone()).collect(),
-            HStmtExpr::Call { fun, .. } => fun.ret.iter().map(|d| d.node.clone()).collect(),
-            HStmtExpr::For { body, .. } => body
-                .allocs
-                .iter()
-                .flat_map(|node| match node.expr.deref() {
-                    HDataExpr::Subscript { array, .. } => Some(array.clone()),
-                    _ => None,
-                })
-                .collect(),
-            _ => Vec::new(),
-        }
-    }
-}
-
 impl<T: HirCompileInto<Rc<HStmtExpr>>> HirCompileFrom<T> for HStmt {
     fn compile(ast: T, env: &Env, sess: &mut Sess) -> Self {
         let expr: Rc<HStmtExpr> = ast.compile(env, sess);
         HStmt {
-            allocs: expr.allocs(),
+            allocs: match expr.deref() {
+                HStmtExpr::Block { stmts } => stmts
+                    .iter()
+                    .flat_map(|s| s.allocs.iter())
+                    .cloned()
+                    .collect(),
+                HStmtExpr::Read { args, .. } => args.iter().map(|d| d.node.clone()).collect(),
+                HStmtExpr::Call { fun, .. } => fun.ret.iter().map(|d| d.node.clone()).collect(),
+                HStmtExpr::For { body, .. } => body
+                    .allocs
+                    .iter()
+                    .flat_map(|node| match node.expr.deref() {
+                        HDataExpr::Subscript { array, .. } => Some(array.clone()),
+                        _ => None,
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            },
             expr,
         }
     }
