@@ -61,7 +61,7 @@ impl FormatInto<CppLang> for &LBlock {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         let LBlock { stmts } = self;
         quote_in! { *tokens =>
-            #(for stmt in stmts join (#<push>) => #stmt)
+            #(for stmt in stmts join (#<line>) => #stmt)
         }
     }
 }
@@ -118,35 +118,46 @@ impl FormatInto<CppLang> for &LTy {
 impl FormatInto<CppLang> for &LStmt {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         match self {
-            LStmt::Decl { name, ty } => quote_in! { *tokens =>
-                #ty #name;
-            },
-            LStmt::Alloc {
-                array,
-                item_ty,
-                size,
-            } => quote_in! { *tokens =>
-                #array = new #item_ty[#size];
-            },
-            LStmt::Write { arg, ty } => quote_in! { *tokens =>
-                printf(#_(#(Format(ty))) " ", #arg);
+            LStmt::Write { args } => quote_in! { *tokens =>
+                printf(#(quoted(quote!(
+                    #(
+                        for arg in args join ( ) =>
+                        #(Format(&arg.ty))
+                    )#(r"\n")
+                ))), #(
+                    for arg in args join (, ) =>
+                    #(&arg.expr)
+                ));
             },
             LStmt::Read { args } => quote_in! { *tokens =>
                 #(
                     for arg in args join (#<push>) =>
-                    #(arg.decl.as_ref())
+                    #(match arg.decl.as_ref() {
+                        Some(decl) => #decl;,
+                        None => ,
+                    })
                 )
-                scanf(#(quoted(quote!(#(
-                    for arg in args join () =>
-                    #(Format(&arg.ty))
-                )))), #(
+                scanf(#(quoted(quote!(
+                    #(
+                        for arg in args join () =>
+                        #(Format(&arg.ty))
+                    )
+                ))), #(
                     for arg in args join (, ) =>
                     &#(&arg.expr)
                 ));
             },
-            LStmt::Call { name, args, ret } => match ret {
+            LStmt::Call {
+                decl,
+                name,
+                args,
+                ret,
+            } => match ret {
                 Some(ret) => quote_in! { *tokens =>
-                    #ret = #name(#(
+                    #(match decl {
+                        Some(decl) => #decl,
+                        None => #ret,
+                    }) = #name(#(
                         for a in args join (, ) => #a
                     ));
                 },
@@ -158,11 +169,16 @@ impl FormatInto<CppLang> for &LStmt {
             },
             // TODO: bound type?
             LStmt::For {
+                allocs,
                 index_name: i,
                 bound,
                 body,
             } => {
                 quote_in! { *tokens =>
+                    #(
+                        for alloc in allocs join (#<push>) =>
+                        #alloc
+                    )
                     for(int #i = 0; #i < #bound; #i++) {
                         #body
                     }
@@ -176,11 +192,27 @@ impl FormatInto<CppLang> for &LDecl {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         let LDecl { ty, name } = self;
         quote_in! { *tokens =>
-            #ty #name;
+            #ty #name
         }
     }
 }
 
+impl FormatInto<CppLang> for &LAlloc {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        let LAlloc {
+            decl,
+            array,
+            item_ty,
+            size,
+        } = self;
+        quote_in! { *tokens =>
+            #(match decl {
+                Some(decl) => #decl,
+                None => #array,
+            }) = new #item_ty[#size];
+        }
+    }
+}
 
 pub fn gen_file(spec: &LSpec) -> String {
     let tokens: Tokens<CppLang> = quote!(#spec);

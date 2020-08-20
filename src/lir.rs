@@ -32,28 +32,20 @@ pub struct LBlock {
 
 #[derive(Debug, Clone)]
 pub enum LStmt {
-    Decl {
-        name: String,
-        ty: LTy,
-    },
-    Alloc {
-        array: LExpr,
-        item_ty: LTy,
-        size: LExpr,
-    },
     Read {
         args: Vec<LReadArg>,
     },
     Write {
-        arg: LExpr,
-        ty: AtomTy,
+        args: Vec<LWriteArg>,
     },
     Call {
+        decl: Option<LDecl>,
         name: String,
         args: Vec<LExpr>,
         ret: Option<LExpr>,
     },
     For {
+        allocs: Vec<LAlloc>,
         index_name: String,
         bound: LExpr,
         body: LBlock,
@@ -71,6 +63,20 @@ pub struct LReadArg {
     pub decl: Option<LDecl>,
     pub expr: LExpr,
     pub ty: AtomTy,
+}
+
+#[derive(Debug, Clone)]
+pub struct LWriteArg {
+    pub expr: LExpr,
+    pub ty: AtomTy,
+}
+
+#[derive(Debug, Clone)]
+pub struct LAlloc {
+    pub decl: Option<LDecl>,
+    pub array: LExpr,
+    pub item_ty: LTy,
+    pub size: LExpr,
 }
 
 #[derive(Debug, Clone)]

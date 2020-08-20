@@ -49,65 +49,53 @@ impl LirFrom<HStep> for Vec<LStmt> {
                 .iter()
                 .flat_map::<Vec<LStmt>, _>(LirInto::lir)
                 .collect(),
-            HStepExpr::Read { args, .. } => vec![
-                LStmt::Read {
-                    args: args
-                        .iter()
-                        .map(|atom| LReadArg {
-                            decl: node_decl(&atom.node).map(|h| h.lir()),
-                            expr: atom.node.lir(),
-                            ty: atom.ty.lir()
-                        })
-                        .collect()
-                }
-            ],
-            HStepExpr::Write { args, .. } => args
-                .iter()
-                .cloned()
-                .map(|atom| LStmt::Write {
-                    ty: atom.ty.lir(),
-                    arg: atom.val.lir(),
-                })
-                .collect(),
-            HStepExpr::Call { fun, .. } => fun
-                .ret
-                .iter()
-                .flat_map(|ret| node_decl(&ret.node).map(|h| h.lir()))
-                .chain(std::iter::once(LStmt::Call {
-                    name: fun.name.to_string(),
-                    args: fun.args.iter().map(|a| a.val.lir()).collect(),
-                    ret: fun.ret.as_ref().map(|a| a.node.lir()),
-                }))
-                .collect(),
-            HStepExpr::For { range, body, .. } => std::iter::empty()
-                .chain(hir.nodes.iter().flat_map(|node| {
-                    std::iter::empty()
-                        .chain(node_decl(&node).map(|h| h.lir()))
-                        .chain(node_alloc(&node).map(|h| h.lir()))
-                }))
-                .chain(std::iter::once(LStmt::For {
-                    index_name: range.index.to_string(),
-                    bound: range.bound.val.lir(),
-                    body: body.lir(),
-                }))
-                .collect(),
+            HStepExpr::Read { args, .. } => vec![LStmt::Read {
+                args: args
+                    .iter()
+                    .map(|atom| LReadArg {
+                        decl: node_decl(&atom.node).map(|h| h.lir()),
+                        expr: atom.node.lir(),
+                        ty: atom.ty.lir(),
+                    })
+                    .collect(),
+            }],
+            HStepExpr::Write { args, .. } => vec![LStmt::Write {
+                args: args
+                    .iter()
+                    .cloned()
+                    .map(|atom| LWriteArg {
+                        ty: atom.ty.lir(),
+                        expr: atom.val.lir(),
+                    })
+                    .collect(),
+            }],
+            HStepExpr::Call { fun, .. } => vec![LStmt::Call {
+                decl: fun
+                    .ret
+                    .as_ref()
+                    .and_then(|ret| node_decl(&ret.node).map(|h| h.lir())),
+                name: fun.name.to_string(),
+                args: fun.args.iter().map(|a| a.val.lir()).collect(),
+                ret: fun.ret.as_ref().map(|a| a.node.lir()),
+            }],
+            HStepExpr::For { range, body, .. } => vec![LStmt::For {
+                allocs: hir
+                    .nodes
+                    .iter()
+                    .flat_map(node_alloc)
+                    .map(|h| h.lir())
+                    .collect(),
+                index_name: range.index.to_string(),
+                bound: range.bound.val.lir(),
+                body: body.lir(),
+            }],
         }
     }
 }
 
-impl LirFrom<HAlloc> for LStmt {
-    fn lir_from(alloc: &HAlloc) -> Self {
-        LStmt::Alloc {
-            array: alloc.array.lir(),
-            item_ty: alloc.item_ty.lir(),
-            size: alloc.size.lir(),
-        }
-    }
-}
-
-impl LirFrom<HVarDef> for LStmt {
+impl LirFrom<HVarDef> for LDecl {
     fn lir_from(var: &HVarDef) -> Self {
-        LStmt::Decl {
+        LDecl {
             name: match &var.expr {
                 HVarDefExpr::Name { name } => name.to_string(),
                 _ => unreachable!(),
@@ -117,14 +105,13 @@ impl LirFrom<HVarDef> for LStmt {
     }
 }
 
-impl LirFrom<HVarDef> for LDecl {
-    fn lir_from(var: &HVarDef) -> Self {
-        LDecl {
-            name: match &var.expr {
-                    HVarDefExpr::Name { name } => name.to_string(),
-                _ => unreachable!(),
-            },
-            ty: var.ty.lir(),
+impl LirFrom<HAlloc> for LAlloc {
+    fn lir_from(alloc: &HAlloc) -> Self {
+        LAlloc {
+            decl: node_decl(&alloc.array).map(|h| h.lir()),
+            array: alloc.array.lir(),
+            item_ty: alloc.item_ty.lir(),
+            size: alloc.size.lir(),
         }
     }
 }
