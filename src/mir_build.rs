@@ -17,26 +17,32 @@ fn mir_insts(hir: &Rc<HStmt>) -> Vec<MInst> {
         HStmt::Block { stmts } => stmts.iter().flat_map(mir_insts).collect(),
         HStmt::Read { args, .. } => args
             .iter()
-            .flat_map(|a| vec![MInst::Decl(a.node.root.clone()), MInst::Read(a.clone())])
+            .flat_map(|a| {
+                std::iter::empty()
+                    .chain(a.node.var.iter().cloned().map(MInst::Decl))
+                    .chain(std::iter::once(MInst::Read(a.clone())))
+            })
             .collect(),
         HStmt::Write { args, .. } => args.iter().cloned().map(MInst::Write).collect(),
         HStmt::Call { fun, .. } => fun
             .ret
             .iter()
-            .map(|r| MInst::Decl(r.node.root.clone()))
+            .map(|r| MInst::Decl(r.node.root_var.clone()))
             .chain(std::iter::once(MInst::Call(fun.clone())))
             .collect(),
-        HStmt::For { range, body, .. } => body
-            .allocs()
-            .iter()
-            .flat_map(|node| match node.expr.deref() {
-                HDataExpr::Subscript { array, index, .. } => Some(MInst::Alloc {
-                    array: array.clone(),
-                    ty: node.ty.clone(),
-                    size: index.range.bound.val.clone(),
-                }),
-                _ => None,
-            })
+        HStmt::For { range, body, .. } => std::iter::empty()
+            .chain(hir.allocs().iter().flat_map(|node| {
+                std::iter::empty()
+                    .chain(node.var.iter().cloned().map(MInst::Decl))
+                    .chain(match node.ty.deref() {
+                        HValTy::Array { item, range } => Some(MInst::Alloc {
+                            array: node.clone(),
+                            ty: item.clone(),
+                            size: range.bound.val.clone(),
+                        }),
+                        _ => None,
+                    })
+            }))
             .chain(std::iter::once(MInst::For {
                 range: range.clone(),
                 body: mir_insts(body),

@@ -101,8 +101,9 @@ pub struct HDataAtom {
 #[derive(Debug)]
 pub struct HDataNode {
     pub expr: Rc<HDataExpr>,
-    pub root: Rc<HDataVar>,
     pub ty: Rc<HValTy>,
+    pub var: Option<Rc<HDataVar>>,
+    pub root_var: Rc<HDataVar>,
 }
 
 /// A value (either atomic or aggregate) in input/output data (construction).

@@ -54,8 +54,9 @@ impl HirCreateErr for HDataNode {
     fn create_err() -> Self {
         HDataNode {
             expr: HErr::err(),
-            root: HErr::err(),
+            root_var: HErr::err(),
             ty: HErr::err(),
+            var: None,
         }
     }
 }

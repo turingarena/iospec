@@ -211,10 +211,14 @@ impl HirCompileFrom<AExpr, HDefEnv> for HDataNode {
 
         HDataNode {
             ty: env.ty.clone(),
-            root: match expr.deref() {
+            root_var: match expr.deref() {
                 HDataExpr::Var { var } => var.clone(),
-                HDataExpr::Subscript { array, .. } => array.root.clone(),
+                HDataExpr::Subscript { array, .. } => array.root_var.clone(),
                 HDataExpr::Err => HErr::err(),
+            },
+            var: match expr.deref() {
+                HDataExpr::Var { var } => Some(var.clone()),
+                _ => None,
             },
             expr,
         }
@@ -514,12 +518,12 @@ fn unzip_punctuated<T, U>(p: syn::punctuated::Punctuated<T, U>) -> (Vec<T>, Vec<
 }
 
 fn hir_node_var(atom: &Rc<HDataAtom>) -> Option<HVar> {
-    if let HDataVarExpr::Name { name } = atom.node.root.expr.deref() {
+    if let HDataVarExpr::Name { name } = atom.node.root_var.expr.deref() {
         Some(HVar {
             name: name.clone(),
-            ty: atom.node.root.ty.clone(),
+            ty: atom.node.root_var.ty.clone(),
             kind: Rc::new(HVarKind::Data {
-                var: atom.node.root.clone(),
+                var: atom.node.root_var.clone(),
             }),
         })
     } else {
