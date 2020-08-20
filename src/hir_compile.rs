@@ -87,8 +87,8 @@ impl HirCompileFrom<ABlock> for HStepExpr {
                 let var = &node.root_var;
                 match var.expr.deref() {
                     HVarDefExpr::Name { name } => env.declare(
-                        &Rc::new(HBinding {
-                            kind: Rc::new(HBindingKind::Data { var: var.clone() }),
+                        &Rc::new(HVar {
+                            expr: Rc::new(HVarExpr::Data { def: var.clone() }),
                             ty: var.ty.clone(),
                             name: name.clone(),
                         }),

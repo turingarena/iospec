@@ -32,9 +32,9 @@ impl HirCreateErr for HValTy {
     }
 }
 
-impl HirCreateErr for HBindingKind {
+impl HirCreateErr for HVarExpr {
     fn create_err() -> Self {
-        HBindingKind::Err
+        HVarExpr::Err
     }
 }
 

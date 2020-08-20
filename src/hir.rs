@@ -191,7 +191,7 @@ pub struct HVal {
 #[derive(Debug)]
 pub enum HValExpr {
     Var {
-        var: Rc<HBinding>,
+        var: Rc<HVar>,
         ident: Rc<HName>,
     },
     Subscript {
@@ -223,6 +223,22 @@ pub enum HAtomTyExpr {
     Err,
 }
 
+/// Binding of name to a data variable or an index (analysis).
+#[derive(Debug)]
+pub struct HVar {
+    pub name: Rc<HName>,
+    pub ty: Rc<HValTy>,
+    pub expr: Rc<HVarExpr>,
+}
+
+/// Binding of name to a data variable or an index (construction).
+#[derive(Debug)]
+pub enum HVarExpr {
+    Data { def: Rc<HVarDef> },
+    Index { range: Rc<HRange> },
+    Err,
+}
+
 /// An identifier (in any context)
 #[derive(Debug)]
 pub struct HName {
@@ -233,20 +249,4 @@ impl ToString for HName {
     fn to_string(self: &Self) -> String {
         self.ident.to_string()
     }
-}
-
-/// Binding of name to a variable or an index (analysis).
-#[derive(Debug)]
-pub struct HBinding {
-    pub name: Rc<HName>,
-    pub ty: Rc<HValTy>,
-    pub kind: Rc<HBindingKind>,
-}
-
-/// Binding of name to a variable or an index (construction).
-#[derive(Debug)]
-pub enum HBindingKind {
-    Data { var: Rc<HVarDef> },
-    Index { range: Rc<HRange> },
-    Err,
 }

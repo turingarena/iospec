@@ -14,7 +14,7 @@ use crate::hir_err::HErr;
 
 #[derive(Debug, Clone)]
 pub struct Env {
-    refs: Vec<Rc<HBinding>>,
+    refs: Vec<Rc<HVar>>,
     outer: Option<Box<Env>>,
 
     pub loc: Rc<HDataLoc>,
@@ -29,7 +29,7 @@ impl Env {
         }
     }
 
-    pub fn declare(self: &mut Self, var: &Rc<HBinding>, sess: &mut Sess) {
+    pub fn declare(self: &mut Self, var: &Rc<HVar>, sess: &mut Sess) {
         match self.maybe_resolve(&var.name) {
             None => {
                 self.refs.push(var.clone());
@@ -43,23 +43,23 @@ impl Env {
         }
     }
 
-    pub fn resolve(self: &Self, ident: &Rc<HName>, sess: &mut Sess) -> Rc<HBinding> {
+    pub fn resolve(self: &Self, ident: &Rc<HName>, sess: &mut Sess) -> Rc<HVar> {
         match self.maybe_resolve(ident) {
             Some(var) => var,
             None => {
                 sess.diagnostics.push(Diagnostic::UndefVar {
                     ident: ident.clone(),
                 });
-                Rc::new(HBinding {
+                Rc::new(HVar {
                     name: ident.clone(),
                     ty: HErr::err(),
-                    kind: HErr::err(),
+                    expr: HErr::err(),
                 })
             }
         }
     }
 
-    fn maybe_resolve(self: &Self, ident: &Rc<HName>) -> Option<Rc<HBinding>> {
+    fn maybe_resolve(self: &Self, ident: &Rc<HName>) -> Option<Rc<HVar>> {
         self.refs
             .iter()
             .find(|r| r.name.ident == ident.ident)
@@ -69,10 +69,10 @@ impl Env {
 
     pub fn for_body(self: &Self, range: Rc<HRange>) -> Self {
         Self {
-            refs: vec![Rc::new(HBinding {
+            refs: vec![Rc::new(HVar {
                 name: range.index.clone(),
                 ty: range.bound.val.ty.clone(),
-                kind: Rc::new(HBindingKind::Index {
+                expr: Rc::new(HVarExpr::Index {
                     range: range.clone(),
                 }),
             })],

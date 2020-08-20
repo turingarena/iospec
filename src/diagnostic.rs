@@ -38,8 +38,8 @@ pub enum Diagnostic {
         ident: Rc<HName>,
     },
     AlreadyDefinedVar {
-        old_var: Rc<HBinding>,
-        new_var: Rc<HBinding>,
+        old_var: Rc<HVar>,
+        new_var: Rc<HVar>,
     },
     RangeBoundNotNatural {
         val: Rc<HVal>,
