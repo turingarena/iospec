@@ -2,13 +2,13 @@
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AtomTy {
     /// Boolean, either true or false
-    Boolean,
+    Bool,
     /// Non-negative integer representable as a *signed* integer of the given bit size
-    Natural {
+    Nat {
         size: BitSize,
     },
     /// Signed integer representable in the given bit size
-    Integer {
+    Int {
         size: BitSize,
     },
     Err,
@@ -18,19 +18,19 @@ impl AtomTy {
     pub fn all() -> Vec<Self> {
         use AtomTy::*;
         let mut all = Vec::new();
-        all.push(Boolean);
+        all.push(Bool);
         for size in BitSize::all() {
-            all.push(AtomTy::Natural { size });
-            all.push(AtomTy::Integer { size });
+            all.push(AtomTy::Nat { size });
+            all.push(AtomTy::Int { size });
         }
         all
     }
 
     pub fn name(self: Self) -> String {
         match self {
-            AtomTy::Boolean => "bool".into(),
-            AtomTy::Natural { size } => format!("n{}", size.bits()),
-            AtomTy::Integer { size } => format!("i{}", size.bits()),
+            AtomTy::Bool => "bool".into(),
+            AtomTy::Nat { size } => format!("n{}", size.bits()),
+            AtomTy::Int { size } => format!("i{}", size.bits()),
             AtomTy::Err => "<invalid scalar type>".into(),
         }
     }

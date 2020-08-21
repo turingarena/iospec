@@ -375,7 +375,7 @@ impl HirCompileFrom<AExpr> for HRangeBound {
 
         match val.ty.deref() {
             HValTy::Atom { atom_ty } => {
-                if let AtomTy::Natural { .. } = &atom_ty.sem {
+                if let AtomTy::Nat { .. } = &atom_ty.sem {
                     // OK
                 } else {
                     dgns.push(Diagnostic::RangeBoundNotNatural {

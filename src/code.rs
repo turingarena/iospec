@@ -82,8 +82,8 @@ impl FormatInto<CppLang> for &LExpr {
 impl FormatInto<CppLang> for &AtomTy {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         match self {
-            AtomTy::Boolean => quote_in!(*tokens => bool),
-            AtomTy::Natural { size } | AtomTy::Integer { size } => {
+            AtomTy::Bool => quote_in!(*tokens => bool),
+            AtomTy::Nat { size } | AtomTy::Int { size } => {
                 quote_in!(*tokens => int#(size.bits())_t)
             }
             AtomTy::Err => unreachable!(),
@@ -96,8 +96,8 @@ struct Format<'a>(&'a AtomTy);
 impl FormatInto<CppLang> for Format<'_> {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
         match self.0 {
-            AtomTy::Boolean => quote_in!(*tokens => %d),
-            AtomTy::Natural { size } | AtomTy::Integer { size } => match size {
+            AtomTy::Bool => quote_in!(*tokens => %d),
+            AtomTy::Nat { size } | AtomTy::Int { size } => match size {
                 BitSize::S8 | BitSize::S16 | BitSize::S32 => quote_in!(*tokens => %d),
                 BitSize::S64 => quote_in!(*tokens => %lld),
             },
