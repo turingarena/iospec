@@ -169,7 +169,7 @@ impl FormatInto<CppLang> for &LStmt {
             },
             LStmt::For {
                 allocs,
-                index_name: i,
+                index: LDecl { name: i, .. },
                 index_ty,
                 bound,
                 body,
