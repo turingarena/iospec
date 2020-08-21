@@ -167,10 +167,10 @@ impl FormatInto<CppLang> for &LStmt {
                     ));
                 },
             },
-            // TODO: bound type?
             LStmt::For {
                 allocs,
                 index_name: i,
+                index_ty,
                 bound,
                 body,
             } => {
@@ -179,7 +179,7 @@ impl FormatInto<CppLang> for &LStmt {
                         for alloc in allocs join (#<push>) =>
                         #alloc
                     )
-                    for(int #i = 0; #i < #bound; #i++) {
+                    for(#index_ty #i = 0; #i < #bound; #i++) {
                         #body
                     }
                 }

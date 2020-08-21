@@ -46,6 +46,7 @@ pub enum LStmt {
     },
     For {
         allocs: Vec<LAlloc>,
+        index_ty: AtomTy,
         index_name: String,
         bound: LExpr,
         body: LBlock,

@@ -86,6 +86,7 @@ impl LirFrom<HStep> for Vec<LStmt> {
                     .map(|h| h.lir())
                     .collect(),
                 index_name: range.index.to_string(),
+                index_ty: range.bound.ty.lir(),
                 bound: range.bound.val.lir(),
                 body: body.lir(),
             }],
