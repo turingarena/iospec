@@ -7,8 +7,8 @@ use std::path::PathBuf;
 
 use structopt::StructOpt;
 
-use crate::code::code_gen;
-use crate::run::interp::run_spec;
+use crate::code::*;
+use crate::run::*;
 use crate::spec_load::*;
 
 #[derive(Debug, StructOpt)]
@@ -64,7 +64,7 @@ fn main() -> Result<(), ()> {
         } => {
             let spec = spec_load(&spec_file)?;
 
-            run_spec(
+            spec_run(
                 &spec,
                 File::open(input_from).unwrap(),
                 File::open(output_from).unwrap(),

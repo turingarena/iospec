@@ -98,12 +98,12 @@ enum RValMut<'a> {
 }
 
 #[derive(Debug, Default)]
-struct RState {
+pub struct RState {
     env: HashMap<*const HVarDef, RNode>,
     indexes: HashMap<*const HRange, usize>,
 }
 
-trait RunContext {
+pub trait RunContext {
     type InputStream: AtomStream;
     type OutputStream: AtomStream;
 
@@ -112,7 +112,7 @@ trait RunContext {
 }
 
 impl HSpec {
-    fn run<C: RunContext>(
+    pub fn run<C: RunContext>(
         self: &Self,
         state: &mut RState,
         ctx: &mut C,
@@ -368,9 +368,9 @@ impl HAlloc {
     }
 }
 
-struct Runner {
-    input_parser: TextAtomStream<File>,
-    output_parser: TextAtomStream<File>,
+pub struct Runner {
+    pub input_parser: TextAtomStream<File>,
+    pub output_parser: TextAtomStream<File>,
 }
 
 impl RunContext for Runner {
@@ -384,16 +384,4 @@ impl RunContext for Runner {
     fn output_parser(self: &mut Self) -> &mut Self::OutputStream {
         &mut self.output_parser
     }
-}
-
-pub fn run_spec(spec: &Rc<HSpec>, input_from: File, output_from: File) {
-    let mut state = RState::default();
-    let mut ctx = Runner {
-        input_parser: TextAtomStream { reader: input_from },
-        output_parser: TextAtomStream {
-            reader: output_from,
-        },
-    };
-
-    spec.run(&mut state, &mut ctx).unwrap();
 }
