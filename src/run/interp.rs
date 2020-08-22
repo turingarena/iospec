@@ -6,11 +6,12 @@ use std::ops::Deref;
 
 use num_traits::{Bounded, Num, NumCast};
 
-use crate::hir::*;
-use crate::hir_quote::quote_hir;
-use crate::hir_sem::*;
-use crate::io::*;
-use crate::ty::*;
+use crate::spec::hir::*;
+use crate::spec::hir_quote::quote_hir;
+use crate::spec::hir_sem::*;
+use crate::spec::ty::*;
+
+use super::io::*;
 
 #[derive(Debug, Clone, Copy, Default)]
 struct RAtomError;

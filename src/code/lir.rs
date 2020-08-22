@@ -4,7 +4,7 @@
 //! It is a tree without references to higher level nodes (HIR).
 //! Thus, it can be easily traversed structurally and translated into code.
 
-use crate::ty::*;
+use crate::spec::ty::*;
 
 #[derive(Debug, Clone)]
 pub struct LSpec {

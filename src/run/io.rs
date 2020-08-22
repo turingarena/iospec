@@ -2,7 +2,7 @@ use std::error::Error;
 use std::io::Read;
 use std::str::FromStr;
 
-use crate::ty::*;
+use crate::spec::ty::*;
 
 pub trait AtomStream {
     fn next_atom(self: &mut Self, ty: &AtomTy) -> Result<i64, Box<dyn Error>>;

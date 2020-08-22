@@ -17,8 +17,8 @@ extern crate syn;
 
 pub use std::rc::Rc;
 
-use crate::kw;
-use crate::ty::*;
+use crate::spec::kw;
+use crate::spec::ty::*;
 
 #[derive(Debug)]
 pub struct HSpec {

@@ -2,7 +2,7 @@
 
 use std::ops::Deref;
 
-use crate::hir::*;
+use crate::spec::hir::*;
 
 #[derive(Debug, Clone)]
 pub struct HAlloc {

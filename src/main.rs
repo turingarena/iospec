@@ -4,15 +4,15 @@ extern crate structopt;
 
 use std::fs::{read_to_string, File};
 use std::path::PathBuf;
+use std::process::exit;
 
 use structopt::StructOpt;
 
-use crate::ast_parse::parse_spec;
-use crate::hir_compile::compile_hir;
-use crate::lir_build::build_lir;
-use crate::run::run_spec;
-use crate::sess::Sess;
-use std::process::exit;
+use crate::code::lir_build::build_lir;
+use crate::run::interp::run_spec;
+use crate::spec_load::ast_parse::parse_spec;
+use crate::spec_load::hir_compile::compile_hir;
+use crate::spec_load::sess::Sess;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -41,30 +41,10 @@ enum App {
     },
 }
 
-mod diagnostic;
-mod sess;
-
-mod ast;
-mod ast_parse;
-mod kw;
-
-mod ty;
-
-mod hir;
-mod hir_compile;
-mod hir_env;
-mod hir_err;
-mod hir_quote;
-mod hir_sem;
-mod hir_span;
-
-mod lir;
-mod lir_build;
-
 mod code;
-
-mod io;
 mod run;
+mod spec;
+mod spec_load;
 
 fn create_sess(spec_file: &PathBuf) -> Sess {
     let mut code_map = codemap::CodeMap::new();
@@ -104,7 +84,7 @@ fn main() {
             let generated = parse_spec(sess.file.clone().source(), &mut dgns)
                 .and_then(|spec| compile_hir(spec, &mut dgns))
                 .map(|spec| build_lir(spec))
-                .map(|spec| code::gen_file(&spec));
+                .map(|spec| crate::code::lang::cpp::gen_file(&spec));
 
             for d in dgns {
                 eprintln!("{}", d.diagnostic_message(&sess));

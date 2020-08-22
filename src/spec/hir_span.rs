@@ -1,6 +1,6 @@
 use proc_macro2::Span;
 
-use crate::hir::*;
+use crate::spec::hir::*;
 
 pub trait HasSpan {
     fn span(self: &Self) -> Span;

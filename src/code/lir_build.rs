@@ -2,10 +2,10 @@
 
 use std::ops::Deref;
 
-use crate::hir::*;
-use crate::hir_sem::*;
-use crate::lir::*;
-use crate::ty::*;
+use crate::code::lir::*;
+use crate::spec::hir::*;
+use crate::spec::hir_sem::*;
+use crate::spec::ty::*;
 
 trait LirFrom<T> {
     fn lir_from(hir: &T) -> Self;

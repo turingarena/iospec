@@ -7,12 +7,13 @@
 
 use std::ops::Deref;
 
-use crate::ast::*;
-use crate::diagnostic::*;
-use crate::hir::*;
-use crate::hir_env::*;
-use crate::hir_err::*;
-use crate::ty::*;
+use crate::spec::hir::*;
+use crate::spec::ty::*;
+
+use super::ast::*;
+use super::diagnostic::*;
+use super::hir_env::*;
+use super::hir_err::*;
 
 trait HirCompileFrom<T, E = Env> {
     fn compile(ast: T, env: &E, dgns: &mut Vec<Diagnostic>) -> Self;

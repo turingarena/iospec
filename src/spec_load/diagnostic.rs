@@ -1,8 +1,8 @@
-use crate::hir::*;
-use crate::hir_span::*;
-use crate::sess::Sess;
+use crate::spec::hir::*;
+use crate::spec::hir_quote::quote_hir;
+use crate::spec::hir_span::*;
 
-use crate::hir_quote::quote_hir;
+use super::sess::Sess;
 
 #[derive(Debug, Clone)]
 pub enum Diagnostic {

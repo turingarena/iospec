@@ -1,6 +1,6 @@
 use genco::prelude::*;
 
-use crate::hir::*;
+use crate::spec::hir::*;
 
 impl FormatInto<()> for &HAtomDef {
     fn format_into(self: Self, tokens: &mut Tokens) {

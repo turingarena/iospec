@@ -8,9 +8,10 @@
 //! The environment is made of HIR nodes, and is used to transform an AST node directly into HIR
 //! (possibly with new links to nodes in the environment).
 
-use crate::diagnostic::*;
-use crate::hir::*;
-use crate::hir_err::HErr;
+use crate::spec::hir::*;
+
+use super::diagnostic::*;
+use super::hir_err::HErr;
 
 #[derive(Debug, Clone)]
 pub struct Env {

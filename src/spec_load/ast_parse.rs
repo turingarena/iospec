@@ -5,9 +5,10 @@ use syn::parse::ParseBuffer;
 use syn::punctuated::Punctuated;
 use syn::Error;
 
-use crate::ast::*;
-use crate::diagnostic::Diagnostic;
-use crate::kw;
+use crate::spec::kw;
+
+use super::ast::*;
+use super::diagnostic::*;
 
 pub fn parse_spec(source: &str, dgns: &mut Vec<Diagnostic>) -> Result<ASpec, ()> {
     match syn::parse_str(source) {
