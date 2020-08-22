@@ -4,11 +4,10 @@ extern crate structopt;
 
 use std::fs::File;
 use std::path::PathBuf;
-use std::process::exit;
 
 use structopt::StructOpt;
 
-use crate::code::lir_build::build_lir;
+use crate::code::code_gen;
 use crate::run::interp::run_spec;
 use crate::spec_load::*;
 
@@ -44,22 +43,18 @@ mod run;
 mod spec;
 mod spec_load;
 
-fn main() {
+fn main() -> Result<(), ()> {
     let app = App::from_args();
 
     match app {
         App::Lint { spec_file } => {
-            spec_load(&spec_file).ok();
+            spec_load(&spec_file)?;
         }
 
         App::Code { spec_file } => {
-            let spec = spec_load(&spec_file)
-                .map(|spec| build_lir(spec))
-                .map(|spec| crate::code::lang::cpp::gen_file(&spec));
-
-            if let Ok(spec) = spec {
-                print!("{}", spec);
-            }
+            let spec = spec_load(&spec_file)?;
+            let code = code_gen(&spec);
+            print!("{}", code);
         }
 
         App::Run {
@@ -67,15 +62,7 @@ fn main() {
             input_from,
             output_from,
         } => {
-            let spec = spec_load(&spec_file);
-
-            let spec = match spec {
-                Ok(spec) => spec,
-                Err(_) => {
-                    eprintln!("aborting due to previous errors");
-                    exit(1)
-                }
-            };
+            let spec = spec_load(&spec_file)?;
 
             run_spec(
                 &spec,
@@ -84,4 +71,6 @@ fn main() {
             );
         }
     }
+
+    Ok(())
 }

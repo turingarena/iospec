@@ -194,6 +194,6 @@ impl LirFrom<HArg> for LParam {
     }
 }
 
-pub fn build_lir(spec: Rc<HSpec>) -> LSpec {
+pub fn build_lir(spec: &Rc<HSpec>) -> LSpec {
     spec.lir()
 }

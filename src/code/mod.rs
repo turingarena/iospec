@@ -1,4 +1,8 @@
-pub mod lir;
-pub mod lir_build;
+mod lir;
+mod lir_build;
 
-pub mod lang;
+mod lang;
+
+mod main;
+
+pub use main::*;
