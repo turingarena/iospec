@@ -2,7 +2,7 @@
 
 extern crate structopt;
 
-use std::fs::{read_to_string, File};
+use std::fs::File;
 use std::path::PathBuf;
 use std::process::exit;
 
@@ -10,9 +10,7 @@ use structopt::StructOpt;
 
 use crate::code::lir_build::build_lir;
 use crate::run::interp::run_spec;
-use crate::spec_load::ast_parse::parse_spec;
-use crate::spec_load::hir_compile::compile_hir;
-use crate::spec_load::sess::Sess;
+use crate::spec_load::*;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -46,52 +44,21 @@ mod run;
 mod spec;
 mod spec_load;
 
-fn create_sess(spec_file: &PathBuf) -> Sess {
-    let mut code_map = codemap::CodeMap::new();
-
-    let file = code_map.add_file(
-        spec_file
-            .to_str()
-            .expect("file path is not valid UTF-8")
-            .into(),
-        read_to_string(spec_file).expect("cannot read file"),
-    );
-
-    Sess::new(&file)
-}
-
 fn main() {
     let app = App::from_args();
 
     match app {
         App::Lint { spec_file } => {
-            let sess = create_sess(&spec_file);
-            let mut dgns = Vec::new();
-
-            parse_spec(sess.file.clone().source(), &mut dgns)
-                .and_then(|spec| compile_hir(spec, &mut dgns))
-                .ok();
-
-            for d in dgns {
-                eprintln!("{}", d.diagnostic_message(&sess));
-            }
+            spec_load(&spec_file).ok();
         }
 
         App::Code { spec_file } => {
-            let sess = create_sess(&spec_file);
-            let mut dgns = Vec::new();
-
-            let generated = parse_spec(sess.file.clone().source(), &mut dgns)
-                .and_then(|spec| compile_hir(spec, &mut dgns))
+            let spec = spec_load(&spec_file)
                 .map(|spec| build_lir(spec))
                 .map(|spec| crate::code::lang::cpp::gen_file(&spec));
 
-            for d in dgns {
-                eprintln!("{}", d.diagnostic_message(&sess));
-            }
-
-            if let Ok(generated) = generated {
-                print!("{}", generated);
+            if let Ok(spec) = spec {
+                print!("{}", spec);
             }
         }
 
@@ -100,15 +67,7 @@ fn main() {
             input_from,
             output_from,
         } => {
-            let sess = create_sess(&spec_file);
-            let mut dgns = Vec::new();
-
-            let spec = parse_spec(sess.file.clone().source(), &mut dgns)
-                .and_then(|spec| compile_hir(spec, &mut dgns));
-
-            for d in dgns {
-                eprintln!("{}", d.diagnostic_message(&sess));
-            }
+            let spec = spec_load(&spec_file);
 
             let spec = match spec {
                 Ok(spec) => spec,

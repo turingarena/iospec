@@ -1,10 +1,14 @@
 //! Parses a spec file and compiles it to High-level Intermediate Representation (HIR)
 
-pub mod ast;
-pub mod ast_parse;
-pub mod diagnostic;
-pub mod hir_compile;
-pub mod hir_env;
-pub mod hir_err;
+mod ast;
+mod ast_parse;
+mod diagnostic;
+mod hir_compile;
+mod hir_env;
+mod hir_err;
 
-pub mod sess;
+mod sess;
+
+mod main;
+
+pub use main::*;
