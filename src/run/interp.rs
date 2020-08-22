@@ -1,114 +1,21 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Debug;
-use std::fs::File;
 use std::ops::Deref;
-
-use num_traits::{Bounded, Num, NumCast};
 
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_sem::*;
-use crate::spec::ty::*;
 
+use super::atom::*;
+use super::ctx::*;
 use super::io::*;
-
-#[derive(Debug, Clone, Copy, Default)]
-struct RAtomError;
-
-impl std::fmt::Display for RAtomError {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.write_str("Cannot parse atom")
-    }
-}
-
-/// Compact representation of an atom, to use in array cells
-trait RAtom: Clone + Copy + Debug + Num + Bounded + NumCast {}
-
-impl RAtom for i8 {}
-
-impl RAtom for i16 {}
-
-impl RAtom for i32 {}
-
-impl RAtom for i64 {}
-
-trait RAtomCell: Debug {
-    fn get(self: &Self) -> i64;
-    fn set(self: &mut Self, value: i64);
-}
-
-impl<T: RAtom> RAtomCell for T {
-    fn get(self: &Self) -> i64 {
-        if *self == Self::min_value() {
-            i64::MIN
-        } else {
-            (*self).to_i64().unwrap()
-        }
-    }
-
-    fn set(self: &mut Self, value: i64) {
-        assert_ne!(value, i64::MIN);
-        *self = if value == i64::MIN {
-            Self::min_value()
-        } else {
-            <T as NumCast>::from(value).unwrap()
-        }
-    }
-}
-
-trait RAtomArray: Debug {
-    fn at(self: &Self, index: usize) -> &dyn RAtomCell;
-    fn at_mut(self: &mut Self, index: usize) -> &mut dyn RAtomCell;
-}
-
-impl<T: RAtom> RAtomArray for Vec<T> {
-    fn at(self: &Self, index: usize) -> &dyn RAtomCell {
-        &self[index]
-    }
-
-    fn at_mut(self: &mut Self, index: usize) -> &mut dyn RAtomCell {
-        &mut self[index]
-    }
-}
-
-#[derive(Debug)]
-enum RNode {
-    Atom(Box<dyn RAtomCell>),
-    Aggr(RAggr),
-}
-
-#[derive(Debug)]
-enum RAggr {
-    AtomArray(Box<dyn RAtomArray>),
-    AggrArray(Vec<RAggr>),
-    Uninit,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum RVal<'a> {
-    Atom(i64),
-    Aggr(&'a RAggr),
-}
-
-#[derive(Debug)]
-enum RValMut<'a> {
-    Atom(&'a mut dyn RAtomCell),
-    Aggr(&'a mut RAggr),
-}
+use super::val::*;
 
 #[derive(Debug, Default)]
 pub struct RState {
     env: HashMap<*const HVarDef, RNode>,
     indexes: HashMap<*const HRange, usize>,
-}
-
-pub trait RunContext {
-    type InputStream: AtomStream;
-    type OutputStream: AtomStream;
-
-    fn input_parser(self: &mut Self) -> &mut Self::InputStream;
-    fn output_parser(self: &mut Self) -> &mut Self::OutputStream;
 }
 
 impl HSpec {
@@ -185,59 +92,47 @@ impl HStep {
     }
 }
 
-impl AtomTy {
-    fn cell(self: &Self) -> Box<dyn RAtomCell> {
-        match self {
-            AtomTy::Bool => Box::new(i8::MIN),
-            AtomTy::Nat { size } | AtomTy::Int { size } => match size {
-                BitSize::S8 => Box::new(i8::MIN),
-                BitSize::S16 => Box::new(i16::MIN),
-                BitSize::S32 => Box::new(i32::MIN),
-                BitSize::S64 => Box::new(i64::MIN),
-            },
-            AtomTy::Err => unreachable!(),
-        }
-    }
-
-    fn array(self: &Self, len: usize) -> Box<dyn RAtomArray> {
-        match self {
-            AtomTy::Bool => Box::new(vec![i8::MIN; len]),
-            AtomTy::Nat { size } | AtomTy::Int { size } => match size {
-                BitSize::S8 => Box::new(vec![i8::MIN; len]),
-                BitSize::S16 => Box::new(vec![i16::MIN; len]),
-                BitSize::S32 => Box::new(vec![i32::MIN; len]),
-                BitSize::S64 => Box::new(vec![i64::MIN; len]),
-            },
-            AtomTy::Err => unreachable!(),
-        }
+impl HAtomDef {
+    fn eval<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
+        self.node.eval_atom(state)
     }
 }
 
-impl HValTy {
-    fn decl(self: &Self, _state: &RState) -> RNode {
-        match self {
-            HValTy::Atom { atom_ty } => RNode::Atom(atom_ty.sem.cell()),
-            _ => RNode::Aggr(RAggr::Uninit),
+impl HNodeDef {
+    fn eval_atom<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
+        match &self.expr {
+            HNodeDefExpr::Var { var } => match state.env.get_mut(&Rc::as_ptr(&var)).unwrap() {
+                RNode::Atom(val) => &mut **val,
+                _ => unreachable!(),
+            },
+            HNodeDefExpr::Subscript { array, index, .. } => {
+                let index = index.eval_index(state);
+                match array.eval_aggr(state) {
+                    RAggr::AtomArray(array) => array.at_mut(index),
+                    _ => unreachable!(),
+                }
+            }
+            HNodeDefExpr::Err => unreachable!(),
         }
     }
 
-    fn alloc(self: &Self, state: &RState) -> RAggr {
-        match self {
-            HValTy::Array { item, range } => {
-                let len = range.bound.val.eval_atom(state) as usize;
+    fn eval_aggr<'a>(self: &Self, state: &'a mut RState) -> &'a mut RAggr {
+        match &self.expr {
+            HNodeDefExpr::Var { var } => match state.env.get_mut(&Rc::as_ptr(&var)).unwrap() {
+                RNode::Aggr(aggr) => aggr,
+                _ => unreachable!(),
+            },
+            HNodeDefExpr::Subscript { array, index, .. } => {
+                // TODO: should be inverted, but the borrow checker is not happy about that
+                let index = index.eval_index(state);
+                let array = array.eval_aggr(state);
 
-                match item.deref() {
-                    HValTy::Atom { atom_ty } => RAggr::AtomArray(atom_ty.sem.array(len)),
-                    _ => RAggr::AggrArray({
-                        let mut vec = Vec::with_capacity(len);
-                        for _ in 0..len {
-                            vec.push(RAggr::Uninit)
-                        }
-                        vec
-                    }),
+                match array {
+                    RAggr::AggrArray(array) => &mut array[index],
+                    _ => unreachable!(),
                 }
             }
-            _ => unreachable!(),
+            HNodeDefExpr::Err => unreachable!(),
         }
     }
 }
@@ -313,47 +208,31 @@ impl HVal {
     }
 }
 
-impl HAtomDef {
-    fn eval<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
-        self.node.eval_atom(state)
-    }
-}
-
-impl HNodeDef {
-    fn eval_atom<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
-        match &self.expr {
-            HNodeDefExpr::Var { var } => match state.env.get_mut(&Rc::as_ptr(&var)).unwrap() {
-                RNode::Atom(val) => &mut **val,
-                _ => unreachable!(),
-            },
-            HNodeDefExpr::Subscript { array, index, .. } => {
-                let index = index.eval_index(state);
-                match array.eval_aggr(state) {
-                    RAggr::AtomArray(array) => array.at_mut(index),
-                    _ => unreachable!(),
-                }
-            }
-            HNodeDefExpr::Err => unreachable!(),
+impl HValTy {
+    fn decl(self: &Self, _state: &RState) -> RNode {
+        match self {
+            HValTy::Atom { atom_ty } => RNode::Atom(atom_ty.sem.cell()),
+            _ => RNode::Aggr(RAggr::Uninit),
         }
     }
 
-    fn eval_aggr<'a>(self: &Self, state: &'a mut RState) -> &'a mut RAggr {
-        match &self.expr {
-            HNodeDefExpr::Var { var } => match state.env.get_mut(&Rc::as_ptr(&var)).unwrap() {
-                RNode::Aggr(aggr) => aggr,
-                _ => unreachable!(),
-            },
-            HNodeDefExpr::Subscript { array, index, .. } => {
-                // TODO: should be inverted, but the borrow checker is not happy about that
-                let index = index.eval_index(state);
-                let array = array.eval_aggr(state);
+    fn alloc(self: &Self, state: &RState) -> RAggr {
+        match self {
+            HValTy::Array { item, range } => {
+                let len = range.bound.val.eval_atom(state) as usize;
 
-                match array {
-                    RAggr::AggrArray(array) => &mut array[index],
-                    _ => unreachable!(),
+                match item.deref() {
+                    HValTy::Atom { atom_ty } => RAggr::AtomArray(atom_ty.sem.array(len)),
+                    _ => RAggr::AggrArray({
+                        let mut vec = Vec::with_capacity(len);
+                        for _ in 0..len {
+                            vec.push(RAggr::Uninit)
+                        }
+                        vec
+                    }),
                 }
             }
-            HNodeDefExpr::Err => unreachable!(),
+            _ => unreachable!(),
         }
     }
 }
@@ -365,23 +244,5 @@ fn decl(var: &Rc<HVarDef>, state: &mut RState) {
 impl HAlloc {
     fn run(self: &Self, state: &mut RState) {
         *self.array.eval_aggr(state) = self.array.ty.alloc(state)
-    }
-}
-
-pub struct Runner {
-    pub input_parser: TextAtomStream<File>,
-    pub output_parser: TextAtomStream<File>,
-}
-
-impl RunContext for Runner {
-    type InputStream = TextAtomStream<File>;
-    type OutputStream = TextAtomStream<File>;
-
-    fn input_parser(self: &mut Self) -> &mut Self::InputStream {
-        &mut self.input_parser
-    }
-
-    fn output_parser(self: &mut Self) -> &mut Self::OutputStream {
-        &mut self.output_parser
     }
 }

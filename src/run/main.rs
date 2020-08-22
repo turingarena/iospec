@@ -2,6 +2,7 @@ use std::fs::File;
 
 use crate::spec::hir::*;
 
+use super::ctx::*;
 use super::interp::*;
 use super::io::*;
 
