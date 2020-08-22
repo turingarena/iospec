@@ -1,10 +1,8 @@
-use std::ops::Deref;
-
-use genco::prelude::*;
-
 use crate::hir::*;
 use crate::hir_span::*;
 use crate::sess::Sess;
+
+use crate::hir_quote::quote_hir;
 
 #[derive(Debug, Clone)]
 pub enum Diagnostic {
@@ -50,36 +48,6 @@ pub enum Diagnostic {
     },
 }
 
-impl FormatInto<()> for &HAtomTy {
-    fn format_into(self: Self, tokens: &mut Tokens) {
-        match &self.expr {
-            HAtomTyExpr::Name { name, .. } => quote_in!(*tokens => #(name.deref())),
-            HAtomTyExpr::Err => quote_in!(*tokens => <<invalid scalar type>>),
-        }
-    }
-}
-
-impl FormatInto<()> for &HValTy {
-    fn format_into(self: Self, tokens: &mut Tokens) {
-        match self {
-            HValTy::Atom { atom_ty } => quote_in!(*tokens => #(atom_ty.deref())),
-            HValTy::Array { item, .. } => quote_in!(*tokens => #(item.deref())[]),
-            HValTy::Err => {}
-        }
-    }
-}
-
-impl FormatInto<()> for &HName {
-    fn format_into(self: Self, tokens: &mut Tokens) {
-        let ident = self.ident.to_string();
-        quote_in!(*tokens => #ident)
-    }
-}
-
-fn quote_string(tokens: Tokens) -> String {
-    tokens.to_string().unwrap()
-}
-
 impl Diagnostic {
     pub fn is_critical(self: &Self) -> bool {
         true
@@ -112,7 +80,7 @@ impl Diagnostic {
             Diagnostic::RangeBoundNotNatural { val, atom_ty } => sess.error(
                 &format!(
                     "for cycle upper bound must be a natural, got `{}`",
-                    quote_string(quote!(#(val.ty.deref()))),
+                    quote_hir(val.ty.as_ref()),
                 ),
                 {
                     let mut anns = vec![sess.error_ann("must be a natural", val.span())];
@@ -127,22 +95,22 @@ impl Diagnostic {
             Diagnostic::AtomNotScalar { val } => sess.error(
                 &format!(
                     "input/output data must be scalars, got `{}`",
-                    quote_string(quote!(#(val.ty.deref()))),
+                    quote_hir(val.ty.as_ref()),
                 ),
                 vec![sess.error_ann("must be a scalar", val.span())],
             ),
             Diagnostic::SubscriptArrayNotArray { array, .. } => sess.error(
                 &format!(
                     "cannot index into a value of non-array type `{}`",
-                    quote_string(quote!(#(array.ty.deref()))),
+                    quote_hir(array.ty.as_ref()),
                 ),
                 vec![sess.error_ann("must be an array", array.span())],
             ),
             Diagnostic::SubscriptIndexWrongType { range, index, .. } => sess.error(
                 &format!(
                     "index must be `{}`, got `{}`",
-                    quote_string(quote!(#(range.bound.ty.deref()))),
-                    quote_string(quote!(#(index.ty.deref()))),
+                    quote_hir(range.bound.ty.as_ref()),
+                    quote_hir(index.ty.as_ref()),
                 ),
                 vec![
                     sess.error_ann("invalid index type", index.span()),
@@ -159,12 +127,12 @@ impl Diagnostic {
                     Some(expected_range) => match name {
                         Some(name) => format!(
                             "index must match enclosing for, expecting `{}`, got `{}`",
-                            quote_string(quote!(#(expected_range.index.deref()))),
-                            quote_string(quote!(#(name.deref()))),
+                            quote_hir(expected_range.index.as_ref()),
+                            quote_hir(name.as_ref()),
                         ),
                         None => format!(
                             "index must match enclosing for, expecting `{}`, got an expression",
-                            quote_string(quote!(#(expected_range.index.deref()))),
+                            quote_hir(expected_range.index.as_ref()),
                         ),
                     },
                     None => format!("index must match an enclosing for, but no for was found"),

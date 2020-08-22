@@ -11,3 +11,5 @@ Cargo.lock
 
 # Temporary symlink for tests
 /iospec
+/input.txt
+/output.txt
