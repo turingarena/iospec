@@ -5,6 +5,7 @@ use annotate_snippets::snippet::*;
 use codemap::File;
 use proc_macro2::{LineColumn, Span};
 
+#[derive(Debug)]
 pub struct Sess {
     pub file: Arc<File>,
 }

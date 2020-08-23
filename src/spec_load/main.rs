@@ -2,14 +2,14 @@ use std::fs::read_to_string;
 use std::path::Path;
 
 use crate::spec::hir::*;
+use crate::spec::sess::Sess;
+use crate::spec::Spec;
 use crate::spec_load::ast_parse::parse_spec;
 use crate::spec_load::hir_compile::compile_hir;
 
-use super::sess::Sess;
-
 /// Loads the spec at the given path.
 /// Prints errors on stderr.
-pub fn spec_load(path: &Path) -> Result<Rc<HSpec>, ()> {
+pub fn spec_load(path: &Path) -> Result<Spec, ()> {
     let mut code_map = codemap::CodeMap::new();
 
     let file = code_map.add_file(
@@ -28,5 +28,5 @@ pub fn spec_load(path: &Path) -> Result<Rc<HSpec>, ()> {
         eprintln!("{}", d.diagnostic_message(&sess));
     }
 
-    Ok(spec?)
+    Ok(Spec { sess, hir: spec? })
 }

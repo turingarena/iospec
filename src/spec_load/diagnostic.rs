@@ -1,8 +1,7 @@
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_span::*;
-
-use super::sess::Sess;
+use crate::spec::sess::*;
 
 #[derive(Debug, Clone)]
 pub enum Diagnostic {
@@ -119,10 +118,15 @@ impl Diagnostic {
                     ),
                     sess.help_ann("array range", range.span()),
                     sess.help_ann("expected type", range.bound.ty.span()),
-                ].into_iter().chain(match index.ty.as_ref() {
-                    HValTy::Atom { atom_ty } => Some(sess.help_ann("got this type", atom_ty.span())),
+                ]
+                .into_iter()
+                .chain(match index.ty.as_ref() {
+                    HValTy::Atom { atom_ty } => {
+                        Some(sess.help_ann("got this type", atom_ty.span()))
+                    }
                     _ => None,
-                }).collect(),
+                })
+                .collect(),
             ),
             Diagnostic::SubscriptDefIndexNotMatched {
                 bracket,
@@ -162,7 +166,7 @@ impl Diagnostic {
                 },
             ),
             Diagnostic::ArgumentNotVariable { val } => sess.error(
-                &format!("function call arguments must be variables, got an expression", ),
+                &format!("function call arguments must be variables, got an expression",),
                 vec![sess.error_ann("must be a variable, not an expression", val.span())],
             ),
         }

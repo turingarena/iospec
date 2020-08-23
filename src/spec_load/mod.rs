@@ -7,8 +7,6 @@ mod hir_compile;
 mod hir_env;
 mod hir_err;
 
-mod sess;
-
 mod main;
 
 pub use main::*;
