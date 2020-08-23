@@ -29,7 +29,9 @@ Once the format is specifies, the following tasks can be automated:
 * canonicalizing (TODO):
     * input files or streams, so that the input generator does not need to care about proper formatting (e.g., whitespace),
     * output files or streams, so that the output checker can assume that the output is properly formatted (e.g., whitespace),
-* converting input/output files or streams between textual and binary (TODO).
+* converting input/output files:
+    * from textual to binary and vice-versa (TODO),
+    * from plain (textual or binary) to structured (e.g., JSON) and vice-versa (TODO),
 
 ## The specification language
 
