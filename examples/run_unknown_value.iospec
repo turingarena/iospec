@@ -1,0 +1,4 @@
+call f() -> N: n32;
+for i upto N {
+}
+write N;

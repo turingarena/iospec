@@ -54,29 +54,33 @@ impl Diagnostic {
 
     pub fn diagnostic_message(self: &Self, sess: &Sess) -> String {
         match self {
-            Diagnostic::ParseError { error } => sess.error(
+            Diagnostic::ParseError { error } => sess.error_snippet(
                 &error.to_string(),
                 vec![sess.error_ann("here", error.span())],
+                vec![],
             ),
-            Diagnostic::InvalidAtomTy { ident } => sess.error(
+            Diagnostic::InvalidAtomTy { ident } => sess.error_snippet(
                 &format!("invalid scalar type `{}`", ident.to_string()),
                 vec![], // TODO
+                vec![],
             ),
-            Diagnostic::UndefVar { ident } => sess.error(
+            Diagnostic::UndefVar { ident } => sess.error_snippet(
                 &format!(
                     "no variable named `{}` found in the current scope",
                     ident.to_string()
                 ),
                 vec![sess.error_ann("not found in this scope", ident.ident.span())],
+                vec![],
             ),
-            Diagnostic::AlreadyDefinedVar { old_var, new_var } => sess.error(
+            Diagnostic::AlreadyDefinedVar { old_var, new_var } => sess.error_snippet(
                 &format!("variable `{}` already defined", new_var.name.to_string()),
                 vec![
                     sess.error_ann("cannot re-define a variable in scope", new_var.name.span()),
                     sess.help_ann("was defined here", old_var.name.span()),
                 ],
+                vec![],
             ),
-            Diagnostic::RangeBoundNotNatural { val, atom_ty } => sess.error(
+            Diagnostic::RangeBoundNotNatural { val, atom_ty } => sess.error_snippet(
                 &format!(
                     "for cycle upper bound must be a natural, got `{}`",
                     quote_hir(val.ty.as_ref()),
@@ -90,22 +94,25 @@ impl Diagnostic {
                     }
                     anns
                 },
+                vec![],
             ),
-            Diagnostic::AtomNotScalar { val } => sess.error(
+            Diagnostic::AtomNotScalar { val } => sess.error_snippet(
                 &format!(
                     "input/output data must be scalars, got `{}`",
                     quote_hir(val.ty.as_ref()),
                 ),
                 vec![sess.error_ann("must be a scalar", val.span())],
+                vec![],
             ),
-            Diagnostic::SubscriptArrayNotArray { array, .. } => sess.error(
+            Diagnostic::SubscriptArrayNotArray { array, .. } => sess.error_snippet(
                 &format!(
                     "cannot index into a value of non-array type `{}`",
                     quote_hir(array.ty.as_ref()),
                 ),
                 vec![sess.error_ann("must be an array", array.span())],
+                vec![],
             ),
-            Diagnostic::SubscriptIndexWrongType { range, index, .. } => sess.error(
+            Diagnostic::SubscriptIndexWrongType { range, index, .. } => sess.error_snippet(
                 &format!(
                     "expected index of type `{}`, got `{}`",
                     quote_hir(range.bound.ty.as_ref()),
@@ -127,13 +134,14 @@ impl Diagnostic {
                     _ => None,
                 })
                 .collect(),
+                vec![],
             ),
             Diagnostic::SubscriptDefIndexNotMatched {
                 bracket,
                 expected_range,
                 actual_range: _,
                 name,
-            } => sess.error(
+            } => sess.error_snippet(
                 &match expected_range {
                     Some(expected_range) => match name {
                         Some(name) => format!(
@@ -164,10 +172,12 @@ impl Diagnostic {
                         vec![sess.error_ann("subscript without an enclosing `for`", bracket.span)]
                     }
                 },
+                vec![],
             ),
-            Diagnostic::ArgumentNotVariable { val } => sess.error(
+            Diagnostic::ArgumentNotVariable { val } => sess.error_snippet(
                 &format!("function call arguments must be variables, got an expression",),
                 vec![sess.error_ann("must be a variable, not an expression", val.span())],
+                vec![],
             ),
         }
     }

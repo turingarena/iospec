@@ -22,7 +22,7 @@ impl Sess {
         line_start as usize + lc.column
     }
 
-    pub fn error_ann<'a>(self: &'a Self, label: &'a str, span: Span) -> SourceAnnotation {
+    pub fn error_ann<'a>(self: &Self, label: &'a str, span: Span) -> SourceAnnotation<'a> {
         SourceAnnotation {
             annotation_type: AnnotationType::Error,
             label,
@@ -30,7 +30,7 @@ impl Sess {
         }
     }
 
-    pub fn help_ann<'a>(self: &'a Self, label: &'a str, span: Span) -> SourceAnnotation {
+    pub fn help_ann<'a>(self: &Self, label: &'a str, span: Span) -> SourceAnnotation<'a> {
         SourceAnnotation {
             annotation_type: AnnotationType::Info,
             label,
@@ -38,14 +38,19 @@ impl Sess {
         }
     }
 
-    pub fn error(self: &Self, message: &str, annotations: Vec<SourceAnnotation>) -> String {
+    pub fn error_snippet(
+        self: &Self,
+        message: &str,
+        annotations: Vec<SourceAnnotation>,
+        footer: Vec<Annotation>,
+    ) -> String {
         let snippet = Snippet {
             title: Some(Annotation {
                 id: None,
                 label: Some(message),
                 annotation_type: AnnotationType::Error,
             }),
-            footer: vec![],
+            footer,
             slices: vec![Slice {
                 source: self.file.source(),
                 line_start: 1,
@@ -60,5 +65,25 @@ impl Sess {
         };
 
         DisplayList::from(snippet).to_string()
+    }
+
+    fn footer<'a>(
+        self: &Self,
+        annotation_type: AnnotationType,
+        message: &'a str,
+    ) -> Annotation<'a> {
+        Annotation {
+            annotation_type,
+            label: Some(message),
+            id: None,
+        }
+    }
+
+    pub fn footer_note<'a>(self: &Self, message: &'a str) -> Annotation<'a> {
+        self.footer(AnnotationType::Note, message)
+    }
+
+    pub fn footer_help<'a>(self: &Self, message: &'a str) -> Annotation<'a> {
+        self.footer(AnnotationType::Help, message)
     }
 }
