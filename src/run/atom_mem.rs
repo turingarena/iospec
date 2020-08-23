@@ -4,8 +4,7 @@ use std::fmt::Debug;
 
 use num_traits::{Bounded, Num, NumCast};
 
-use crate::run::atom::RAtom;
-use crate::spec::ty::*;
+use crate::atom::*;
 
 pub trait RUninit {
     fn uninit() -> Self;
@@ -29,20 +28,20 @@ impl RAtomMem for i32 {}
 impl RAtomMem for i64 {}
 
 pub trait RAtomCell: Debug {
-    fn get(self: &Self, ty: AtomTy) -> Option<RAtom>;
-    fn set(self: &mut Self, value: RAtom);
+    fn get(self: &Self, ty: AtomTy) -> Option<Atom>;
+    fn set(self: &mut Self, value: Atom);
 }
 
 impl<T: RAtomMem> RAtomCell for T {
-    fn get(self: &Self, ty: AtomTy) -> Option<RAtom> {
+    fn get(self: &Self, ty: AtomTy) -> Option<Atom> {
         if *self == Self::uninit() {
             None
         } else {
-            Some(RAtom::new(ty, (*self).to_i64().unwrap()))
+            Some(Atom::new(ty, (*self).to_i64().unwrap()))
         }
     }
 
-    fn set(self: &mut Self, value: RAtom) {
+    fn set(self: &mut Self, value: Atom) {
         *self = <T as NumCast>::from(value.value_i64()).unwrap()
     }
 }

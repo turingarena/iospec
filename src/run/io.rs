@@ -2,7 +2,7 @@ use std::error::Error;
 use std::io::Read;
 use std::str::FromStr;
 
-use crate::spec::ty::*;
+use crate::atom::*;
 
 pub trait AtomSource {
     fn next_atom(self: &mut Self, ty: &AtomTy) -> Result<Option<i64>, Box<dyn Error>>;

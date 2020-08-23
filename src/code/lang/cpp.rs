@@ -2,8 +2,8 @@ extern crate genco;
 
 use genco::prelude::*;
 
+use crate::atom::*;
 use crate::code::lir::*;
-use crate::spec::ty::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CppLang;

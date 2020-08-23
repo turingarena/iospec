@@ -7,8 +7,8 @@
 
 use std::ops::Deref;
 
+use crate::atom::*;
 use crate::spec::hir::*;
-use crate::spec::ty::*;
 
 use super::ast::*;
 use super::diagnostic::*;

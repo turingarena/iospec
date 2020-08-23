@@ -1,3 +1,4 @@
+use crate::atom::*;
 use crate::run::state::RState;
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;

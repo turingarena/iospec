@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::run::atom::RAtom;
+use crate::atom::*;
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_sem::*;
@@ -44,11 +44,10 @@ impl HStep {
                             cause: AtomSourceError::End,
                         })?;
 
-                    let atom =
-                        RAtom::try_new(arg.ty.sem, val).map_err(|e| RError::InputSource {
-                            def: arg.clone(),
-                            cause: e.into(),
-                        })?;
+                    let atom = Atom::try_new(arg.ty.sem, val).map_err(|e| RError::InputSource {
+                        def: arg.clone(),
+                        cause: e.into(),
+                    })?;
 
                     arg.eval_mut(state)?.set(atom);
                 }
@@ -69,11 +68,10 @@ impl HStep {
 
                     eprintln!("WRITE {} <- {}", quote_hir(arg.as_ref()), val);
 
-                    let val =
-                        RAtom::try_new(arg.ty.sem, val).map_err(|e| RError::OutputSource {
-                            atom: arg.clone(),
-                            cause: e.into(),
-                        })?;
+                    let val = Atom::try_new(arg.ty.sem, val).map_err(|e| RError::OutputSource {
+                        atom: arg.clone(),
+                        cause: e.into(),
+                    })?;
 
                     HAtom::resolve(arg, val, state).map_err(|e| match e {
                         RAtomResolveError::Inner(e) => e,
@@ -177,7 +175,7 @@ impl HVal {
                         _ => unreachable!(),
                     }
                 }
-                HVarExpr::Index { range } => RVal::Atom(RAtom::new(
+                HVarExpr::Index { range } => RVal::Atom(Atom::new(
                     range.bound.ty.sem.clone(),
                     *state.indexes.get(&range.clone().into()).unwrap() as i64,
                 )),
@@ -202,7 +200,7 @@ impl HVal {
         })
     }
 
-    fn eval_atom(val: &Rc<Self>, state: &RState) -> Result<RAtom, RError> {
+    fn eval_atom(val: &Rc<Self>, state: &RState) -> Result<Atom, RError> {
         let val = match Self::eval(val, state)? {
             RVal::Atom(val) => val,
             _ => unreachable!(),
@@ -247,7 +245,7 @@ pub enum RAtomResolveError {
     Value(AtomValueError),
 }
 
-fn check_atom_matches(expected: RAtom, actual: RAtom) -> Result<(), AtomValueError> {
+fn check_atom_matches(expected: Atom, actual: Atom) -> Result<(), AtomValueError> {
     if actual.value_i64() != expected.value_i64() {
         Err(AtomValueError {
             actual: actual.value_i64(),
@@ -258,7 +256,7 @@ fn check_atom_matches(expected: RAtom, actual: RAtom) -> Result<(), AtomValueErr
 }
 
 impl HAtom {
-    fn resolve(atom: &Rc<Self>, value: RAtom, state: &mut RState) -> Result<(), RAtomResolveError> {
+    fn resolve(atom: &Rc<Self>, value: Atom, state: &mut RState) -> Result<(), RAtomResolveError> {
         Ok(
             match HVal::eval_mut(&atom.val, state).map_err(RAtomResolveError::Inner)? {
                 RValMut::ConstAtom(expected) => {

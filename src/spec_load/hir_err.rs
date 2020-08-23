@@ -1,7 +1,7 @@
 //! Construct HIR nodes representing compilation errors
 
+use crate::atom::*;
 use crate::spec::hir::*;
-use crate::spec::ty::*;
 
 pub trait HErr {
     fn err() -> Self;

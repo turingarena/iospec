@@ -64,3 +64,42 @@ impl BitSize {
         (1 << (self.bits() as i64 - 1)) - 1
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct Atom {
+    ty: AtomTy,
+    value: i64,
+}
+
+impl Atom {
+    pub fn new(ty: AtomTy, value: i64) -> Atom {
+        Self::try_new(ty, value).unwrap()
+    }
+
+    pub fn try_new(ty: AtomTy, value: i64) -> Result<Atom, AtomTypeError> {
+        let ok = match ty {
+            AtomTy::Bool => value == 0 || value == 1,
+            AtomTy::Nat { size } => 0 <= value && value <= size.max_safe_value(),
+            AtomTy::Int { size } => {
+                -size.max_safe_value() <= value && value <= size.max_safe_value()
+            }
+            AtomTy::Err => unreachable!(),
+        };
+
+        if ok {
+            Ok(Atom { ty, value })
+        } else {
+            Err(AtomTypeError { ty, actual: value })
+        }
+    }
+
+    pub fn value_i64(self: &Self) -> i64 {
+        self.value
+    }
+}
+
+#[derive(Debug)]
+pub struct AtomTypeError {
+    pub ty: AtomTy,
+    pub actual: i64,
+}

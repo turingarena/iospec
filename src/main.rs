@@ -1,5 +1,6 @@
 #![feature(proc_macro_span)]
 
+mod atom;
 mod code;
 mod opt;
 mod run;

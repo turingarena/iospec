@@ -1,7 +1,7 @@
 use std::error::Error;
 
+use crate::atom::*;
 use crate::spec::hir::*;
-use crate::spec::ty::AtomTy;
 
 #[derive(Debug)]
 pub enum RError {
@@ -29,12 +29,6 @@ pub enum AtomSourceError {
 #[derive(Debug)]
 pub struct AtomValueError {
     pub expected: i64,
-    pub actual: i64,
-}
-
-#[derive(Debug)]
-pub struct AtomTypeError {
-    pub ty: AtomTy,
     pub actual: i64,
 }
 

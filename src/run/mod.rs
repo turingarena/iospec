@@ -1,6 +1,5 @@
 pub use main::*;
 
-mod atom;
 mod atom_mem;
 mod ctx;
 mod diagnostic;
