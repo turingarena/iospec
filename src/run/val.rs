@@ -1,6 +1,7 @@
 //! Store data values
 
 use super::atom::*;
+use super::atom_mem::*;
 
 #[derive(Debug)]
 pub enum RNode {
@@ -15,9 +16,9 @@ pub enum RAggr {
     Unalloc,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub enum RVal<'a> {
-    Atom(i64),
+    Atom(RAtom),
     Aggr(&'a RAggr),
 }
 
@@ -25,5 +26,5 @@ pub enum RVal<'a> {
 pub enum RValMut<'a> {
     Atom(&'a mut dyn RAtomCell),
     Aggr(&'a mut RAggr),
-    ConstAtom(i64),
+    ConstAtom(RAtom),
 }

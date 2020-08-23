@@ -14,10 +14,10 @@ impl AtomSourceError {
                 format!("expected `{}`, got `{}`", expected, actual)
             }
             AtomSourceError::End => format!("expected a `{}`, got end-of-file", quote_hir(ty)),
-            AtomSourceError::Type(value) => format!(
+            AtomSourceError::Type(AtomTypeError { ty, actual }) => format!(
                 "expected a `{}`, got value outside range `{}`",
-                quote_hir(ty),
-                value
+                ty.name(),
+                actual
             ),
         }
     }

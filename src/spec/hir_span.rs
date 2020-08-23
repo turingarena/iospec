@@ -50,7 +50,7 @@ impl HasSpan for HAtom {
 
 impl HasSpan for HAtomDef {
     fn span(self: &Self) -> Span {
-        self.node.span()
+        self.node.span().join(self.ty.span()).unwrap()
     }
 }
 
@@ -58,8 +58,8 @@ impl HasSpan for HNodeDef {
     fn span(self: &Self) -> Span {
         match &self.expr {
             HNodeDefExpr::Var { var } => var.span(),
-            HNodeDefExpr::Subscript { array, index, .. } => {
-                array.span().join(index.span()).unwrap()
+            HNodeDefExpr::Subscript { array, bracket, .. } => {
+                array.span().join(bracket.span).unwrap()
             }
             HNodeDefExpr::Err => panic!(),
         }

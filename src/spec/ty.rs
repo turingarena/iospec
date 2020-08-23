@@ -59,4 +59,8 @@ impl BitSize {
             S64 => 64,
         }
     }
+
+    pub fn max_safe_value(self: Self) -> i64 {
+        (1 << (self.bits() as i64 - 1)) - 1
+    }
 }
