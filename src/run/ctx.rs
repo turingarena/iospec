@@ -6,6 +6,14 @@ use std::fs::File;
 
 use super::io::*;
 
+pub trait RunContext {
+    type InputSource: AtomSource;
+    type OutputSource: AtomSource;
+
+    fn input_source(self: &mut Self) -> &mut Self::InputSource;
+    fn output_source(self: &mut Self) -> &mut Self::OutputSource;
+}
+
 pub struct Runner {
     pub input_source: TextSource<File>,
     pub output_source: TextSource<File>,
@@ -22,12 +30,4 @@ impl RunContext for Runner {
     fn output_source(self: &mut Self) -> &mut Self::OutputSource {
         &mut self.output_source
     }
-}
-
-pub trait RunContext {
-    type InputSource: AtomSource;
-    type OutputSource: AtomSource;
-
-    fn input_source(self: &mut Self) -> &mut Self::InputSource;
-    fn output_source(self: &mut Self) -> &mut Self::OutputSource;
 }
