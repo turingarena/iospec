@@ -7,27 +7,27 @@ use std::fs::File;
 use super::io::*;
 
 pub struct Runner {
-    pub input_parser: TextAtomStream<File>,
-    pub output_parser: TextAtomStream<File>,
+    pub input_source: TextSource<File>,
+    pub output_source: TextSource<File>,
 }
 
 impl RunContext for Runner {
-    type InputStream = TextAtomStream<File>;
-    type OutputStream = TextAtomStream<File>;
+    type InputSource = TextSource<File>;
+    type OutputSource = TextSource<File>;
 
-    fn input_parser(self: &mut Self) -> &mut Self::InputStream {
-        &mut self.input_parser
+    fn input_source(self: &mut Self) -> &mut Self::InputSource {
+        &mut self.input_source
     }
 
-    fn output_parser(self: &mut Self) -> &mut Self::OutputStream {
-        &mut self.output_parser
+    fn output_source(self: &mut Self) -> &mut Self::OutputSource {
+        &mut self.output_source
     }
 }
 
 pub trait RunContext {
-    type InputStream: AtomStream;
-    type OutputStream: AtomStream;
+    type InputSource: AtomSource;
+    type OutputSource: AtomSource;
 
-    fn input_parser(self: &mut Self) -> &mut Self::InputStream;
-    fn output_parser(self: &mut Self) -> &mut Self::OutputStream;
+    fn input_source(self: &mut Self) -> &mut Self::InputSource;
+    fn output_source(self: &mut Self) -> &mut Self::OutputSource;
 }

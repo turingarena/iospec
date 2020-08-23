@@ -46,7 +46,7 @@ impl HStep {
                         decl(&var, state);
                     }
 
-                    let val = ctx.input_parser().next_atom(&arg.ty.sem)?;
+                    let val = ctx.input_source().next_atom(&arg.ty.sem)?;
 
                     eprintln!("READ  {} <- {}", quote_hir(arg.as_ref()), val);
 
@@ -55,7 +55,7 @@ impl HStep {
             }
             HStepExpr::Write { args, .. } => {
                 for arg in args {
-                    let val = ctx.output_parser().next_atom(&arg.ty.sem)?;
+                    let val = ctx.output_source().next_atom(&arg.ty.sem)?;
 
                     eprintln!("WRITE {} <- {}", quote_hir(arg.as_ref()), val);
 

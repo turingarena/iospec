@@ -4,15 +4,15 @@ use std::str::FromStr;
 
 use crate::spec::ty::*;
 
-pub trait AtomStream {
+pub trait AtomSource {
     fn next_atom(self: &mut Self, ty: &AtomTy) -> Result<i64, Box<dyn Error>>;
 }
 
-pub struct TextAtomStream<T: Read> {
+pub struct TextSource<T: Read> {
     pub reader: T,
 }
 
-impl<T: Read> AtomStream for TextAtomStream<T> {
+impl<T: Read> AtomSource for TextSource<T> {
     fn next_atom(self: &mut Self, _ty: &AtomTy) -> Result<i64, Box<dyn Error>> {
         let val = self
             .reader
