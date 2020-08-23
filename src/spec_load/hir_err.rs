@@ -1,6 +1,5 @@
 //! Construct HIR nodes representing compilation errors
 
-use crate::atom::*;
 use crate::spec::hir::*;
 
 pub trait HErr {

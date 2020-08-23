@@ -1,11 +1,8 @@
-use std::str::FromStr;
-
 use crate::atom::AtomTy;
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_span::*;
 use crate::spec::sess::*;
-use crate::spec_load::ast::AExpr;
 
 #[derive(Debug, Clone)]
 pub enum Diagnostic {
@@ -212,7 +209,7 @@ impl Diagnostic {
                     })
                     .chain(match value_i64 {
                         // TODO: show reason
-                        Err(e) => Some(sess.error_ann("cannot parse", token.span())),
+                        Err(_) => Some(sess.error_ann("cannot parse", token.span())),
                         Ok(_) => None,
                     })
                     .chain(if value_i64.is_ok() && ty.is_some() {
