@@ -32,3 +32,12 @@ impl HasSpan for HRange {
         self.index.span().join(self.bound.val.span()).unwrap()
     }
 }
+
+impl HasSpan for HAtomTy {
+    fn span(self: &Self) -> Span {
+        match &self.expr {
+            HAtomTyExpr::Name { name } => name.span(),
+            _ => panic!(),
+        }
+    }
+}

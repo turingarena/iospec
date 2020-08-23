@@ -108,14 +108,21 @@ impl Diagnostic {
             ),
             Diagnostic::SubscriptIndexWrongType { range, index, .. } => sess.error(
                 &format!(
-                    "index must be `{}`, got `{}`",
+                    "expected index of type `{}`, got `{}`",
                     quote_hir(range.bound.ty.as_ref()),
                     quote_hir(index.ty.as_ref()),
                 ),
                 vec![
-                    sess.error_ann("invalid index type", index.span()),
-                    sess.help_ann("array range defined here", range.span()),
-                ],
+                    sess.error_ann(
+                        &format!("invalid index type `{}`", quote_hir(index.ty.as_ref())),
+                        index.span(),
+                    ),
+                    sess.help_ann("array range", range.span()),
+                    sess.help_ann("expected type", range.bound.ty.span()),
+                ].into_iter().chain(match index.ty.as_ref() {
+                    HValTy::Atom { atom_ty } => Some(sess.help_ann("got this type", atom_ty.span())),
+                    _ => None,
+                }).collect(),
             ),
             Diagnostic::SubscriptDefIndexNotMatched {
                 bracket,
@@ -155,7 +162,7 @@ impl Diagnostic {
                 },
             ),
             Diagnostic::ArgumentNotVariable { val } => sess.error(
-                &format!("function call arguments must be variables, got an expression",),
+                &format!("function call arguments must be variables, got an expression", ),
                 vec![sess.error_ann("must be a variable, not an expression", val.span())],
             ),
         }
