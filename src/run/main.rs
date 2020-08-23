@@ -19,6 +19,6 @@ pub fn spec_run(spec: &Spec, input_from: File, output_from: File) {
 
     match spec.hir.run(&mut state, &mut ctx) {
         Ok(_) => (),
-        Err(e) => println!("{}", e.diagnostic_message(&spec.sess)),
+        Err(e) => println!("{}", e.diagnostic_message(&state, &spec.sess)),
     }
 }

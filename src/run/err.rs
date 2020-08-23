@@ -20,7 +20,7 @@ pub enum RError {
 #[derive(Debug)]
 pub enum AtomSourceError {
     Parse(Box<dyn Error>),
-    Type,
+    Type(i64),
     Value(AtomValueError),
     End,
 }

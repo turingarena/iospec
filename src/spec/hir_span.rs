@@ -41,3 +41,36 @@ impl HasSpan for HAtomTy {
         }
     }
 }
+
+impl HasSpan for HAtom {
+    fn span(self: &Self) -> Span {
+        self.val.span()
+    }
+}
+
+impl HasSpan for HAtomDef {
+    fn span(self: &Self) -> Span {
+        self.node.span()
+    }
+}
+
+impl HasSpan for HNodeDef {
+    fn span(self: &Self) -> Span {
+        match &self.expr {
+            HNodeDefExpr::Var { var } => var.span(),
+            HNodeDefExpr::Subscript { array, index, .. } => {
+                array.span().join(index.span()).unwrap()
+            }
+            HNodeDefExpr::Err => panic!(),
+        }
+    }
+}
+
+impl HasSpan for HVarDef {
+    fn span(self: &Self) -> Span {
+        match &self.expr {
+            HVarDefExpr::Name { name } => name.span(),
+            HVarDefExpr::Err => panic!(),
+        }
+    }
+}
