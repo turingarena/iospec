@@ -5,8 +5,6 @@ use annotate_snippets::snippet::*;
 use codemap::File;
 use proc_macro2::{LineColumn, Span};
 
-/// A compilation session, collecting diagnostics.
-/// To be borrowed as mutable during compilation.
 pub struct Sess {
     pub file: Arc<File>,
 }
