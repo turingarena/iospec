@@ -34,7 +34,7 @@ impl HStep {
 
                     let val = ctx
                         .input_source()
-                        .next_atom(&arg.ty.sem)
+                        .next_atom(&arg.ty.sem.unwrap())
                         .map_err(|e| RError::InputSource {
                             def: arg.clone(),
                             cause: AtomSourceError::Parse(e),
@@ -44,9 +44,11 @@ impl HStep {
                             cause: AtomSourceError::End,
                         })?;
 
-                    let atom = Atom::try_new(arg.ty.sem, val).map_err(|e| RError::InputSource {
-                        def: arg.clone(),
-                        cause: e.into(),
+                    let atom = Atom::try_new(arg.ty.sem.unwrap(), val).map_err(|e| {
+                        RError::InputSource {
+                            def: arg.clone(),
+                            cause: e.into(),
+                        }
                     })?;
 
                     arg.eval_mut(state)?.set(atom);
@@ -56,7 +58,7 @@ impl HStep {
                 for arg in args {
                     let val = ctx
                         .output_source()
-                        .next_atom(&arg.ty.sem)
+                        .next_atom(&arg.ty.sem.unwrap())
                         .map_err(|e| RError::OutputSource {
                             atom: arg.clone(),
                             cause: AtomSourceError::Parse(e),
@@ -68,9 +70,11 @@ impl HStep {
 
                     eprintln!("WRITE {} <- {}", quote_hir(arg.as_ref()), val);
 
-                    let val = Atom::try_new(arg.ty.sem, val).map_err(|e| RError::OutputSource {
-                        atom: arg.clone(),
-                        cause: e.into(),
+                    let val = Atom::try_new(arg.ty.sem.unwrap(), val).map_err(|e| {
+                        RError::OutputSource {
+                            atom: arg.clone(),
+                            cause: e.into(),
+                        }
                     })?;
 
                     HAtom::resolve(arg, val, state).map_err(|e| match e {
@@ -168,7 +172,7 @@ impl HVal {
                 HVarExpr::Data { def } => {
                     match (def.ty.as_ref(), state.env.get(&def.clone().into()).unwrap()) {
                         (HValTy::Atom { atom_ty }, RNode::Atom(cell)) => RVal::Atom(
-                            cell.get(atom_ty.sem)
+                            cell.get(atom_ty.sem.unwrap())
                                 .ok_or_else(|| RError::UnresolvedVal { val: val.clone() })?,
                         ),
                         (_, RNode::Aggr(ref aggr)) => RVal::Aggr(aggr),
@@ -176,7 +180,7 @@ impl HVal {
                     }
                 }
                 HVarExpr::Index { range } => RVal::Atom(Atom::new(
-                    range.bound.ty.sem.clone(),
+                    range.bound.ty.sem.unwrap().clone(),
                     *state.indexes.get(&range.clone().into()).unwrap() as i64,
                 )),
                 HVarExpr::Err => unreachable!(),
@@ -190,13 +194,15 @@ impl HVal {
                     (HValTy::Atom { atom_ty }, RVal::Aggr(RAggr::AtomArray(array))) => RVal::Atom(
                         array
                             .at(index)
-                            .get(atom_ty.sem)
+                            .get(atom_ty.sem.unwrap())
                             .ok_or_else(|| RError::UnresolvedVal { val: val.clone() })?,
                     ),
                     (_, RVal::Aggr(RAggr::AggrArray(vec))) => RVal::Aggr(&vec[index]),
                     _ => unreachable!(),
                 }
             }
+            HValExpr::Lit { value, .. } => RVal::Atom(*value),
+            HValExpr::Err => unreachable!(),
         })
     }
 
@@ -236,6 +242,8 @@ impl HVal {
                     _ => unreachable!(),
                 }
             }
+            HValExpr::Lit { value, .. } => RValMut::ConstAtom(*value),
+            HValExpr::Err => unreachable!(),
         })
     }
 }
@@ -263,7 +271,7 @@ impl HAtom {
                     check_atom_matches(expected, value).map_err(RAtomResolveError::Value)?
                 }
                 RValMut::Atom(cell) => {
-                    if let Some(expected) = cell.get(atom.ty.sem) {
+                    if let Some(expected) = cell.get(atom.ty.sem.unwrap()) {
                         check_atom_matches(expected, value).map_err(RAtomResolveError::Value)?;
                     } else {
                         cell.set(value);
@@ -278,7 +286,7 @@ impl HAtom {
 impl HValTy {
     fn decl(self: &Self) -> RNode {
         match self {
-            HValTy::Atom { atom_ty } => RNode::Atom(atom_ty.sem.cell()),
+            HValTy::Atom { atom_ty } => RNode::Atom(atom_ty.sem.unwrap().cell()),
             _ => RNode::Aggr(RAggr::Unalloc),
         }
     }
@@ -286,7 +294,7 @@ impl HValTy {
     fn alloc(self: &Self, len: usize) -> RAggr {
         match self {
             HValTy::Array { item, .. } => match item.deref() {
-                HValTy::Atom { atom_ty } => RAggr::AtomArray(atom_ty.sem.array(len)),
+                HValTy::Atom { atom_ty } => RAggr::AtomArray(atom_ty.sem.unwrap().array(len)),
                 _ => RAggr::AggrArray({
                     let mut vec = Vec::with_capacity(len);
                     for _ in 0..len {

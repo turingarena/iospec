@@ -86,8 +86,14 @@ impl Parse for AStmt {
 
 impl Parse for AExpr {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let mut current = AExpr::Ref {
-            ident: input.parse()?,
+        let mut current = if input.peek(syn::Lit) {
+            AExpr::IntLit {
+                token: input.parse()?,
+            }
+        } else {
+            AExpr::Ref {
+                ident: input.parse()?,
+            }
         };
 
         while input.peek(syn::token::Bracket) {

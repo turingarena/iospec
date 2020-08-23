@@ -1,7 +1,11 @@
+use std::str::FromStr;
+
+use crate::atom::AtomTy;
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_span::*;
 use crate::spec::sess::*;
+use crate::spec_load::ast::AExpr;
 
 #[derive(Debug, Clone)]
 pub enum Diagnostic {
@@ -25,6 +29,9 @@ pub enum Diagnostic {
     AtomNotScalar {
         val: Rc<HVal>,
     },
+    DefInvalidExpression {
+        span: proc_macro2::Span,
+    },
     SubscriptDefIndexNotMatched {
         bracket: syn::token::Bracket,
         expected_range: Option<Rc<HRange>>,
@@ -44,6 +51,11 @@ pub enum Diagnostic {
     },
     ArgumentNotVariable {
         val: Rc<HVal>,
+    },
+    InvalidLiteral {
+        token: syn::LitInt,
+        ty: Option<AtomTy>,
+        value_i64: Result<i64, std::num::ParseIntError>,
     },
 }
 
@@ -178,6 +190,43 @@ impl Diagnostic {
                 &format!("function call arguments must be variables, got an expression",),
                 vec![sess.error_ann("must be a variable, not an expression", val.span())],
                 vec![],
+            ),
+            Diagnostic::InvalidLiteral {
+                token,
+                ty,
+                value_i64,
+            } => sess.error_snippet(
+                &format!("invalid literal",),
+                std::iter::empty()
+                    .chain(if ty.is_none() {
+                        Some(if token.suffix().is_empty() {
+                            sess.error_ann(
+                                "must specify the type as suffix (e.g., `10n32`)",
+                                token.span(),
+                            )
+                        } else {
+                            sess.error_ann("invalid type as suffix", token.span())
+                        })
+                    } else {
+                        None
+                    })
+                    .chain(match value_i64 {
+                        // TODO: show reason
+                        Err(e) => Some(sess.error_ann("cannot parse", token.span())),
+                        Ok(_) => None,
+                    })
+                    .chain(if value_i64.is_ok() && ty.is_some() {
+                        Some(sess.error_ann("value outside range", token.span()))
+                    } else {
+                        None
+                    })
+                    .collect(),
+                vec![],
+            ),
+            Diagnostic::DefInvalidExpression { span } => sess.error_snippet(
+                "invalid expression in definition",
+                vec![sess.error_ann("invalid expression", *span)],
+                vec![sess.footer_note("only variables and subscripts are allowed")],
             ),
         }
     }

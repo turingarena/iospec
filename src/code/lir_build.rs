@@ -148,13 +148,17 @@ impl LirFrom<HVal> for LExpr {
                 array: Box::new(array.lir()),
                 index: Box::new(index.lir()),
             },
+            HValExpr::Lit { value, .. } => LExpr::Lit {
+                value: value.value_i64(),
+            },
+            HValExpr::Err => unreachable!(),
         }
     }
 }
 
 impl LirFrom<HAtomTy> for AtomTy {
     fn lir_from(ty: &HAtomTy) -> Self {
-        ty.sem
+        ty.sem.unwrap()
     }
 }
 

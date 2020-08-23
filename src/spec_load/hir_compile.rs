@@ -6,6 +6,7 @@
 //! At the end the environment is discarded, and only the HIR (with its internal links) is kept.
 
 use std::ops::Deref;
+use std::str::FromStr;
 
 use crate::atom::*;
 use crate::spec::hir::*;
@@ -219,6 +220,10 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDef {
 impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
     fn compile(ast: AExpr, env: &HDefEnv, dgns: &mut Vec<Diagnostic>) -> Self {
         match ast {
+            AExpr::IntLit { token } => {
+                dgns.push(Diagnostic::DefInvalidExpression { span: token.span() });
+                HErr::err()
+            }
             AExpr::Ref { ident } => HNodeDefExpr::Var {
                 var: ident.compile(env, dgns),
             },
@@ -364,6 +369,10 @@ impl HirCompileFrom<AExpr> for HVal {
                         HErr::err()
                     }
                 },
+                HValExpr::Lit { ty, .. } => Rc::new(HValTy::Atom {
+                    atom_ty: ty.clone(),
+                }),
+                HValExpr::Err => HErr::err(),
             },
             expr,
         }
@@ -376,13 +385,12 @@ impl HirCompileFrom<AExpr> for HRangeBound {
 
         match val.ty.deref() {
             HValTy::Atom { atom_ty } => {
-                if let AtomTy::Nat { .. } = &atom_ty.sem {
-                    // OK
-                } else {
-                    dgns.push(Diagnostic::RangeBoundNotNatural {
+                match &atom_ty.sem {
+                    None | Some(AtomTy::Nat { .. }) => {}
+                    _ => dgns.push(Diagnostic::RangeBoundNotNatural {
                         val: val.clone(),
                         atom_ty: Some(atom_ty.clone()),
-                    })
+                    }),
                 }
 
                 HRangeBound {
@@ -425,6 +433,38 @@ impl HirCompileFrom<AExpr> for HAtom {
 impl HirCompileFrom<AExpr> for HValExpr {
     fn compile(ast: AExpr, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
         match ast {
+            AExpr::IntLit { token } => {
+                let ty = AtomTy::from_str(token.suffix()).ok();
+                let value_i64_result = i64::from_str(token.base10_digits());
+
+                let value = match (ty, value_i64_result.clone()) {
+                    (Some(ty), Ok(value_i64)) => match Atom::try_new(ty, value_i64) {
+                        Ok(value) => Some(value),
+                        Err(_) => None,
+                    },
+                    _ => None,
+                };
+
+                if let Some(value) = value {
+                    HValExpr::Lit {
+                        value,
+                        ty: Rc::new(HAtomTy {
+                            sem: Some(value.ty()),
+                            expr: HAtomTyExpr::Lit {
+                                token: token.clone(),
+                            },
+                        }),
+                        token,
+                    }
+                } else {
+                    dgns.push(Diagnostic::InvalidLiteral {
+                        token: token.clone(),
+                        ty,
+                        value_i64: value_i64_result.clone(),
+                    });
+                    HErr::err()
+                }
+            }
             AExpr::Ref { ident } => {
                 let name = ident.compile(&(), dgns);
                 let var = env.resolve(&name, dgns);
@@ -447,17 +487,16 @@ impl HirCompileFrom<AExpr> for HValExpr {
 impl HirCompileFrom<ATy, ()> for HAtomTy {
     fn compile(ast: ATy, _: &(), dgns: &mut Vec<Diagnostic>) -> Self {
         let name: Rc<HName> = ast.ident.compile(&(), dgns);
+        let sem = AtomTy::from_str(&name.ident.to_string());
+
+        if sem.is_err() {
+            dgns.push(Diagnostic::InvalidAtomTy {
+                ident: name.clone(),
+            });
+        }
 
         HAtomTy {
-            sem: AtomTy::all()
-                .into_iter()
-                .find(|k| k.name() == name.ident.to_string())
-                .unwrap_or_else(|| {
-                    dgns.push(Diagnostic::InvalidAtomTy {
-                        ident: name.clone(),
-                    });
-                    AtomTy::Err
-                }),
+            sem: sem.ok(),
             expr: HAtomTyExpr::Name { name },
         }
     }

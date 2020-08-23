@@ -71,7 +71,6 @@ impl AtomTy {
                 BitSize::S32 => Box::new(i32::uninit()),
                 BitSize::S64 => Box::new(i64::uninit()),
             },
-            AtomTy::Err => unreachable!(),
         }
     }
 
@@ -84,7 +83,6 @@ impl AtomTy {
                 BitSize::S32 => Box::new(vec![i32::uninit(); len]),
                 BitSize::S64 => Box::new(vec![i64::uninit(); len]),
             },
-            AtomTy::Err => unreachable!(),
         }
     }
 }

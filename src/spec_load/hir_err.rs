@@ -17,7 +17,7 @@ impl HErr for HAtomTy {
     fn err() -> Self {
         HAtomTy {
             expr: HErr::err(),
-            sem: AtomTy::Err,
+            sem: None,
         }
     }
 }
@@ -74,5 +74,11 @@ impl HErr for HVarDefExpr {
 impl HErr for HArgExpr {
     fn err() -> Self {
         HArgExpr::Err
+    }
+}
+
+impl HErr for HValExpr {
+    fn err() -> Self {
+        HValExpr::Err
     }
 }

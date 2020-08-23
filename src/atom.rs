@@ -1,17 +1,14 @@
+use std::str::FromStr;
+
 /// Type of an atomic value (semantics)
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AtomTy {
     /// Boolean, either true or false
     Bool,
     /// Non-negative integer representable as a *signed* integer of the given bit size
-    Nat {
-        size: BitSize,
-    },
+    Nat { size: BitSize },
     /// Signed integer representable in the given bit size
-    Int {
-        size: BitSize,
-    },
-    Err,
+    Int { size: BitSize },
 }
 
 impl AtomTy {
@@ -31,8 +28,15 @@ impl AtomTy {
             AtomTy::Bool => "bool".into(),
             AtomTy::Nat { size } => format!("n{}", size.bits()),
             AtomTy::Int { size } => format!("i{}", size.bits()),
-            AtomTy::Err => "<invalid scalar type>".into(),
         }
+    }
+}
+
+impl FromStr for AtomTy {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::all().into_iter().find(|k| &k.name() == s).ok_or(())
     }
 }
 
@@ -83,7 +87,6 @@ impl Atom {
             AtomTy::Int { size } => {
                 -size.max_safe_value() <= value && value <= size.max_safe_value()
             }
-            AtomTy::Err => unreachable!(),
         };
 
         if ok {
@@ -95,6 +98,10 @@ impl Atom {
 
     pub fn value_i64(self: &Self) -> i64 {
         self.value
+    }
+
+    pub fn ty(self: &Self) -> AtomTy {
+        self.ty
     }
 }
 

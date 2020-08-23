@@ -36,6 +36,8 @@ impl FormatInto<()> for &HVal {
             HValExpr::Subscript { array, index, .. } => {
                 quote_in!(*tokens => #(array.as_ref())[#(index.as_ref())])
             }
+            HValExpr::Lit { token, .. } => quote_in!(*tokens => #(token.to_string())),
+            HValExpr::Err => quote_in!(*tokens => <<invalid val expr>>),
         }
     }
 }
@@ -54,9 +56,9 @@ impl FormatInto<()> for &HName {
 
 impl FormatInto<()> for &HAtomTy {
     fn format_into(self: Self, tokens: &mut Tokens) {
-        match &self.expr {
-            HAtomTyExpr::Name { name, .. } => quote_in!(*tokens => #(name.as_ref())),
-            HAtomTyExpr::Err => quote_in!(*tokens => <<invalid scalar type>>),
+        match &self.sem {
+            Some(sem) => quote_in!(*tokens => #(sem.name())),
+            None => quote_in!(*tokens => <<invalid atom type>>),
         }
     }
 }

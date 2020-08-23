@@ -75,6 +75,9 @@ impl FormatInto<CppLang> for &LExpr {
             LExpr::Subscript { array, index } => quote_in! { *tokens =>
                 #(array.as_ref())[#(index.as_ref())]
             },
+            LExpr::Lit { value } => quote_in! { *tokens =>
+                #(*value)
+            },
         }
     }
 }
@@ -86,7 +89,6 @@ impl FormatInto<CppLang> for &AtomTy {
             AtomTy::Nat { size } | AtomTy::Int { size } => {
                 quote_in!(*tokens => int#(size.bits())_t)
             }
-            AtomTy::Err => unreachable!(),
         }
     }
 }
@@ -101,7 +103,6 @@ impl FormatInto<CppLang> for Format<'_> {
                 BitSize::S8 | BitSize::S16 | BitSize::S32 => quote_in!(*tokens => %d),
                 BitSize::S64 => quote_in!(*tokens => %lld),
             },
-            AtomTy::Err => unreachable!(),
         }
     }
 }

@@ -71,6 +71,9 @@ pub struct ATy {
 /// AST of, e.g, `N[A[i]]` (or `A[i] * N + 1` when implemented).
 #[derive(Debug)]
 pub enum AExpr {
+    IntLit {
+        token: syn::LitInt,
+    },
     Ref {
         ident: AIdent,
     },

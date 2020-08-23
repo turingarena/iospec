@@ -89,6 +89,9 @@ pub enum LExpr {
         array: Box<LExpr>,
         index: Box<LExpr>,
     },
+    Lit {
+        value: i64,
+    },
 }
 
 #[derive(Debug, Clone)]

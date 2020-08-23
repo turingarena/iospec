@@ -181,6 +181,11 @@ pub struct HVal {
 /// E.g., `A[B[i]]` in `... for i upto A[B[j]][k] { ... } ...`.
 #[derive(Debug)]
 pub enum HValExpr {
+    Lit {
+        token: syn::LitInt,
+        value: Atom,
+        ty: Rc<HAtomTy>,
+    },
     Var {
         var: Rc<HVar>,
         name: Rc<HName>,
@@ -190,6 +195,7 @@ pub enum HValExpr {
         bracket: syn::token::Bracket,
         index: Rc<HVal>,
     },
+    Err,
 }
 
 /// Type of a value (either atomic or aggregate)
@@ -204,13 +210,14 @@ pub enum HValTy {
 #[derive(Debug)]
 pub struct HAtomTy {
     pub expr: HAtomTyExpr,
-    pub sem: AtomTy,
+    pub sem: Option<AtomTy>,
 }
 
 /// Type of an atomic value (construction)
 #[derive(Debug)]
 pub enum HAtomTyExpr {
     Name { name: Rc<HName> },
+    Lit { token: syn::LitInt },
     Err,
 }
 
