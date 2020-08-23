@@ -1,10 +1,8 @@
 use std::fs::File;
 
-use crate::spec::hir::*;
 use crate::spec::*;
 
 use super::ctx::*;
-use super::err::*;
 use super::io::*;
 use super::state::*;
 

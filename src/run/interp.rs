@@ -1,7 +1,5 @@
 use std::ops::Deref;
 
-use by_address::ByAddress;
-
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_sem::*;
@@ -91,7 +89,7 @@ impl HStep {
                     }
 
                     if let Some(alloc) = node_alloc(&node) {
-                        *alloc.array.eval_aggr_mut(state)? = alloc.array.ty.alloc(bound, state);
+                        *alloc.array.eval_aggr_mut(state)? = alloc.array.ty.alloc(bound);
                     }
                 }
 
@@ -262,16 +260,16 @@ impl HAtom {
 }
 
 impl HValTy {
-    fn decl(self: &Self, _state: &RState) -> RNode {
+    fn decl(self: &Self) -> RNode {
         match self {
             HValTy::Atom { atom_ty } => RNode::Atom(atom_ty.sem.cell()),
             _ => RNode::Aggr(RAggr::Unalloc),
         }
     }
 
-    fn alloc(self: &Self, len: usize, state: &RState) -> RAggr {
+    fn alloc(self: &Self, len: usize) -> RAggr {
         match self {
-            HValTy::Array { item, range } => match item.deref() {
+            HValTy::Array { item, .. } => match item.deref() {
                 HValTy::Atom { atom_ty } => RAggr::AtomArray(atom_ty.sem.array(len)),
                 _ => RAggr::AggrArray({
                     let mut vec = Vec::with_capacity(len);
@@ -287,5 +285,5 @@ impl HValTy {
 }
 
 fn decl(var: &Rc<HVarDef>, state: &mut RState) {
-    state.env.insert(var.clone().into(), var.ty.decl(state));
+    state.env.insert(var.clone().into(), var.ty.decl());
 }

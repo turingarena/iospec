@@ -1,7 +1,6 @@
 use std::fs::read_to_string;
 use std::path::Path;
 
-use crate::spec::hir::*;
 use crate::spec::sess::Sess;
 use crate::spec::Spec;
 use crate::spec_load::ast_parse::parse_spec;

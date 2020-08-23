@@ -1,11 +1,8 @@
-use annotate_snippets::snippet::SourceAnnotation;
-
 use crate::run::state::RState;
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_span::HasSpan;
 use crate::spec::sess::Sess;
-use crate::spec::ty::AtomTy;
 
 use super::err::*;
 
@@ -14,11 +11,11 @@ impl AtomSourceError {
         match self {
             AtomSourceError::Parse(e) => format!("{}", e),
             AtomSourceError::Value(AtomValueError { expected, actual }) => {
-                format!("expected {}, got {}", expected, actual)
+                format!("expected `{}`, got `{}`", expected, actual)
             }
-            AtomSourceError::End => format!("expected a {}, got end-of-file", quote_hir(ty)),
+            AtomSourceError::End => format!("expected a `{}`, got end-of-file", quote_hir(ty)),
             AtomSourceError::Type(value) => format!(
-                "expected a {}, got value outside range `{}`",
+                "expected a `{}`, got value outside range `{}`",
                 quote_hir(ty),
                 value
             ),
@@ -34,7 +31,7 @@ impl RError {
             .map(|(range, index_value)| {
                 (
                     format!(
-                        "at iteration {} = {}",
+                        "at iteration `{}` = {}",
                         quote_hir(range.index.as_ref()),
                         index_value
                     ),
