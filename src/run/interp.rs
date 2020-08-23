@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use by_address::ByAddress;
+
 use crate::spec::hir::*;
 use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_sem::*;
@@ -94,10 +96,10 @@ impl HStep {
                 }
 
                 for i in 0..bound {
-                    state.indexes.insert(Rc::as_ptr(&range), i);
+                    state.indexes.insert(range.clone().into(), i);
                     body.run(state, ctx)?;
                 }
-                state.indexes.remove(&Rc::as_ptr(&range));
+                state.indexes.remove(&range.clone().into());
             }
         }
         Ok(())
@@ -116,7 +118,7 @@ impl HNodeDef {
         state: &'a mut RState,
     ) -> Result<&'a mut dyn RAtomCell, RError> {
         Ok(match &self.expr {
-            HNodeDefExpr::Var { var } => match state.env.get_mut(&Rc::as_ptr(&var)).unwrap() {
+            HNodeDefExpr::Var { var } => match state.env.get_mut(&var.clone().into()).unwrap() {
                 RNode::Atom(val) => &mut **val,
                 _ => unreachable!(),
             },
@@ -133,7 +135,7 @@ impl HNodeDef {
 
     fn eval_aggr_mut<'a>(self: &Self, state: &'a mut RState) -> Result<&'a mut RAggr, RError> {
         Ok(match &self.expr {
-            HNodeDefExpr::Var { var } => match state.env.get_mut(&Rc::as_ptr(&var)).unwrap() {
+            HNodeDefExpr::Var { var } => match state.env.get_mut(&var.clone().into()).unwrap() {
                 RNode::Aggr(aggr) => aggr,
                 _ => unreachable!(),
             },
@@ -156,7 +158,7 @@ impl HVal {
     fn eval<'a>(val: &Rc<Self>, state: &'a RState) -> Result<RVal<'a>, RError> {
         Ok(match &val.expr {
             HValExpr::Var { var, .. } => match &var.expr {
-                HVarExpr::Data { def } => match state.env.get(&Rc::as_ptr(def)).unwrap() {
+                HVarExpr::Data { def } => match state.env.get(&def.clone().into()).unwrap() {
                     RNode::Atom(cell) => RVal::Atom(
                         cell.get()
                             .ok_or_else(|| RError::UnresolvedVal { val: val.clone() })?,
@@ -164,7 +166,7 @@ impl HVal {
                     RNode::Aggr(ref aggr) => RVal::Aggr(aggr),
                 },
                 HVarExpr::Index { range } => {
-                    RVal::Atom(*state.indexes.get(&Rc::as_ptr(range)).unwrap() as i64)
+                    RVal::Atom(*state.indexes.get(&range.clone().into()).unwrap() as i64)
                 }
                 HVarExpr::Err => unreachable!(),
             },
@@ -202,7 +204,7 @@ impl HVal {
     fn eval_mut<'a>(val: &Rc<Self>, state: &'a mut RState) -> Result<RValMut<'a>, RError> {
         Ok(match &val.expr {
             HValExpr::Var { var, .. } => match &var.expr {
-                HVarExpr::Data { def } => match state.env.get_mut(&Rc::as_ptr(def)).unwrap() {
+                HVarExpr::Data { def } => match state.env.get_mut(&def.clone().into()).unwrap() {
                     RNode::Atom(ref mut cell) => RValMut::Atom(&mut **cell),
                     RNode::Aggr(ref mut aggr) => RValMut::Aggr(aggr),
                 },
@@ -285,5 +287,5 @@ impl HValTy {
 }
 
 fn decl(var: &Rc<HVarDef>, state: &mut RState) {
-    state.env.insert(Rc::as_ptr(&var), var.ty.decl(state));
+    state.env.insert(var.clone().into(), var.ty.decl(state));
 }
