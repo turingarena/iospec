@@ -76,7 +76,7 @@ impl Diagnostic {
                 &format!("variable `{}` already defined", new_var.name.to_string()),
                 vec![
                     sess.error_ann("cannot re-define a variable in scope", new_var.name.span()),
-                    sess.help_ann("was defined here", old_var.name.span()),
+                    sess.info_ann("was defined here", old_var.name.span()),
                 ],
                 vec![],
             ),
@@ -89,7 +89,7 @@ impl Diagnostic {
                     let mut anns = vec![sess.error_ann("must be a natural", val.span())];
                     if let Some(atom_ty) = atom_ty {
                         if let HAtomTyExpr::Name { name } = &atom_ty.expr {
-                            anns.push(sess.help_ann("type defined here", name.span()))
+                            anns.push(sess.info_ann("type defined here", name.span()))
                         }
                     }
                     anns
@@ -123,13 +123,13 @@ impl Diagnostic {
                         &format!("invalid index type `{}`", quote_hir(index.ty.as_ref())),
                         index.span(),
                     ),
-                    sess.help_ann("array range", range.span()),
-                    sess.help_ann("expected type", range.bound.ty.span()),
+                    sess.info_ann("array range", range.span()),
+                    sess.info_ann("expected type", range.bound.ty.span()),
                 ]
                 .into_iter()
                 .chain(match index.ty.as_ref() {
                     HValTy::Atom { atom_ty } => {
-                        Some(sess.help_ann("got this type", atom_ty.span()))
+                        Some(sess.info_ann("got this type", atom_ty.span()))
                     }
                     _ => None,
                 })
@@ -166,7 +166,7 @@ impl Diagnostic {
                                 sess.error_ann("complex expressions not allowed here", bracket.span)
                             }
                         },
-                        sess.help_ann("must match this index", expected_range.index.span()),
+                        sess.info_ann("must match this index", expected_range.index.span()),
                     ],
                     None => {
                         vec![sess.error_ann("subscript without an enclosing `for`", bracket.span)]

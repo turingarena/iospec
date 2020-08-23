@@ -30,7 +30,7 @@ impl Sess {
         }
     }
 
-    pub fn help_ann<'a>(self: &Self, label: &'a str, span: Span) -> SourceAnnotation<'a> {
+    pub fn info_ann<'a>(self: &Self, label: &'a str, span: Span) -> SourceAnnotation<'a> {
         SourceAnnotation {
             annotation_type: AnnotationType::Info,
             label,
