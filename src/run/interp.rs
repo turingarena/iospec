@@ -50,7 +50,7 @@ impl HStep {
 
                     eprintln!("READ  {} <- {}", quote_hir(arg.as_ref()), val);
 
-                    arg.eval(state).set(val);
+                    arg.eval(state).set(Some(val));
                 }
             }
             HStepExpr::Write { args, .. } => {
@@ -59,7 +59,7 @@ impl HStep {
 
                     eprintln!("WRITE {} <- {}", quote_hir(arg.as_ref()), val);
 
-                    arg.val.eval_mut_atom(state).set(val);
+                    arg.val.eval_mut_atom(state).set(Some(val));
                 }
             }
             HStepExpr::Call { fun, .. } => {
@@ -142,7 +142,7 @@ impl HVal {
         match &self.expr {
             HValExpr::Var { var, .. } => match &var.expr {
                 HVarExpr::Data { def } => match state.env.get(&Rc::as_ptr(def)).unwrap() {
-                    RNode::Atom(cell) => RVal::Atom(cell.get()),
+                    RNode::Atom(cell) => RVal::Atom(cell.get().unwrap()),
                     RNode::Aggr(ref aggr) => RVal::Aggr(aggr),
                 },
                 HVarExpr::Index { range } => {
@@ -156,7 +156,9 @@ impl HVal {
                     _ => unreachable!(),
                 };
                 match array.eval(state) {
-                    RVal::Aggr(RAggr::AtomArray(array)) => RVal::Atom(array.at(index).get()),
+                    RVal::Aggr(RAggr::AtomArray(array)) => {
+                        RVal::Atom(array.at(index).get().unwrap())
+                    }
                     RVal::Aggr(RAggr::AggrArray(vec)) => RVal::Aggr(&vec[index]),
                     _ => unreachable!(),
                 }

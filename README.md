@@ -75,8 +75,8 @@ Features:
 
 * scalar types:
     * booleans: `bool` (either true, represented as `1`, or false, represented as `0`),
-    * naturals: `n8`, `n16`, `n32`, `n64`, (naturals are *non-negative* integers which fit in a *signed* integer of the given bit size, e.g., `n32` can contain any numer from `0` to `2^31 - 1`),
-    * integers: `i8`, `i16`, `i32`, `i64`, (positive or negative integer of the given bit size)
+    * naturals: `n8`, `n16`, `n32`, `n64`, (naturals are *non-negative* integers which fit in a *signed* integer of the given bit size, e.g., `n32` can contain any number from `0` to `2^31 - 1`),
+    * integers: `i8`, `i16`, `i32`, `i64`, (positive or negative integers which fit in a *signed* integer of the given bit size, excluding the most negative value, e.g., `i32` can contain any number from `-2^31 + 1` to `2^31 - 1`),
 * aggregate types,
     * arrays, initialized in a `for` loop,
     * optionals, initialized in conditional statements (TODO),
