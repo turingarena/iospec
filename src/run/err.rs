@@ -6,12 +6,19 @@ pub enum RError {
     UnresolvedVal {
         val: Rc<HVal>,
     },
-    InvalidInputAtom {
+    InputSource {
         def: Rc<HAtomDef>,
-        cause: Box<dyn Error>,
+        cause: AtomSourceError,
     },
-    InvalidOutputAtom {
+    OutputSource {
         atom: Rc<HAtom>,
-        cause: Box<dyn Error>,
+        cause: AtomSourceError,
     },
+}
+
+pub enum AtomSourceError {
+    Parse(Box<dyn Error>),
+    Type,
+    Value,
+    End,
 }

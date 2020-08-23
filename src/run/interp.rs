@@ -31,12 +31,17 @@ impl HStep {
                         decl(&var, state);
                     }
 
-                    let val = ctx.input_source().next_atom(&arg.ty.sem).map_err(|e| {
-                        RError::InvalidInputAtom {
+                    let val = ctx
+                        .input_source()
+                        .next_atom(&arg.ty.sem)
+                        .map_err(|e| RError::InputSource {
                             def: arg.clone(),
-                            cause: e,
-                        }
-                    })?;
+                            cause: AtomSourceError::Parse(e),
+                        })?
+                        .ok_or_else(|| RError::InputSource {
+                            def: arg.clone(),
+                            cause: AtomSourceError::End,
+                        })?;
 
                     eprintln!("READ  {} <- {}", quote_hir(arg.as_ref()), val);
 
@@ -45,12 +50,17 @@ impl HStep {
             }
             HStepExpr::Write { args, .. } => {
                 for arg in args {
-                    let val = ctx.output_source().next_atom(&arg.ty.sem).map_err(|e| {
-                        RError::InvalidOutputAtom {
+                    let val = ctx
+                        .output_source()
+                        .next_atom(&arg.ty.sem)
+                        .map_err(|e| RError::OutputSource {
                             atom: arg.clone(),
-                            cause: e,
-                        }
-                    })?;
+                            cause: AtomSourceError::Parse(e),
+                        })?
+                        .ok_or_else(|| RError::OutputSource {
+                            atom: arg.clone(),
+                            cause: AtomSourceError::End,
+                        })?;
 
                     eprintln!("WRITE {} <- {}", quote_hir(arg.as_ref()), val);
 
