@@ -25,4 +25,5 @@ pub enum RVal<'a> {
 pub enum RValMut<'a> {
     Atom(&'a mut dyn RAtomCell),
     Aggr(&'a mut RAggr),
+    NotMut,
 }

@@ -50,7 +50,7 @@ impl HStep {
 
                     eprintln!("READ  {} <- {}", quote_hir(arg.as_ref()), val);
 
-                    arg.eval(state).set(Some(val));
+                    arg.eval_mut(state).set(Some(val));
                 }
             }
             HStepExpr::Write { args, .. } => {
@@ -59,7 +59,9 @@ impl HStep {
 
                     eprintln!("WRITE {} <- {}", quote_hir(arg.as_ref()), val);
 
-                    arg.val.eval_mut_atom(state).set(Some(val));
+                    if let Some(atom) = arg.val.eval_atom_mut(state) {
+                        atom.set(Some(val));
+                    }
                 }
             }
             HStepExpr::Call { fun, .. } => {
@@ -93,13 +95,13 @@ impl HStep {
 }
 
 impl HAtomDef {
-    fn eval<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
-        self.node.eval_atom(state)
+    fn eval_mut<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
+        self.node.eval_atom_mut(state)
     }
 }
 
 impl HNodeDef {
-    fn eval_atom<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
+    fn eval_atom_mut<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
         match &self.expr {
             HNodeDefExpr::Var { var } => match state.env.get_mut(&Rc::as_ptr(&var)).unwrap() {
                 RNode::Atom(val) => &mut **val,
@@ -107,7 +109,7 @@ impl HNodeDef {
             },
             HNodeDefExpr::Subscript { array, index, .. } => {
                 let index = index.eval_index(state);
-                match array.eval_aggr(state) {
+                match array.eval_aggr_mut(state) {
                     RAggr::AtomArray(array) => array.at_mut(index),
                     _ => unreachable!(),
                 }
@@ -116,7 +118,7 @@ impl HNodeDef {
         }
     }
 
-    fn eval_aggr<'a>(self: &Self, state: &'a mut RState) -> &'a mut RAggr {
+    fn eval_aggr_mut<'a>(self: &Self, state: &'a mut RState) -> &'a mut RAggr {
         match &self.expr {
             HNodeDefExpr::Var { var } => match state.env.get_mut(&Rc::as_ptr(&var)).unwrap() {
                 RNode::Aggr(aggr) => aggr,
@@ -125,7 +127,7 @@ impl HNodeDef {
             HNodeDefExpr::Subscript { array, index, .. } => {
                 // TODO: should be inverted, but the borrow checker is not happy about that
                 let index = index.eval_index(state);
-                let array = array.eval_aggr(state);
+                let array = array.eval_aggr_mut(state);
 
                 match array {
                     RAggr::AggrArray(array) => &mut array[index],
@@ -186,6 +188,7 @@ impl HVal {
                     RNode::Atom(ref mut cell) => RValMut::Atom(&mut **cell),
                     RNode::Aggr(ref mut aggr) => RValMut::Aggr(aggr),
                 },
+                HVarExpr::Index { .. } => RValMut::NotMut,
                 _ => unreachable!(),
             },
             HValExpr::Subscript { array, index, .. } => {
@@ -202,9 +205,10 @@ impl HVal {
         }
     }
 
-    fn eval_mut_atom<'a>(self: &Self, state: &'a mut RState) -> &'a mut dyn RAtomCell {
+    fn eval_atom_mut<'a>(self: &Self, state: &'a mut RState) -> Option<&'a mut dyn RAtomCell> {
         match self.eval_mut(state) {
-            RValMut::Atom(val) => val,
+            RValMut::Atom(val) => Some(val),
+            RValMut::NotMut => None,
             _ => unreachable!(),
         }
     }
@@ -245,6 +249,6 @@ fn decl(var: &Rc<HVarDef>, state: &mut RState) {
 
 impl HAlloc {
     fn run(self: &Self, state: &mut RState) {
-        *self.array.eval_aggr(state) = self.array.ty.alloc(state)
+        *self.array.eval_aggr_mut(state) = self.array.ty.alloc(state)
     }
 }
