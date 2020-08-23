@@ -17,10 +17,6 @@ pub fn spec_run(spec: &Rc<HSpec>, input_from: File, output_from: File) {
     };
 
     spec.run(&mut state, &mut ctx)
-        .map_err(|e| match e {
-            RError::UnresolvedVal { .. } => "Unresolved val",
-            RError::InputSource { .. } => "Invalid input",
-            RError::OutputSource { .. } => "Invalid output",
-        })
+        .map_err(|e| format!("{:?}", e))
         .unwrap();
 }

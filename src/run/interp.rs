@@ -64,9 +64,13 @@ impl HStep {
 
                     eprintln!("WRITE {} <- {}", quote_hir(arg.as_ref()), val);
 
-                    if let Some(atom) = HVal::eval_atom_mut(&arg.val, state)? {
-                        atom.set(Some(val));
-                    }
+                    HAtom::resolve(arg, val, state).map_err(|e| match e {
+                        RAtomResolveError::Inner(e) => e,
+                        RAtomResolveError::Value(e) => RError::OutputSource {
+                            atom: arg.clone(),
+                            cause: AtomSourceError::Value(e),
+                        },
+                    })?;
                 }
             }
             HStepExpr::Call { fun, .. } => {
@@ -202,7 +206,7 @@ impl HVal {
                     RNode::Atom(ref mut cell) => RValMut::Atom(&mut **cell),
                     RNode::Aggr(ref mut aggr) => RValMut::Aggr(aggr),
                 },
-                HVarExpr::Index { .. } => RValMut::NotMut,
+                HVarExpr::Index { .. } => RValMut::ConstAtom(Self::eval_atom(val, state)?),
                 _ => unreachable!(),
             },
             HValExpr::Subscript { array, index, .. } => {
@@ -211,23 +215,47 @@ impl HVal {
                     _ => unreachable!(),
                 };
                 match HVal::eval_mut(array, state)? {
-                    RValMut::Aggr(RAggr::AtomArray(array)) => RValMut::Atom(array.at_mut(index)),
-                    RValMut::Aggr(RAggr::AggrArray(vec)) => RValMut::Aggr(&mut vec[index]),
+                    RValMut::Aggr(aggr) => match aggr {
+                        RAggr::AtomArray(array) => RValMut::Atom(array.at_mut(index)),
+                        RAggr::AggrArray(vec) => RValMut::Aggr(&mut vec[index]),
+                        _ => unreachable!(),
+                    },
                     _ => unreachable!(),
                 }
             }
         })
     }
+}
 
-    fn eval_atom_mut<'a>(
-        val: &Rc<Self>,
-        state: &'a mut RState,
-    ) -> Result<Option<&'a mut dyn RAtomCell>, RError> {
-        Ok(match Self::eval_mut(val, state)? {
-            RValMut::Atom(val) => Some(val),
-            RValMut::NotMut => None,
-            _ => unreachable!(),
-        })
+pub enum RAtomResolveError {
+    Inner(RError),
+    Value(AtomValueError),
+}
+
+fn check_atom_matches(expected: i64, actual: i64) -> Result<(), AtomValueError> {
+    if actual != expected {
+        Err(AtomValueError { actual, expected })?
+    }
+    Ok(())
+}
+
+impl HAtom {
+    fn resolve(atom: &Rc<Self>, val: i64, state: &mut RState) -> Result<(), RAtomResolveError> {
+        Ok(
+            match HVal::eval_mut(&atom.val, state).map_err(RAtomResolveError::Inner)? {
+                RValMut::ConstAtom(expected) => {
+                    check_atom_matches(expected, val).map_err(RAtomResolveError::Value)?
+                }
+                RValMut::Atom(cell) => {
+                    if let Some(expected) = cell.get() {
+                        check_atom_matches(expected, val).map_err(RAtomResolveError::Value)?;
+                    } else {
+                        cell.set(Some(val));
+                    }
+                }
+                _ => unreachable!(),
+            },
+        )
     }
 }
 
@@ -235,7 +263,7 @@ impl HValTy {
     fn decl(self: &Self, _state: &RState) -> RNode {
         match self {
             HValTy::Atom { atom_ty } => RNode::Atom(atom_ty.sem.cell()),
-            _ => RNode::Aggr(RAggr::Uninit),
+            _ => RNode::Aggr(RAggr::Unalloc),
         }
     }
 
@@ -246,7 +274,7 @@ impl HValTy {
                 _ => RAggr::AggrArray({
                     let mut vec = Vec::with_capacity(len);
                     for _ in 0..len {
-                        vec.push(RAggr::Uninit)
+                        vec.push(RAggr::Unalloc)
                     }
                     vec
                 }),

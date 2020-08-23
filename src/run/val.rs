@@ -12,7 +12,7 @@ pub enum RNode {
 pub enum RAggr {
     AtomArray(Box<dyn RAtomArray>),
     AggrArray(Vec<RAggr>),
-    Uninit,
+    Unalloc,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -25,5 +25,5 @@ pub enum RVal<'a> {
 pub enum RValMut<'a> {
     Atom(&'a mut dyn RAtomCell),
     Aggr(&'a mut RAggr),
-    NotMut,
+    ConstAtom(i64),
 }
