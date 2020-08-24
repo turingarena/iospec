@@ -193,7 +193,7 @@ impl HVal {
                     RVal::Atom(atom) => atom.value_i64() as usize,
                     _ => unreachable!(),
                 };
-                match (array.ty.as_ref(), HVal::eval(array, state)?) {
+                match (val.ty.as_ref(), HVal::eval(array, state)?) {
                     (HValTy::Atom { atom_ty }, RVal::Aggr(RAggr::AtomArray(array))) => RVal::Atom(
                         array
                             .at(index)

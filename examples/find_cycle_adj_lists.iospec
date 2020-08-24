@@ -10,7 +10,7 @@ for u upto N {
     for i upto D[u] {
         read A[u][i]: n32; // adjacency list
 
-        assume 1n32 <= A[u][i] <= N;
+        assume 0n32 <= A[u][i] <= N - 1n32;
         assume A[u][i] != u; // no self loops
     }
 }

@@ -55,7 +55,7 @@ impl Sess {
                 source: self.file.source(),
                 line_start: 1,
                 origin: Some(self.file.name()),
-                fold: false,
+                fold: true,
                 annotations,
             }],
             opt: FormatOptions {
