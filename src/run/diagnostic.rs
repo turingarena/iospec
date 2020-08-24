@@ -84,20 +84,30 @@ impl RError {
                 .collect(),
                 vec![],
             ),
-            RError::Overflow { val, ty } => sess.error_snippet(
-                "overflow while computing expression value",
-                vec![
-                    sess.error_ann(
-                        &format!("outside range of `{}`", quote_hir(ty.as_ref())),
-                        val.span(),
-                    ),
-                    sess.info_ann("type specified here", ty.span()),
-                ]
-                .into_iter()
-                .chain(state_annotations)
-                .collect(),
-                vec![],
-            ),
+            RError::Overflow { val, ty } => {
+                let footer = ty.sem.map(|ty_sem| {
+                    format!(
+                        "`{}` can hold values from {} to {}",
+                        quote_hir(ty.as_ref()),
+                        ty_sem.value_range().0,
+                        ty_sem.value_range().1
+                    )
+                });
+                sess.error_snippet(
+                    "overflow while computing expression value",
+                    vec![
+                        sess.error_ann(
+                            &format!("outside range of `{}`", quote_hir(ty.as_ref())),
+                            val.span(),
+                        ),
+                        sess.info_ann("type specified here", ty.span()),
+                    ]
+                    .into_iter()
+                    .chain(state_annotations)
+                    .collect(),
+                    footer.iter().map(|msg| sess.footer_note(msg)).collect(),
+                )
+            }
         }
     }
 }

@@ -30,6 +30,14 @@ impl AtomTy {
             AtomTy::Int { size } => format!("i{}", size.bits()),
         }
     }
+
+    pub fn value_range(self: Self) -> (i64, i64) {
+        match self {
+            AtomTy::Bool => (0, 1),
+            AtomTy::Nat { size } => (0, size.max_safe_value()),
+            AtomTy::Int { size } => (-size.max_safe_value(), size.max_safe_value()),
+        }
+    }
 }
 
 impl FromStr for AtomTy {
@@ -81,15 +89,9 @@ impl Atom {
     }
 
     pub fn try_new(ty: AtomTy, value: i64) -> Result<Atom, AtomTypeError> {
-        let ok = match ty {
-            AtomTy::Bool => value == 0 || value == 1,
-            AtomTy::Nat { size } => 0 <= value && value <= size.max_safe_value(),
-            AtomTy::Int { size } => {
-                -size.max_safe_value() <= value && value <= size.max_safe_value()
-            }
-        };
+        let (min, max) = ty.value_range();
 
-        if ok {
+        if min <= value && value <= max {
             Ok(Atom { ty, value })
         } else {
             Err(AtomTypeError { ty, actual: value })
