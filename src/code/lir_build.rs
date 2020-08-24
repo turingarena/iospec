@@ -93,7 +93,9 @@ impl LirFrom<HStep> for Vec<LStmt> {
                 bound: range.bound.val.lir(),
                 body: body.lir(),
             }],
-            HStepExpr::Assume { .. } => todo!(),
+            HStepExpr::Assume { .. } => vec![
+                // TODO: generate asserts in parser code
+            ],
         }
     }
 }
