@@ -81,6 +81,9 @@ impl FormatInto<CppLang> for &LExpr {
             LExpr::Paren { inner } => quote_in! { *tokens =>
                 (#(inner.as_ref()))
             },
+            LExpr::Mul { factors } => quote_in! { *tokens =>
+                #(for f in factors join ( * ) => #f)
+            },
         }
     }
 }

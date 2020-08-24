@@ -84,6 +84,20 @@ impl RError {
                 .collect(),
                 vec![],
             ),
+            RError::Overflow { val, ty } => sess.error_snippet(
+                "overflow while computing expression value",
+                vec![
+                    sess.error_ann(
+                        &format!("too big for `{}`", quote_hir(ty.as_ref())),
+                        val.span(),
+                    ),
+                    sess.info_ann("type specified here", ty.span()),
+                ]
+                .into_iter()
+                .chain(state_annotations)
+                .collect(),
+                vec![],
+            ),
         }
     }
 }

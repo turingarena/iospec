@@ -2,6 +2,8 @@
 
 mod ast;
 mod ast_parse;
+mod ast_span;
+
 mod diagnostic;
 mod hir_compile;
 mod hir_env;

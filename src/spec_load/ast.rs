@@ -86,6 +86,9 @@ pub enum AExpr {
         paren: syn::token::Paren,
         inner: Box<AExpr>,
     },
+    Mul {
+        factors: syn::punctuated::Punctuated<AExpr, syn::Token![*]>,
+    },
 }
 
 /// AST of an identifier, including variable names, function names, and types.

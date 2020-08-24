@@ -8,6 +8,10 @@ pub enum RError {
     UnresolvedVal {
         val: Rc<HVal>,
     },
+    Overflow {
+        val: Rc<HVal>,
+        ty: Rc<HAtomTy>,
+    },
     InputSource {
         def: Rc<HAtomDef>,
         cause: AtomSourceError,

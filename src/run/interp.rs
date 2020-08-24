@@ -204,6 +204,22 @@ impl HVal {
             HValExpr::Lit { value, .. } => RVal::Atom(*value),
             HValExpr::Paren { inner, .. } => HVal::eval(inner, state)?,
             HValExpr::Err => unreachable!(),
+            HValExpr::Mul { ty, factors, .. } => RVal::Atom({
+                let mut cur = Atom::new(ty.sem.unwrap(), 1);
+                for factor in factors {
+                    let factor = HVal::eval_atom(&factor.val, state)?.value_i64();
+
+                    cur = cur
+                        .value_i64()
+                        .checked_mul(factor)
+                        .and_then(|val| Atom::try_new(ty.sem.unwrap(), val).ok())
+                        .ok_or_else(|| RError::Overflow {
+                            val: val.clone(),
+                            ty: ty.clone(),
+                        })?;
+                }
+                cur
+            }),
         })
     }
 
@@ -243,9 +259,9 @@ impl HVal {
                     _ => unreachable!(),
                 }
             }
-            HValExpr::Lit { value, .. } => RValMut::ConstAtom(*value),
             HValExpr::Paren { inner, .. } => HVal::eval_mut(inner, state)?,
             HValExpr::Err => unreachable!(),
+            _ => RValMut::ConstAtom(HVal::eval_atom(val, state)?),
         })
     }
 }

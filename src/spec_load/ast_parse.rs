@@ -84,8 +84,8 @@ impl Parse for AStmt {
     }
 }
 
-impl Parse for AExpr {
-    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+impl AExpr {
+    fn parse_atomic(input: &ParseBuffer) -> Result<Self, Error> {
         let mut current = if input.peek(syn::token::Paren) {
             let inner_input;
 
@@ -112,6 +112,27 @@ impl Parse for AExpr {
             };
         }
         Ok(current)
+    }
+
+    fn parse_mul(input: &ParseBuffer) -> Result<Self, Error> {
+        let first: AExpr = Self::parse_atomic(input)?;
+        Ok(if input.peek(syn::Token![*]) {
+            let mut chain = syn::punctuated::Punctuated::<AExpr, syn::Token![*]>::new();
+            chain.push(first);
+            while input.peek(syn::Token![*]) {
+                chain.push_punct(input.parse()?);
+                chain.push_value(input.parse()?);
+            }
+            AExpr::Mul { factors: chain }
+        } else {
+            first
+        })
+    }
+}
+
+impl Parse for AExpr {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        Self::parse_mul(input)
     }
 }
 

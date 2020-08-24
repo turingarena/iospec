@@ -10,6 +10,7 @@ use std::str::FromStr;
 
 use crate::atom::*;
 use crate::spec::hir::*;
+use crate::spec::hir_span::HasSpan;
 
 use super::ast::*;
 use super::diagnostic::*;
@@ -296,12 +297,8 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
                     }
                 }
             }
-            AExpr::Paren { paren, .. } => {
-                dgns.push(Diagnostic::DefInvalidExpression { span: paren.span });
-                HErr::err()
-            }
-            AExpr::IntLit { token } => {
-                dgns.push(Diagnostic::DefInvalidExpression { span: token.span() });
+            other => {
+                dgns.push(Diagnostic::DefInvalidExpression { span: other.span() });
                 HErr::err()
             }
         }
@@ -374,6 +371,9 @@ impl HirCompileFrom<AExpr> for HVal {
                     }
                 },
                 HValExpr::Lit { ty, .. } => Rc::new(HValTy::Atom {
+                    atom_ty: ty.clone(),
+                }),
+                HValExpr::Mul { ty, .. } => Rc::new(HValTy::Atom {
                     atom_ty: ty.clone(),
                 }),
                 HValExpr::Paren { inner, .. } => inner.ty.clone(),
@@ -489,6 +489,29 @@ impl HirCompileFrom<AExpr> for HValExpr {
                 paren,
                 inner: (*inner).compile(env, dgns),
             },
+            AExpr::Mul { factors } => {
+                let (factors, ops) = unzip_punctuated(factors);
+                let factors: Vec<Rc<HAtom>> =
+                    factors.into_iter().map(|f| f.compile(env, dgns)).collect();
+
+                let ty = factors.first().as_ref().unwrap().ty.clone();
+                let mismatched_type = factors.iter().find(|f| f.ty.sem != ty.sem);
+
+                match mismatched_type {
+                    Some(factor) => {
+                        dgns.push(Diagnostic::TypeMismatch {
+                            atom: factor.clone(),
+                            expected: ty.clone(),
+                        });
+                        HErr::err()
+                    }
+                    None => HValExpr::Mul {
+                        factors,
+                        ops,
+                        ty: ty.clone(),
+                    },
+                }
+            }
         }
     }
 }

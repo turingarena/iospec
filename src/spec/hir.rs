@@ -199,6 +199,11 @@ pub enum HValExpr {
         paren: syn::token::Paren,
         inner: Rc<HVal>,
     },
+    Mul {
+        factors: Vec<Rc<HAtom>>,
+        ops: Vec<syn::Token![*]>,
+        ty: Rc<HAtomTy>,
+    },
     Err,
 }
 

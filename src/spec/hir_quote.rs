@@ -39,6 +39,9 @@ impl FormatInto<()> for &HVal {
             HValExpr::Lit { token, .. } => quote_in!(*tokens => #(token.to_string())),
             HValExpr::Paren { inner, .. } => quote_in!(*tokens => (#(inner.as_ref()))),
             HValExpr::Err => quote_in!(*tokens => <<invalid val expr>>),
+            HValExpr::Mul { factors, .. } => quote_in!(*tokens =>
+                #(for f in factors join ( * ) => #(f.as_ref()))
+            ),
         }
     }
 }

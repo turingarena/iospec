@@ -1,0 +1,2 @@
+read N: n8;
+for i upto N * N {}

@@ -154,6 +154,9 @@ impl LirFrom<HVal> for LExpr {
             HValExpr::Paren { inner, .. } => LExpr::Paren {
                 inner: Box::new(inner.lir()),
             },
+            HValExpr::Mul { factors, .. } => LExpr::Mul {
+                factors: factors.iter().map(|f| f.val.lir()).collect(),
+            },
             HValExpr::Err => unreachable!(),
         }
     }

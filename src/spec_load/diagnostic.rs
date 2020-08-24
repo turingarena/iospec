@@ -54,6 +54,10 @@ pub enum Diagnostic {
         ty: Option<AtomTy>,
         value_i64: Result<i64, std::num::ParseIntError>,
     },
+    TypeMismatch {
+        atom: Rc<HAtom>,
+        expected: Rc<HAtomTy>,
+    },
 }
 
 impl Diagnostic {
@@ -224,6 +228,22 @@ impl Diagnostic {
                 "invalid expression in definition",
                 vec![sess.error_ann("invalid expression", *span)],
                 vec![sess.footer_note("only variables and subscripts are allowed")],
+            ),
+            Diagnostic::TypeMismatch { atom, expected } => sess.error_snippet(
+                &format!(
+                    "expected type `{}`, got `{}`",
+                    quote_hir(expected.as_ref()),
+                    quote_hir(atom.ty.as_ref())
+                ),
+                vec![
+                    sess.error_ann(
+                        &format!("expected `{}`", quote_hir(expected.as_ref())),
+                        atom.span(),
+                    ),
+                    sess.info_ann("expected type here", expected.span()),
+                    sess.info_ann("actual type here", atom.ty.span()),
+                ],
+                vec![],
             ),
         }
     }

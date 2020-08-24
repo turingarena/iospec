@@ -95,6 +95,9 @@ pub enum LExpr {
     Paren {
         inner: Box<LExpr>,
     },
+    Mul {
+        factors: Vec<LExpr>,
+    },
 }
 
 #[derive(Debug, Clone)]
