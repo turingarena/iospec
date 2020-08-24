@@ -46,7 +46,8 @@ impl HasSpan for HAtomTy {
     fn span(self: &Self) -> Span {
         match &self.expr {
             HAtomTyExpr::Name { name } => name.span(),
-            _ => panic!(),
+            HAtomTyExpr::Lit { token } => token.span(),
+            HAtomTyExpr::Err => panic!(),
         }
     }
 }

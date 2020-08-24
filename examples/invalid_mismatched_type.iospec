@@ -1,0 +1,2 @@
+read A: n8, B: i8;
+write A * B;

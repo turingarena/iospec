@@ -1,0 +1,2 @@
+read A: n8;
+write A * 2i8;
