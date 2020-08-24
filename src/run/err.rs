@@ -20,6 +20,9 @@ pub enum RError {
         atom: Rc<HAtom>,
         cause: AtomSourceError,
     },
+    AssumptionViolated {
+        cond: Rc<HAtom>,
+    },
 }
 
 #[derive(Debug)]

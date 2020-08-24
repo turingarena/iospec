@@ -108,6 +108,14 @@ impl RError {
                     footer.iter().map(|msg| sess.footer_note(msg)).collect(),
                 )
             }
+            RError::AssumptionViolated { cond } => sess.error_snippet(
+                "assumption violated",
+                vec![sess.error_ann("condition is false", cond.span())]
+                    .into_iter()
+                    .chain(state_annotations)
+                    .collect(),
+                vec![],
+            ),
         }
     }
 }

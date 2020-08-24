@@ -2,7 +2,6 @@ use std::ops::Deref;
 
 use crate::atom::*;
 use crate::spec::hir::*;
-use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_sem::*;
 
 use super::atom_mem::*;
@@ -68,8 +67,6 @@ impl HStep {
                             cause: AtomSourceError::End,
                         })?;
 
-                    eprintln!("WRITE {} <- {}", quote_hir(arg.as_ref()), val);
-
                     let val = Atom::try_new(arg.ty.sem.unwrap(), val).map_err(|e| {
                         RError::OutputSource {
                             atom: arg.clone(),
@@ -111,6 +108,12 @@ impl HStep {
                     body.run(state, ctx)?;
                 }
                 state.indexes.remove(&range.clone().into());
+            }
+            HStepExpr::Assume { cond, .. } => {
+                let res = HVal::eval_atom(&cond.val, state)?.value_i64();
+                if res == 0 {
+                    Err(RError::AssumptionViolated { cond: cond.clone() })?
+                }
             }
         }
         Ok(())

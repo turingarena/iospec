@@ -79,6 +79,12 @@ impl Parse for AStmt {
                 body_brace: syn::braced!(body_input in input),
                 body: body_input.parse()?,
             })
+        } else if lookahead.peek(kw::assume) {
+            Ok(AStmt::Assume {
+                kw: input.parse()?,
+                cond: input.parse()?,
+                semi: input.parse()?,
+            })
         } else {
             Err(lookahead.error())
         }
@@ -225,9 +231,7 @@ impl Parse for RelOp {
 
 impl Parse for AExpr {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let expr = Self::parse_rel(input);
-        eprintln!("{:?}", expr);
-        expr
+        Self::parse_rel(input)
     }
 }
 

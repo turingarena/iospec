@@ -176,6 +176,11 @@ impl HirCompileFrom<AStmt> for HStepExpr {
                     body_brace,
                 }
             }
+            AStmt::Assume { kw, cond, semi } => HStepExpr::Assume {
+                kw,
+                semi,
+                cond: cond.compile(env, dgns),
+            },
         }
     }
 }

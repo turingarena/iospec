@@ -53,6 +53,12 @@ pub enum AStmt {
         body_brace: syn::token::Brace,
         body: ABlock,
     },
+    /// AST of, e.g., `assume N <= 1000n32;`.
+    Assume {
+        kw: kw::assume,
+        cond: AExpr,
+        semi: syn::Token![;],
+    },
 }
 
 /// AST of, e.g., `N: n32` or `A[i]: i32`.

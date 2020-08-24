@@ -65,6 +65,11 @@ pub enum HStepExpr {
         body_brace: syn::token::Brace,
         body: Rc<HStep>,
     },
+    Assume {
+        kw: kw::assume,
+        cond: Rc<HAtom>,
+        semi: syn::Token![;],
+    },
 }
 
 /// A called function.
