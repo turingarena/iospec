@@ -225,17 +225,10 @@ impl HVal {
                 for (sign, term) in terms {
                     let term = HVal::eval_atom(&term.val, state)?.value_i64();
 
-                    let signed_term = Atom::try_new(
-                        ty.sem.unwrap(),
-                        term * match sign {
-                            HSign::Plus(_) => 1,
-                            HSign::Minus(_) => -1,
-                        },
-                    );
-
-                    cur = signed_term
-                        .ok()
-                        .and_then(|term| cur.value_i64().checked_add(term.value_i64()))
+                    cur = cur.value_i64().checked_add(term * match sign {
+                        HSign::Plus(_) => 1,
+                        HSign::Minus(_) => -1,
+                    })
                         .and_then(|val| Atom::try_new(ty.sem.unwrap(), val).ok())
                         .ok_or_else(|| RError::Overflow {
                             val: val.clone(),
