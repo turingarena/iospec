@@ -17,6 +17,21 @@ impl HasSpan for AExpr {
                 .span()
                 .join(factors.last().unwrap().span())
                 .unwrap(),
+            AExpr::Sum { first_sign, terms } => first_sign
+                .as_ref()
+                .map(|s| s.span())
+                .unwrap_or(terms.first().unwrap().span())
+                .join(terms.last().unwrap().span())
+                .unwrap(),
+        }
+    }
+}
+
+impl HasSpan for ASign {
+    fn span(self: &Self) -> Span {
+        match self {
+            Self::Plus(op) => op.span,
+            Self::Minus(op) => op.span,
         }
     }
 }

@@ -89,6 +89,16 @@ pub enum AExpr {
     Mul {
         factors: syn::punctuated::Punctuated<AExpr, syn::Token![*]>,
     },
+    Sum {
+        first_sign: Option<ASign>,
+        terms: syn::punctuated::Punctuated<AExpr, ASign>,
+    },
+}
+
+#[derive(Debug)]
+pub enum ASign {
+    Plus(syn::Token![+]),
+    Minus(syn::Token![-]),
 }
 
 /// AST of an identifier, including variable names, function names, and types.

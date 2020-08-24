@@ -98,6 +98,15 @@ pub enum LExpr {
     Mul {
         factors: Vec<LExpr>,
     },
+    Sum {
+        terms: Vec<(Option<LSign>, LExpr)>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum LSign {
+    Plus,
+    Minus,
 }
 
 #[derive(Debug, Clone)]

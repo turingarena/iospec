@@ -42,6 +42,19 @@ impl FormatInto<()> for &HVal {
             HValExpr::Mul { factors, .. } => quote_in!(*tokens =>
                 #(for f in factors join ( * ) => #(f.as_ref()))
             ),
+            HValExpr::Sum { terms, .. } => quote_in!(*tokens =>
+                #(for (sign, term) in terms join ( ) => #sign#(term.as_ref()))
+            ),
+        }
+    }
+}
+
+impl FormatInto<()> for &HSign {
+    fn format_into(self: Self, tokens: &mut Tokens) {
+        match self {
+            HSign::Plus(None) => quote_in!(*tokens => ),
+            HSign::Plus(Some(_)) => quote_in!(*tokens => +),
+            HSign::Minus(_) => quote_in!(*tokens => -),
         }
     }
 }

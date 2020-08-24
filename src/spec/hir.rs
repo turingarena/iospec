@@ -204,7 +204,18 @@ pub enum HValExpr {
         ops: Vec<syn::Token![*]>,
         ty: Rc<HAtomTy>,
     },
+    Sum {
+        terms: Vec<(HSign, Rc<HAtom>)>,
+        ty: Rc<HAtomTy>,
+    },
     Err,
+}
+
+/// Type of a value (either atomic or aggregate)
+#[derive(Debug)]
+pub enum HSign {
+    Plus(Option<syn::Token![+]>),
+    Minus(syn::Token![-]),
 }
 
 /// Type of a value (either atomic or aggregate)

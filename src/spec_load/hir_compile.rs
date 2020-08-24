@@ -370,12 +370,11 @@ impl HirCompileFrom<AExpr> for HVal {
                         HErr::err()
                     }
                 },
-                HValExpr::Lit { ty, .. } => Rc::new(HValTy::Atom {
-                    atom_ty: ty.clone(),
-                }),
-                HValExpr::Mul { ty, .. } => Rc::new(HValTy::Atom {
-                    atom_ty: ty.clone(),
-                }),
+                HValExpr::Lit { ty, .. } | HValExpr::Mul { ty, .. } | HValExpr::Sum { ty, .. } => {
+                    Rc::new(HValTy::Atom {
+                        atom_ty: ty.clone(),
+                    })
+                }
                 HValExpr::Paren { inner, .. } => inner.ty.clone(),
                 HValExpr::Err => HErr::err(),
             },
@@ -511,6 +510,25 @@ impl HirCompileFrom<AExpr> for HValExpr {
                         ty: ty.clone(),
                     },
                 }
+            }
+            AExpr::Sum { first_sign, terms } => {
+                let (terms, ops) = unzip_punctuated(terms);
+
+                let terms: Vec<(HSign, Rc<HAtom>)> =
+                    std::iter::once(first_sign.map_or(HSign::Plus(None), |s| match s {
+                        ASign::Plus(op) => HSign::Plus(Some(op)),
+                        ASign::Minus(op) => HSign::Minus(op),
+                    }))
+                    .chain(ops.into_iter().map(|s| match s {
+                        ASign::Plus(op) => HSign::Plus(Some(op)),
+                        ASign::Minus(op) => HSign::Minus(op),
+                    }))
+                    .zip(terms.into_iter().map(|f| f.compile(env, dgns)))
+                    .collect();
+
+                let ty = terms.first().as_ref().unwrap().1.ty.clone();
+
+                HValExpr::Sum { terms, ty }
             }
         }
     }

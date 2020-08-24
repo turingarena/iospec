@@ -157,7 +157,23 @@ impl LirFrom<HVal> for LExpr {
             HValExpr::Mul { factors, .. } => LExpr::Mul {
                 factors: factors.iter().map(|f| f.val.lir()).collect(),
             },
+            HValExpr::Sum { terms, .. } => LExpr::Sum {
+                terms: terms
+                    .iter()
+                    .map(|(sign, t)| (sign.lir(), t.val.lir()))
+                    .collect(),
+            },
             HValExpr::Err => unreachable!(),
+        }
+    }
+}
+
+impl LirFrom<HSign> for Option<LSign> {
+    fn lir_from(sign: &HSign) -> Self {
+        match sign {
+            HSign::Plus(None) => None,
+            HSign::Plus(Some(_)) => Some(LSign::Plus),
+            HSign::Minus(_) => Some(LSign::Minus),
         }
     }
 }

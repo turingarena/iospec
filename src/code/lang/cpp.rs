@@ -84,6 +84,18 @@ impl FormatInto<CppLang> for &LExpr {
             LExpr::Mul { factors } => quote_in! { *tokens =>
                 #(for f in factors join ( * ) => #f)
             },
+            LExpr::Sum { terms } => quote_in! { *tokens =>
+                #(for (sign, t) in terms join ( ) => #(sign.as_ref())#t)
+            },
+        }
+    }
+}
+
+impl FormatInto<CppLang> for &LSign {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        match self {
+            LSign::Plus => quote_in!(*tokens => +),
+            LSign::Minus => quote_in!(*tokens => -),
         }
     }
 }

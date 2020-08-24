@@ -118,7 +118,7 @@ impl AExpr {
         let first: AExpr = Self::parse_atomic(input)?;
         Ok(if input.peek(syn::Token![*]) {
             let mut chain = syn::punctuated::Punctuated::<AExpr, syn::Token![*]>::new();
-            chain.push(first);
+            chain.push_value(first);
             while input.peek(syn::Token![*]) {
                 chain.push_punct(input.parse()?);
                 chain.push_value(input.parse()?);
@@ -128,11 +128,53 @@ impl AExpr {
             first
         })
     }
+
+    fn parse_sum(input: &ParseBuffer) -> Result<Self, Error> {
+        let first_sign: Option<ASign> = if Self::peek_sign(input) {
+            Some(input.parse()?)
+        } else {
+            None
+        };
+
+        let first: AExpr = Self::parse_mul(input)?;
+
+        Ok(if first_sign.is_some() || Self::peek_sign(input) {
+            let mut chain = syn::punctuated::Punctuated::<AExpr, ASign>::new();
+            chain.push_value(first);
+            while Self::peek_sign(input) {
+                chain.push_punct(input.parse()?);
+                chain.push_value(input.parse()?);
+            }
+            AExpr::Sum {
+                first_sign,
+                terms: chain,
+            }
+        } else {
+            first
+        })
+    }
+
+    fn peek_sign(input: &ParseBuffer) -> bool {
+        input.peek(syn::Token![+]) || input.peek(syn::Token![-])
+    }
+}
+
+impl Parse for ASign {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let la = input.lookahead1();
+        Ok(if la.peek(syn::Token![+]) {
+            ASign::Plus(input.parse()?)
+        } else if la.peek(syn::Token![-]) {
+            ASign::Minus(input.parse()?)
+        } else {
+            Err(la.error())?
+        })
+    }
 }
 
 impl Parse for AExpr {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Self::parse_mul(input)
+        Self::parse_sum(input)
     }
 }
 

@@ -1,4 +1,5 @@
 use proc_macro2::Span;
+use syn::spanned::Spanned;
 
 use crate::spec::hir::*;
 
@@ -32,6 +33,21 @@ impl HasSpan for HValExpr {
                 .join(factors.last().unwrap().span())
                 .unwrap(),
             HValExpr::Err => panic!(),
+            HValExpr::Sum { terms, .. } => {
+                let extrema: Vec<_> = [terms.first(), terms.last()]
+                    .iter()
+                    .map(|t| t.unwrap())
+                    .map(|(sign, term)| {
+                        match sign {
+                            HSign::Plus(Some(op)) => Some(op.span()),
+                            HSign::Minus(op) => Some(op.span()),
+                            HSign::Plus(None) => None,
+                        }
+                        .unwrap_or(term.span())
+                    })
+                    .collect();
+                extrema[0].join(extrema[1]).unwrap()
+            }
         }
     }
 }

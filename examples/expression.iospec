@@ -1,0 +1,3 @@
+read N: i8;
+
+write N + N * 2i8;
