@@ -23,6 +23,12 @@ impl HasSpan for AExpr {
                 .unwrap_or(terms.first().unwrap().span())
                 .join(terms.last().unwrap().span())
                 .unwrap(),
+            AExpr::RelChain { chain } => chain
+                .first()
+                .unwrap()
+                .span()
+                .join(chain.last().unwrap().span())
+                .unwrap(),
         }
     }
 }

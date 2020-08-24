@@ -375,6 +375,14 @@ impl HirCompileFrom<AExpr> for HVal {
                         atom_ty: ty.clone(),
                     })
                 }
+                HValExpr::RelChain { rels, .. } => Rc::new(HValTy::Atom {
+                    atom_ty: Rc::new(HAtomTy {
+                        sem: Some(AtomTy::Bool),
+                        expr: HAtomTyExpr::Rel {
+                            rels: (*rels).clone(),
+                        },
+                    }),
+                }),
                 HValExpr::Paren { inner, .. } => inner.ty.clone(),
                 HValExpr::Err => HErr::err(),
             },
@@ -529,6 +537,21 @@ impl HirCompileFrom<AExpr> for HValExpr {
                 let ty = terms.first().as_ref().unwrap().1.ty.clone();
 
                 HValExpr::Sum { terms, ty }
+            }
+            AExpr::RelChain { chain } => {
+                let (values, ops) = unzip_punctuated(chain);
+                let values: Vec<Rc<HAtom>> =
+                    values.into_iter().map(|v| v.compile(env, dgns)).collect();
+
+                let rels: Vec<_> = values
+                    .iter()
+                    .skip(1)
+                    .zip(values.iter())
+                    .zip(ops.into_iter())
+                    .map(|((right, left), op)| (left.clone(), op, right.clone()))
+                    .collect();
+
+                HValExpr::RelChain { rels }
             }
         }
     }

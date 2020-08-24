@@ -52,6 +52,13 @@ impl HasSpan for HValExpr {
                     .collect();
                 extrema[0].join(extrema[1]).unwrap()
             }
+            HValExpr::RelChain { rels } => rels
+                .first()
+                .unwrap()
+                .0
+                .span()
+                .join(rels.last().unwrap().2.span())
+                .unwrap(),
         }
     }
 }
@@ -67,6 +74,14 @@ impl HasSpan for HAtomTy {
         match &self.expr {
             HAtomTyExpr::Name { name } => name.span(),
             HAtomTyExpr::Lit { token } => token.span(),
+            // FIXME: duplicate code
+            HAtomTyExpr::Rel { rels } => rels
+                .first()
+                .unwrap()
+                .0
+                .span()
+                .join(rels.last().unwrap().2.span())
+                .unwrap(),
             HAtomTyExpr::Err => panic!(),
         }
     }

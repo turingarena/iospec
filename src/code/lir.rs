@@ -5,6 +5,7 @@
 //! Thus, it can be easily traversed structurally and translated into code.
 
 use crate::atom::*;
+use crate::spec::rel::RelOp;
 
 #[derive(Debug, Clone)]
 pub struct LSpec {
@@ -100,6 +101,14 @@ pub enum LExpr {
     },
     Sum {
         terms: Vec<(Option<LSign>, LExpr)>,
+    },
+    Rel {
+        left: Box<LExpr>,
+        op: RelOp,
+        right: Box<LExpr>,
+    },
+    And {
+        clauses: Vec<LExpr>,
     },
 }
 

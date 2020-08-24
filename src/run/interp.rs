@@ -241,6 +241,28 @@ impl HVal {
                 }
                 cur
             }),
+            HValExpr::RelChain { rels } => {
+                let failed_rel = rels
+                    .iter()
+                    .map::<Result<bool, RError>, _>(|(left, op, right)| {
+                        let left = HVal::eval_atom(&left.val, state)?.value_i64();
+                        let right = HVal::eval_atom(&right.val, state)?.value_i64();
+
+                        Ok(op.apply(left, right))
+                    })
+                    .find(|r| if let Ok(false) = r { true } else { false });
+
+                RVal::Atom(Atom::new(
+                    AtomTy::Bool,
+                    match failed_rel {
+                        Some(res) => {
+                            res?;
+                            0
+                        }
+                        None => 1,
+                    },
+                ))
+            }
         })
     }
 

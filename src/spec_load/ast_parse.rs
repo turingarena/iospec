@@ -6,6 +6,7 @@ use syn::punctuated::Punctuated;
 use syn::Error;
 
 use crate::spec::kw;
+use crate::spec::rel::RelOp;
 
 use super::ast::*;
 use super::diagnostic::*;
@@ -154,8 +155,37 @@ impl AExpr {
         })
     }
 
+    fn parse_rel(input: &ParseBuffer) -> Result<Self, Error> {
+        let first: AExpr = Self::parse_sum(input)?;
+
+        Ok(if Self::peek_rel_op(input) {
+            let mut chain = syn::punctuated::Punctuated::<AExpr, RelOp>::new();
+            chain.push_value(first);
+            while Self::peek_rel_op(input) {
+                chain.push_punct(input.parse()?);
+                chain.push_value(Self::parse_sum(input)?);
+            }
+            AExpr::RelChain { chain }
+        } else {
+            first
+        })
+    }
+
     fn peek_sign(input: &ParseBuffer) -> bool {
         input.peek(syn::Token![+]) || input.peek(syn::Token![-])
+    }
+
+    fn peek_rel_op(input: &ParseBuffer) -> bool {
+        [
+            input.peek(syn::Token![==]),
+            input.peek(syn::Token![!=]),
+            input.peek(syn::Token![<=]),
+            input.peek(syn::Token![>=]),
+            input.peek(syn::Token![<]),
+            input.peek(syn::Token![>]),
+        ]
+        .iter()
+        .any(|b| *b)
     }
 }
 
@@ -172,9 +202,30 @@ impl Parse for ASign {
     }
 }
 
+impl Parse for RelOp {
+    fn parse(input: &ParseBuffer) -> Result<Self, Error> {
+        let la = input.lookahead1();
+        Ok(if la.peek(syn::Token![==]) {
+            RelOp::Eq(input.parse()?)
+        } else if la.peek(syn::Token![!=]) {
+            RelOp::Ne(input.parse()?)
+        } else if la.peek(syn::Token![<=]) {
+            RelOp::Le(input.parse()?)
+        } else if la.peek(syn::Token![>=]) {
+            RelOp::Ge(input.parse()?)
+        } else if la.peek(syn::Token![<]) {
+            RelOp::Lt(input.parse()?)
+        } else if la.peek(syn::Token![>]) {
+            RelOp::Gt(input.parse()?)
+        } else {
+            Err(la.error())?
+        })
+    }
+}
+
 impl Parse for AExpr {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let expr = Self::parse_sum(input);
+        let expr = Self::parse_rel(input);
         eprintln!("{:?}", expr);
         expr
     }

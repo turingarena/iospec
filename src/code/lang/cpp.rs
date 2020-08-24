@@ -4,6 +4,7 @@ use genco::prelude::*;
 
 use crate::atom::*;
 use crate::code::lir::*;
+use crate::spec::rel::RelOp;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CppLang;
@@ -87,6 +88,12 @@ impl FormatInto<CppLang> for &LExpr {
             LExpr::Sum { terms } => quote_in! { *tokens =>
                 #(for (sign, t) in terms join ( ) => #(sign.as_ref())#t)
             },
+            LExpr::Rel { left, op, right } => quote_in! { *tokens =>
+                #(left.as_ref()) #op #(right.as_ref())
+            },
+            LExpr::And { clauses } => quote_in! { *tokens =>
+                #(for clause in clauses join ( && ) => #clause)
+            },
         }
     }
 }
@@ -97,6 +104,12 @@ impl FormatInto<CppLang> for &LSign {
             LSign::Plus => quote_in!(*tokens => +),
             LSign::Minus => quote_in!(*tokens => -),
         }
+    }
+}
+
+impl FormatInto<CppLang> for &RelOp {
+    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+        quote_in!(*tokens => #self)
     }
 }
 

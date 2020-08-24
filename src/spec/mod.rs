@@ -2,6 +2,8 @@ pub use main::*;
 
 pub mod kw;
 
+pub mod rel;
+
 pub mod sess;
 
 pub mod hir;

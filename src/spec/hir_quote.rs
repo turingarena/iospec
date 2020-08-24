@@ -45,6 +45,12 @@ impl FormatInto<()> for &HVal {
             HValExpr::Sum { terms, .. } => quote_in!(*tokens =>
                 #(for (sign, term) in terms join ( ) => #sign#(term.as_ref()))
             ),
+            HValExpr::RelChain { rels } => quote_in!(*tokens =>
+                #(
+                    for (left, op, right) in rels join ( and ) =>
+                    #(left.val.as_ref()) #(format!("{}", op)) #(right.val.as_ref())
+                )
+            ),
         }
     }
 }

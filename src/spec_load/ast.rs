@@ -6,6 +6,7 @@ extern crate syn;
 use syn::punctuated::Punctuated;
 
 use crate::spec::kw;
+use crate::spec::rel::*;
 
 /// AST of a spec file as a whole. Wraps `ABlock`.
 #[derive(Debug)]
@@ -92,6 +93,9 @@ pub enum AExpr {
     Sum {
         first_sign: Option<ASign>,
         terms: syn::punctuated::Punctuated<AExpr, ASign>,
+    },
+    RelChain {
+        chain: syn::punctuated::Punctuated<AExpr, RelOp>,
     },
 }
 

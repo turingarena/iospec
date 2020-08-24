@@ -19,6 +19,7 @@ pub use std::rc::Rc;
 
 use crate::atom::*;
 use crate::spec::kw;
+use crate::spec::rel::*;
 
 #[derive(Debug)]
 pub struct HSpec {
@@ -208,6 +209,9 @@ pub enum HValExpr {
         terms: Vec<(HSign, Rc<HAtom>)>,
         ty: Rc<HAtomTy>,
     },
+    RelChain {
+        rels: Vec<(Rc<HAtom>, RelOp, Rc<HAtom>)>,
+    },
     Err,
 }
 
@@ -236,8 +240,16 @@ pub struct HAtomTy {
 /// Type of an atomic value (construction)
 #[derive(Debug)]
 pub enum HAtomTyExpr {
-    Name { name: Rc<HName> },
-    Lit { token: syn::LitInt },
+    Name {
+        name: Rc<HName>,
+    },
+    Lit {
+        token: syn::LitInt,
+    },
+    /// Result of a comparison
+    Rel {
+        rels: Vec<(Rc<HAtom>, RelOp, Rc<HAtom>)>,
+    },
     Err,
 }
 

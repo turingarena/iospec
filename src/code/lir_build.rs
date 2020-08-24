@@ -163,6 +163,16 @@ impl LirFrom<HVal> for LExpr {
                     .map(|(sign, t)| (sign.lir(), t.val.lir()))
                     .collect(),
             },
+            HValExpr::RelChain { rels } => LExpr::And {
+                clauses: rels
+                    .iter()
+                    .map(|(left, op, right)| LExpr::Rel {
+                        left: Box::new(left.val.lir()),
+                        op: op.clone(),
+                        right: Box::new(right.val.lir()),
+                    })
+                    .collect(),
+            },
             HValExpr::Err => unreachable!(),
         }
     }
