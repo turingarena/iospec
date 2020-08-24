@@ -151,6 +151,9 @@ impl LirFrom<HVal> for LExpr {
             HValExpr::Lit { value, .. } => LExpr::Lit {
                 value: value.value_i64(),
             },
+            HValExpr::Paren { inner, .. } => LExpr::Paren {
+                inner: Box::new(inner.lir()),
+            },
             HValExpr::Err => unreachable!(),
         }
     }

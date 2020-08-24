@@ -82,6 +82,10 @@ pub enum AExpr {
         bracket: syn::token::Bracket,
         index: Box<AExpr>,
     },
+    Paren {
+        paren: syn::token::Paren,
+        inner: Box<AExpr>,
+    },
 }
 
 /// AST of an identifier, including variable names, function names, and types.

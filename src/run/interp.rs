@@ -202,6 +202,7 @@ impl HVal {
                 }
             }
             HValExpr::Lit { value, .. } => RVal::Atom(*value),
+            HValExpr::Paren { inner, .. } => HVal::eval(inner, state)?,
             HValExpr::Err => unreachable!(),
         })
     }
@@ -243,6 +244,7 @@ impl HVal {
                 }
             }
             HValExpr::Lit { value, .. } => RValMut::ConstAtom(*value),
+            HValExpr::Paren { inner, .. } => HVal::eval_mut(inner, state)?,
             HValExpr::Err => unreachable!(),
         })
     }

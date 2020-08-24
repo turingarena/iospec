@@ -37,6 +37,7 @@ impl FormatInto<()> for &HVal {
                 quote_in!(*tokens => #(array.as_ref())[#(index.as_ref())])
             }
             HValExpr::Lit { token, .. } => quote_in!(*tokens => #(token.to_string())),
+            HValExpr::Paren { inner, .. } => quote_in!(*tokens => (#(inner.as_ref()))),
             HValExpr::Err => quote_in!(*tokens => <<invalid val expr>>),
         }
     }

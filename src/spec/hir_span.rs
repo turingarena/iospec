@@ -24,6 +24,7 @@ impl HasSpan for HValExpr {
             HValExpr::Var { name, .. } => name.ident.span(),
             HValExpr::Subscript { array, bracket, .. } => array.span().join(bracket.span).unwrap(),
             HValExpr::Lit { token, .. } => token.span(),
+            HValExpr::Paren { paren, .. } => paren.span,
             HValExpr::Err => panic!(),
         }
     }

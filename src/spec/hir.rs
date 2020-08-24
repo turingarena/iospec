@@ -195,6 +195,10 @@ pub enum HValExpr {
         bracket: syn::token::Bracket,
         index: Rc<HVal>,
     },
+    Paren {
+        paren: syn::token::Paren,
+        inner: Rc<HVal>,
+    },
     Err,
 }
 

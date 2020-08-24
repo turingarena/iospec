@@ -220,10 +220,6 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDef {
 impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
     fn compile(ast: AExpr, env: &HDefEnv, dgns: &mut Vec<Diagnostic>) -> Self {
         match ast {
-            AExpr::IntLit { token } => {
-                dgns.push(Diagnostic::DefInvalidExpression { span: token.span() });
-                HErr::err()
-            }
             AExpr::Ref { ident } => HNodeDefExpr::Var {
                 var: ident.compile(env, dgns),
             },
@@ -300,6 +296,14 @@ impl HirCompileFrom<AExpr, HDefEnv> for HNodeDefExpr {
                     }
                 }
             }
+            AExpr::Paren { paren, .. } => {
+                dgns.push(Diagnostic::DefInvalidExpression { span: paren.span });
+                HErr::err()
+            }
+            AExpr::IntLit { token } => {
+                dgns.push(Diagnostic::DefInvalidExpression { span: token.span() });
+                HErr::err()
+            }
         }
     }
 }
@@ -372,6 +376,7 @@ impl HirCompileFrom<AExpr> for HVal {
                 HValExpr::Lit { ty, .. } => Rc::new(HValTy::Atom {
                     atom_ty: ty.clone(),
                 }),
+                HValExpr::Paren { inner, .. } => inner.ty.clone(),
                 HValExpr::Err => HErr::err(),
             },
             expr,
@@ -479,6 +484,10 @@ impl HirCompileFrom<AExpr> for HValExpr {
                 array: (*array).compile(env, dgns),
                 index: (*index).compile(env, dgns),
                 bracket,
+            },
+            AExpr::Paren { paren, inner } => HValExpr::Paren {
+                paren,
+                inner: (*inner).compile(env, dgns),
             },
         }
     }

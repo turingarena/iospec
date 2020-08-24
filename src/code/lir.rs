@@ -92,6 +92,9 @@ pub enum LExpr {
     Lit {
         value: i64,
     },
+    Paren {
+        inner: Box<LExpr>,
+    },
 }
 
 #[derive(Debug, Clone)]

@@ -86,7 +86,14 @@ impl Parse for AStmt {
 
 impl Parse for AExpr {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        let mut current = if input.peek(syn::Lit) {
+        let mut current = if input.peek(syn::token::Paren) {
+            let inner_input;
+
+            AExpr::Paren {
+                paren: syn::parenthesized!(inner_input in input),
+                inner: Box::new(inner_input.parse()?),
+            }
+        } else if input.peek(syn::Lit) {
             AExpr::IntLit {
                 token: input.parse()?,
             }

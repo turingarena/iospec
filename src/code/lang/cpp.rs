@@ -78,6 +78,9 @@ impl FormatInto<CppLang> for &LExpr {
             LExpr::Lit { value } => quote_in! { *tokens =>
                 #(*value)
             },
+            LExpr::Paren { inner } => quote_in! { *tokens =>
+                (#(inner.as_ref()))
+            },
         }
     }
 }
