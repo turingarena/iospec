@@ -121,7 +121,7 @@ impl AExpr {
             chain.push_value(first);
             while input.peek(syn::Token![*]) {
                 chain.push_punct(input.parse()?);
-                chain.push_value(input.parse()?);
+                chain.push_value(Self::parse_atomic(input)?);
             }
             AExpr::Mul { factors: chain }
         } else {
@@ -143,7 +143,7 @@ impl AExpr {
             chain.push_value(first);
             while Self::peek_sign(input) {
                 chain.push_punct(input.parse()?);
-                chain.push_value(input.parse()?);
+                chain.push_value(Self::parse_mul(input)?);
             }
             AExpr::Sum {
                 first_sign,
@@ -174,7 +174,9 @@ impl Parse for ASign {
 
 impl Parse for AExpr {
     fn parse(input: &ParseBuffer) -> Result<Self, Error> {
-        Self::parse_sum(input)
+        let expr = Self::parse_sum(input);
+        eprintln!("{:?}", expr);
+        expr
     }
 }
 

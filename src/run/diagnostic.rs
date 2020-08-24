@@ -88,7 +88,7 @@ impl RError {
                 "overflow while computing expression value",
                 vec![
                     sess.error_ann(
-                        &format!("too big for `{}`", quote_hir(ty.as_ref())),
+                        &format!("outside range of `{}`", quote_hir(ty.as_ref())),
                         val.span(),
                     ),
                     sess.info_ann("type specified here", ty.span()),

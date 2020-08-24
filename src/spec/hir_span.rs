@@ -38,12 +38,16 @@ impl HasSpan for HValExpr {
                     .iter()
                     .map(|t| t.unwrap())
                     .map(|(sign, term)| {
-                        match sign {
+                        let sign_span = match sign {
                             HSign::Plus(Some(op)) => Some(op.span()),
                             HSign::Minus(op) => Some(op.span()),
                             HSign::Plus(None) => None,
+                        };
+                        if let Some(span) = sign_span {
+                            term.span().join(span).unwrap()
+                        } else {
+                            term.span()
                         }
-                        .unwrap_or(term.span())
                     })
                     .collect();
                 extrema[0].join(extrema[1]).unwrap()
