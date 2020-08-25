@@ -84,6 +84,7 @@ pub enum LStmt<L: CodeLang> {
     For {
         allocs: Vec<Lir<L, LAlloc<L>>>,
         index: Lir<L, LDecl<L>>,
+        index_name: String,
         index_ty: Lir<L, AtomTy>,
         bound: Lir<L, LExpr<L>>,
         body: Lir<L, LBlock<L>>,
@@ -139,7 +140,7 @@ pub enum LExpr<L: CodeLang> {
         factors: Vec<Lir<L, LExpr<L>>>,
     },
     Sum {
-        terms: Vec<(Lir<L, Option<LSign>>, Lir<L, LExpr<L>>)>,
+        terms: Vec<(Lir<L, LSign>, Lir<L, LExpr<L>>)>,
     },
     Rel {
         left: Box<Lir<L, LExpr<L>>>,
@@ -153,6 +154,7 @@ pub enum LExpr<L: CodeLang> {
 
 #[derive(Debug, Clone)]
 pub enum LSign {
+    ImplicitPlus,
     Plus,
     Minus,
 }

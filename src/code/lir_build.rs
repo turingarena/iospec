@@ -80,6 +80,7 @@ impl<L: CodeLang> LirFromRc<HStep, L> for LStmt<L> {
                     .map(|h| h.lir(lang))
                     .collect(),
                 index: range.lir(lang),
+                index_name: range.index.to_string(),
                 index_ty: range.bound.ty.lir(lang),
                 bound: range.bound.val.lir(lang),
                 body: body.lir(lang),
@@ -182,23 +183,23 @@ impl<L: CodeLang> LirFromRc<HVal, L> for LExpr<L> {
             HValExpr::Sum { terms, .. } => LExpr::Sum {
                 terms: terms
                     .iter()
-                    .map(|(sign, t)| (sign.lir(lang), t.val.lir(lang)))
+                    .map(|(sign, t)| {
+                        (
+                            match sign {
+                                HSign::Plus(None) => LSign::ImplicitPlus,
+                                HSign::Plus(Some(_)) => LSign::Plus,
+                                HSign::Minus(_) => LSign::Minus,
+                            }
+                            .lir(lang),
+                            t.val.lir(lang),
+                        )
+                    })
                     .collect(),
             },
             HValExpr::RelChain { rels } => LExpr::And {
                 clauses: rels.iter().map(|x| x.lir(lang)).collect(),
             },
             HValExpr::Err => unreachable!(),
-        }
-    }
-}
-
-impl<L: CodeLang> LirFrom<HSign, L> for Option<LSign> {
-    fn lir_from(sign: &HSign, _lang: &L) -> Self {
-        match sign {
-            HSign::Plus(None) => None,
-            HSign::Plus(Some(_)) => Some(LSign::Plus),
-            HSign::Minus(_) => Some(LSign::Minus),
         }
     }
 }
@@ -247,6 +248,12 @@ impl<L: CodeLang> LirFrom<HRel, L> for LExpr<L> {
 impl<L: CodeLang> LirFrom<RelOp, L> for RelOp {
     fn lir_from(op: &RelOp, _lang: &L) -> Self {
         op.clone()
+    }
+}
+
+impl<L: CodeLang> LirFrom<LSign, L> for LSign {
+    fn lir_from(sign: &LSign, _lang: &L) -> Self {
+        sign.clone()
     }
 }
 

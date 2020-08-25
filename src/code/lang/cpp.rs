@@ -3,6 +3,7 @@ extern crate genco;
 use genco::prelude::*;
 
 use crate::atom::*;
+use crate::code::lang::common::CommonLang;
 use crate::spec::rel::RelOp;
 
 use super::lir::*;
@@ -58,58 +59,26 @@ impl Code<Cpp> for LParam<Cpp> {
 }
 
 impl Code<Cpp> for LBlock<Cpp> {
-    fn code_into(self: &Self, _lang: &Cpp, tokens: &mut Tokens) {
-        let LBlock { stmts } = self;
-        quote_in! { *tokens =>
-            #(for stmt in stmts join (#<line>) => #stmt)
-        }
+    fn code_into(self: &Self, lang: &Cpp, tokens: &mut Tokens) {
+        CommonLang(self).code_into(lang, tokens)
     }
 }
 
 impl Code<Cpp> for LExpr<Cpp> {
-    fn code_into(self: &Self, _lang: &Cpp, tokens: &mut Tokens) {
-        match self {
-            LExpr::Var { name } => quote_in! { *tokens =>
-                #name
-            },
-            LExpr::Subscript { array, index } => quote_in! { *tokens =>
-                #array[#index]
-            },
-            LExpr::Lit { value } => quote_in! { *tokens =>
-                #(*value)
-            },
-            LExpr::Paren { inner } => quote_in! { *tokens =>
-                (#inner)
-            },
-            LExpr::Mul { factors } => quote_in! { *tokens =>
-                #(for f in factors join ( * ) => #f)
-            },
-            LExpr::Sum { terms } => quote_in! { *tokens =>
-                #(for (sign, t) in terms join ( ) => #sign #t)
-            },
-            LExpr::Rel { left, op, right } => quote_in! { *tokens =>
-                #left #op #right
-            },
-            LExpr::And { clauses } => quote_in! { *tokens =>
-                #(for clause in clauses join ( && ) => #clause)
-            },
-        }
+    fn code_into(self: &Self, lang: &Cpp, tokens: &mut Tokens) {
+        CommonLang(self).code_into(lang, tokens)
     }
 }
 
-impl Code<Cpp> for Option<LSign> {
-    fn code_into(self: &Self, _lang: &Cpp, tokens: &mut Tokens) {
-        match self {
-            Some(LSign::Plus) => quote_in!(*tokens => +),
-            Some(LSign::Minus) => quote_in!(*tokens => -),
-            None => (),
-        }
+impl Code<Cpp> for LSign {
+    fn code_into(self: &Self, lang: &Cpp, tokens: &mut Tokens) {
+        CommonLang(self).code_into(lang, tokens)
     }
 }
 
 impl Code<Cpp> for RelOp {
-    fn code_into(self: &Self, _lang: &Cpp, tokens: &mut Tokens) {
-        quote_in!(*tokens => #(self.to_string()))
+    fn code_into(self: &Self, lang: &Cpp, tokens: &mut Tokens) {
+        CommonLang(self).code_into(lang, tokens)
     }
 }
 
@@ -204,22 +173,20 @@ impl Code<Cpp> for LStmt<Cpp> {
             },
             LStmt::For {
                 allocs,
-                index,
+                index_name: i,
                 index_ty,
                 bound,
                 body,
-            } => {
-                let i = &index.name;
-                quote_in! { *tokens =>
-                    #(
-                        for alloc in allocs join (#<push>) =>
-                        #alloc
-                    )
-                    for(#index_ty #i = 0; #i < #bound; #i++) {
-                        #body
-                    }
+                ..
+            } => quote_in! { *tokens =>
+                #(
+                    for alloc in allocs join (#<push>) =>
+                    #alloc
+                )
+                for(#index_ty #i = 0; #i < #bound; #i++) {
+                    #body
                 }
-            }
+            },
             LStmt::Assume { cond } => quote_in! { *tokens =>
                 assert(#cond);
             },
