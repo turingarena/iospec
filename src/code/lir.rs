@@ -11,30 +11,30 @@ use crate::atom::*;
 use crate::spec::rel::RelOp;
 use std::ops::Deref;
 
-pub trait LirConfig: Clone {}
+pub trait CodeLang: Clone {}
 
 #[derive(Debug, Clone)]
-pub struct Lir<C: LirConfig, T> {
-    pub config: C,
+pub struct Lir<L: CodeLang, T> {
+    pub lang: L,
     pub code: Rc<T>,
 }
 
-impl<C: LirConfig, T> Lir<C, T> {
-    pub fn with_config<FF: LirConfig>(self: &Self, config: FF) -> Lir<FF, T> {
+impl<L: CodeLang, T> Lir<L, T> {
+    pub fn with_lang<FF: CodeLang>(self: &Self, lang: FF) -> Lir<FF, T> {
         Lir {
             code: self.code.clone(),
-            config,
+            lang,
         }
     }
 }
 
-impl<C: LirConfig, T> AsRef<T> for Lir<C, T> {
+impl<L: CodeLang, T> AsRef<T> for Lir<L, T> {
     fn as_ref(self: &Self) -> &T {
         self.code.as_ref()
     }
 }
 
-impl<C: LirConfig, T> Deref for Lir<C, T> {
+impl<L: CodeLang, T> Deref for Lir<L, T> {
     type Target = T;
 
     fn deref(self: &Self) -> &Self::Target {
@@ -43,121 +43,121 @@ impl<C: LirConfig, T> Deref for Lir<C, T> {
 }
 
 #[derive(Debug, Clone)]
-pub struct LSpec<C: LirConfig> {
-    pub funs: Vec<Lir<C, LFun<C>>>,
-    pub main: Lir<C, LBlock<C>>,
+pub struct LSpec<L: CodeLang> {
+    pub funs: Vec<Lir<L, LFun<L>>>,
+    pub main: Lir<L, LBlock<L>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LFun<C: LirConfig> {
+pub struct LFun<L: CodeLang> {
     pub name: String,
-    pub params: Vec<Lir<C, LParam<C>>>,
-    pub ret: Option<Lir<C, AtomTy>>,
+    pub params: Vec<Lir<L, LParam<L>>>,
+    pub ret: Option<Lir<L, AtomTy>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LParam<C: LirConfig> {
+pub struct LParam<L: CodeLang> {
     pub name: String,
-    pub ty: Lir<C, LTy<C>>,
+    pub ty: Lir<L, LTy<L>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LBlock<C: LirConfig> {
-    pub stmts: Vec<Lir<C, LStmt<C>>>,
+pub struct LBlock<L: CodeLang> {
+    pub stmts: Vec<Lir<L, LStmt<L>>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum LStmt<C: LirConfig> {
+pub enum LStmt<L: CodeLang> {
     Read {
-        args: Vec<Lir<C, LReadArg<C>>>,
+        args: Vec<Lir<L, LReadArg<L>>>,
     },
     Write {
-        args: Vec<Lir<C, LWriteArg<C>>>,
+        args: Vec<Lir<L, LWriteArg<L>>>,
     },
     Call {
-        decl: Option<Lir<C, LDecl<C>>>,
+        decl: Option<Lir<L, LDecl<L>>>,
         name: String,
-        args: Vec<Lir<C, LExpr<C>>>,
-        ret: Option<Lir<C, LExpr<C>>>,
+        args: Vec<Lir<L, LExpr<L>>>,
+        ret: Option<Lir<L, LExpr<L>>>,
     },
     For {
-        allocs: Vec<Lir<C, LAlloc<C>>>,
-        index: Lir<C, LDecl<C>>,
-        index_ty: Lir<C, AtomTy>,
-        bound: Lir<C, LExpr<C>>,
-        body: Lir<C, LBlock<C>>,
+        allocs: Vec<Lir<L, LAlloc<L>>>,
+        index: Lir<L, LDecl<L>>,
+        index_ty: Lir<L, AtomTy>,
+        bound: Lir<L, LExpr<L>>,
+        body: Lir<L, LBlock<L>>,
     },
     Assume {
-        cond: Lir<C, LExpr<C>>,
+        cond: Lir<L, LExpr<L>>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct LDecl<C: LirConfig> {
-    pub ty: Lir<C, LTy<C>>,
+pub struct LDecl<L: CodeLang> {
+    pub ty: Lir<L, LTy<L>>,
     pub name: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct LReadArg<C: LirConfig> {
-    pub decl: Option<Lir<C, LDecl<C>>>,
-    pub expr: Lir<C, LExpr<C>>,
-    pub ty: Lir<C, AtomTy>,
+pub struct LReadArg<L: CodeLang> {
+    pub decl: Option<Lir<L, LDecl<L>>>,
+    pub expr: Lir<L, LExpr<L>>,
+    pub ty: Lir<L, AtomTy>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LWriteArg<C: LirConfig> {
-    pub expr: Lir<C, LExpr<C>>,
-    pub ty: Lir<C, AtomTy>,
+pub struct LWriteArg<L: CodeLang> {
+    pub expr: Lir<L, LExpr<L>>,
+    pub ty: Lir<L, AtomTy>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LAlloc<C: LirConfig> {
-    pub decl: Option<Lir<C, LDecl<C>>>,
-    pub array: Lir<C, LExpr<C>>,
-    pub item_ty: Lir<C, LTy<C>>,
-    pub size: Lir<C, LExpr<C>>,
+pub struct LAlloc<L: CodeLang> {
+    pub decl: Option<Lir<L, LDecl<L>>>,
+    pub array: Lir<L, LExpr<L>>,
+    pub item_ty: Lir<L, LTy<L>>,
+    pub size: Lir<L, LExpr<L>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum LExpr<C: LirConfig> {
+pub enum LExpr<L: CodeLang> {
     Var {
         name: String,
     },
     Subscript {
-        array: Box<Lir<C, LExpr<C>>>,
-        index: Box<Lir<C, LExpr<C>>>,
+        array: Box<Lir<L, LExpr<L>>>,
+        index: Box<Lir<L, LExpr<L>>>,
     },
     Lit {
         value: i64,
     },
     Paren {
-        inner: Box<Lir<C, LExpr<C>>>,
+        inner: Box<Lir<L, LExpr<L>>>,
     },
     Mul {
-        factors: Vec<Lir<C, LExpr<C>>>,
+        factors: Vec<Lir<L, LExpr<L>>>,
     },
     Sum {
-        terms: Vec<(Lir<C, Option<LSign<C>>>, Lir<C, LExpr<C>>)>,
+        terms: Vec<(Lir<L, Option<LSign<L>>>, Lir<L, LExpr<L>>)>,
     },
     Rel {
-        left: Box<Lir<C, LExpr<C>>>,
-        op: Lir<C, RelOp>,
-        right: Box<Lir<C, LExpr<C>>>,
+        left: Box<Lir<L, LExpr<L>>>,
+        op: Lir<L, RelOp>,
+        right: Box<Lir<L, LExpr<L>>>,
     },
     And {
-        clauses: Vec<Lir<C, LExpr<C>>>,
+        clauses: Vec<Lir<L, LExpr<L>>>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub enum LSign<C: LirConfig> {
-    Plus(PhantomData<C>),
-    Minus(PhantomData<C>),
+pub enum LSign<L: CodeLang> {
+    Plus(PhantomData<L>),
+    Minus(PhantomData<L>),
 }
 
 #[derive(Debug, Clone)]
-pub enum LTy<C: LirConfig> {
-    Atom { atom: Lir<C, AtomTy> },
-    Array { item: Box<Lir<C, LTy<C>>> },
+pub enum LTy<L: CodeLang> {
+    Atom { atom: Lir<L, AtomTy> },
+    Array { item: Box<Lir<L, LTy<L>>> },
 }

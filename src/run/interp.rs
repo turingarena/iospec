@@ -12,13 +12,13 @@ use super::state::*;
 use super::val::*;
 
 impl HSpec {
-    pub fn run<C: RunContext>(self: &Self, state: &mut RState, ctx: &mut C) -> Result<(), RError> {
+    pub fn run<L: RunContext>(self: &Self, state: &mut RState, ctx: &mut L) -> Result<(), RError> {
         self.main.run(state, ctx)
     }
 }
 
 impl HStep {
-    fn run<C: RunContext>(self: &Self, state: &mut RState, ctx: &mut C) -> Result<(), RError> {
+    fn run<L: RunContext>(self: &Self, state: &mut RState, ctx: &mut L) -> Result<(), RError> {
         match &self.expr {
             HStepExpr::Seq { steps, .. } => {
                 for step in steps {
