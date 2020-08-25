@@ -87,7 +87,7 @@ impl FormatInto<CppLang> for &LExpr {
                 #(for f in factors join ( * ) => #f)
             },
             LExpr::Sum { terms } => quote_in! { *tokens =>
-                #(for (sign, t) in terms join ( ) => #(sign.as_ref())#t)
+                #(for (sign, t) in terms join ( ) => #(sign.as_ref()) #t)
             },
             LExpr::Rel { left, op, right } => quote_in! { *tokens =>
                 #(left.as_ref()) #op #(right.as_ref())
