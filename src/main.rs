@@ -23,7 +23,7 @@ fn main() -> Result<(), ()> {
             use code::*;
 
             let spec = spec_load(&spec_file)?;
-            let code = code_gen(&spec);
+            let code = code_gen::<code::lang::Cpp>(&spec);
 
             print!("{}", code);
         }

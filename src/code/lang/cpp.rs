@@ -3,20 +3,18 @@ extern crate genco;
 use genco::prelude::*;
 
 use crate::atom::*;
-use crate::code::lir::*;
 use crate::spec::rel::RelOp;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CppLang;
+use super::lir::*;
+use super::lir_code::*;
 
-impl Lang for CppLang {
-    type Config = ();
-    type Format = ();
-    type Item = ();
-}
+#[derive(Debug, Clone)]
+pub struct Cpp;
 
-impl FormatInto<CppLang> for &LSpec {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl LirFlavor for Cpp {}
+
+impl Code for LSpec<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         let LSpec { funs, main } = self;
         quote_in! {*tokens =>
             ##include <cstdio>
@@ -35,8 +33,8 @@ impl FormatInto<CppLang> for &LSpec {
     }
 }
 
-impl FormatInto<CppLang> for &LFun {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for LFun<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         let LFun { name, params, ret } = self;
         quote_in! {*tokens =>
             #(match ret {
@@ -50,8 +48,8 @@ impl FormatInto<CppLang> for &LFun {
     }
 }
 
-impl FormatInto<CppLang> for &LParam {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for LParam<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         let LParam { name, ty } = self;
         quote_in! { *tokens =>
             #ty #name
@@ -59,8 +57,8 @@ impl FormatInto<CppLang> for &LParam {
     }
 }
 
-impl FormatInto<CppLang> for &LBlock {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for LBlock<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         let LBlock { stmts } = self;
         quote_in! { *tokens =>
             #(for stmt in stmts join (#<line>) => #stmt)
@@ -68,29 +66,29 @@ impl FormatInto<CppLang> for &LBlock {
     }
 }
 
-impl FormatInto<CppLang> for &LExpr {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for LExpr<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         match self {
             LExpr::Var { name } => quote_in! { *tokens =>
                 #name
             },
             LExpr::Subscript { array, index } => quote_in! { *tokens =>
-                #(array.as_ref())[#(index.as_ref())]
+                #array[#index]
             },
             LExpr::Lit { value } => quote_in! { *tokens =>
                 #(*value)
             },
             LExpr::Paren { inner } => quote_in! { *tokens =>
-                (#(inner.as_ref()))
+                (#inner)
             },
             LExpr::Mul { factors } => quote_in! { *tokens =>
                 #(for f in factors join ( * ) => #f)
             },
             LExpr::Sum { terms } => quote_in! { *tokens =>
-                #(for (sign, t) in terms join ( ) => #(sign.as_ref()) #t)
+                #(for (sign, t) in terms join ( ) => #sign #t)
             },
             LExpr::Rel { left, op, right } => quote_in! { *tokens =>
-                #(left.as_ref()) #op #(right.as_ref())
+                #left #op #right
             },
             LExpr::And { clauses } => quote_in! { *tokens =>
                 #(for clause in clauses join ( && ) => #clause)
@@ -99,24 +97,25 @@ impl FormatInto<CppLang> for &LExpr {
     }
 }
 
-impl FormatInto<CppLang> for &LSign {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for Option<LSign<Cpp>> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         match self {
-            LSign::Plus => quote_in!(*tokens => +),
-            LSign::Minus => quote_in!(*tokens => -),
+            Some(LSign::Plus(_)) => quote_in!(*tokens => +),
+            Some(LSign::Minus(_)) => quote_in!(*tokens => -),
+            None => (),
         }
     }
 }
 
-impl FormatInto<CppLang> for &RelOp {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for Lir<Cpp, RelOp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         quote_in!(*tokens => #(self.to_string()))
     }
 }
 
-impl FormatInto<CppLang> for &AtomTy {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
-        match self {
+impl Code for Lir<Cpp, AtomTy> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
+        match self.as_ref() {
             AtomTy::Bool => quote_in!(*tokens => bool),
             AtomTy::Nat { size } | AtomTy::Int { size } => {
                 quote_in!(*tokens => int#(size.bits())_t)
@@ -125,11 +124,14 @@ impl FormatInto<CppLang> for &AtomTy {
     }
 }
 
-struct Format<'a>(&'a AtomTy);
+#[derive(Debug, Clone)]
+struct CppFormat;
 
-impl FormatInto<CppLang> for Format<'_> {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
-        match self.0 {
+impl LirFlavor for CppFormat {}
+
+impl Code for Lir<CppFormat, AtomTy> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
+        match self.as_ref() {
             AtomTy::Bool => quote_in!(*tokens => %d),
             AtomTy::Nat { size } | AtomTy::Int { size } => match size {
                 BitSize::S8 | BitSize::S16 | BitSize::S32 => quote_in!(*tokens => %d),
@@ -139,23 +141,23 @@ impl FormatInto<CppLang> for Format<'_> {
     }
 }
 
-impl FormatInto<CppLang> for &LTy {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for LTy<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         match self {
             LTy::Atom { atom } => quote_in!(*tokens => #atom),
-            LTy::Array { item } => quote_in!(*tokens => #(item.as_ref())*),
+            LTy::Array { item } => quote_in!(*tokens => #item*),
         }
     }
 }
 
-impl FormatInto<CppLang> for &LStmt {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for LStmt<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         match self {
             LStmt::Write { args } => quote_in! { *tokens =>
                 printf(#(quoted(quote!(
                     #(
                         for arg in args join ( ) =>
-                        #(Format(&arg.ty))
+                        #(&arg.ty.in_flavor::<CppFormat>())
                     )#(r"\n")
                 ))), #(
                     for arg in args join (, ) =>
@@ -173,7 +175,7 @@ impl FormatInto<CppLang> for &LStmt {
                 scanf(#(quoted(quote!(
                     #(
                         for arg in args join () =>
-                        #(Format(&arg.ty))
+                        #(&arg.ty.in_flavor::<CppFormat>())
                     )
                 ))), #(
                     for arg in args join (, ) =>
@@ -202,11 +204,12 @@ impl FormatInto<CppLang> for &LStmt {
             },
             LStmt::For {
                 allocs,
-                index: LDecl { name: i, .. },
+                index,
                 index_ty,
                 bound,
                 body,
             } => {
+                let i = &index.name;
                 quote_in! { *tokens =>
                     #(
                         for alloc in allocs join (#<push>) =>
@@ -219,13 +222,13 @@ impl FormatInto<CppLang> for &LStmt {
             }
             LStmt::Assume { cond } => quote_in! { *tokens =>
                 assert(#cond);
-            }
+            },
         }
     }
 }
 
-impl FormatInto<CppLang> for &LDecl {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for LDecl<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         let LDecl { ty, name } = self;
         quote_in! { *tokens =>
             #ty #name
@@ -233,8 +236,8 @@ impl FormatInto<CppLang> for &LDecl {
     }
 }
 
-impl FormatInto<CppLang> for &LAlloc {
-    fn format_into(self, tokens: &mut Tokens<CppLang>) {
+impl Code for LAlloc<Cpp> {
+    fn code_into(self: &Self, tokens: &mut Tokens) {
         let LAlloc {
             decl,
             array,
@@ -248,9 +251,4 @@ impl FormatInto<CppLang> for &LAlloc {
             }) = new #item_ty[#size];
         }
     }
-}
-
-pub fn gen_file(spec: &LSpec) -> String {
-    let tokens: Tokens<CppLang> = quote!(#spec);
-    tokens.to_file_string().unwrap()
 }

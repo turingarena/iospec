@@ -1,6 +1,6 @@
 //! Build LIR from HIR.
 
-use std::ops::Deref;
+use std::marker::PhantomData;
 
 use crate::atom::*;
 use crate::code::lir::*;
@@ -11,23 +11,27 @@ trait LirFrom<T> {
     fn lir_from(hir: &T) -> Self;
 }
 
-impl<T, U: LirFrom<T>> LirFrom<Rc<T>> for U {
+trait LirInto<U, F: LirFlavor> {
+    fn lir(self: &Self) -> Lir<F, U>;
+}
+
+impl<T, U: LirFrom<T>, F: LirFlavor> LirInto<U, F> for T {
+    fn lir(self: &Self) -> Lir<F, U> {
+        U::lir_from(self).into()
+    }
+}
+
+trait LirFromRc<T> {
+    fn lir_from(hir: &T) -> Self;
+}
+
+impl<T, U: LirFromRc<T>> LirFrom<Rc<T>> for U {
     fn lir_from(hir: &Rc<T>) -> Self {
-        U::lir_from(hir.deref())
+        <U as LirFromRc<T>>::lir_from(hir.as_ref())
     }
 }
 
-trait LirInto<U> {
-    fn lir(self: &Self) -> U;
-}
-
-impl<T, U: LirFrom<T>> LirInto<U> for T {
-    fn lir(self: &Self) -> U {
-        U::lir_from(self)
-    }
-}
-
-impl LirFrom<HSpec> for LSpec {
+impl<F: LirFlavor> LirFromRc<HSpec> for LSpec<F> {
     fn lir_from(hir: &HSpec) -> Self {
         LSpec {
             funs: hir.main.funs.iter().map(|f| f.lir()).collect(),
@@ -36,40 +40,28 @@ impl LirFrom<HSpec> for LSpec {
     }
 }
 
-impl LirFrom<HStep> for LBlock {
+impl<F: LirFlavor> LirFromRc<HStep> for LBlock<F> {
     fn lir_from(hir: &HStep) -> Self {
-        LBlock { stmts: hir.lir() }
+        LBlock {
+            stmts: match &hir.expr {
+                HStepExpr::Seq { steps } => steps.iter().map(LirInto::lir).collect(),
+                _ => unreachable!(),
+            },
+        }
     }
 }
 
-impl LirFrom<HStep> for Vec<LStmt> {
+impl<F: LirFlavor> LirFromRc<HStep> for LStmt<F> {
     fn lir_from(hir: &HStep) -> Self {
         match &hir.expr {
-            HStepExpr::Seq { steps } => steps
-                .iter()
-                .flat_map::<Vec<LStmt>, _>(LirInto::lir)
-                .collect(),
-            HStepExpr::Read { args, .. } => vec![LStmt::Read {
-                args: args
-                    .iter()
-                    .map(|atom| LReadArg {
-                        decl: node_decl(&atom.node).map(|h| h.lir()),
-                        expr: atom.node.lir(),
-                        ty: atom.ty.lir(),
-                    })
-                    .collect(),
-            }],
-            HStepExpr::Write { args, .. } => vec![LStmt::Write {
-                args: args
-                    .iter()
-                    .cloned()
-                    .map(|atom| LWriteArg {
-                        ty: atom.ty.lir(),
-                        expr: atom.val.lir(),
-                    })
-                    .collect(),
-            }],
-            HStepExpr::Call { fun, .. } => vec![LStmt::Call {
+            HStepExpr::Seq { .. } => unreachable!(),
+            HStepExpr::Read { args, .. } => LStmt::Read {
+                args: args.iter().map(LirInto::lir).collect(),
+            },
+            HStepExpr::Write { args, .. } => LStmt::Write {
+                args: args.iter().map(LirInto::lir).collect(),
+            },
+            HStepExpr::Call { fun, .. } => LStmt::Call {
                 decl: fun
                     .ret
                     .as_ref()
@@ -77,30 +69,46 @@ impl LirFrom<HStep> for Vec<LStmt> {
                 name: fun.name.to_string(),
                 args: fun.args.iter().map(|a| a.val.lir()).collect(),
                 ret: fun.ret.as_ref().map(|a| a.node.lir()),
-            }],
-            HStepExpr::For { range, body, .. } => vec![LStmt::For {
+            },
+            HStepExpr::For { range, body, .. } => LStmt::For {
                 allocs: hir
                     .nodes
                     .iter()
                     .flat_map(node_alloc)
                     .map(|h| h.lir())
                     .collect(),
-                index: LDecl {
-                    name: range.index.to_string(),
-                    ty: range.bound.val.ty.lir(),
-                },
+                index: range.lir(),
                 index_ty: range.bound.ty.lir(),
                 bound: range.bound.val.lir(),
                 body: body.lir(),
-            }],
-            HStepExpr::Assume { cond, .. } => vec![LStmt::Assume {
+            },
+            HStepExpr::Assume { cond, .. } => LStmt::Assume {
                 cond: cond.val.lir(),
-            }],
+            },
         }
     }
 }
 
-impl LirFrom<HVarDef> for LDecl {
+impl<F: LirFlavor> LirFromRc<HAtomDef> for LReadArg<F> {
+    fn lir_from(atom: &HAtomDef) -> Self {
+        LReadArg {
+            decl: node_decl(&atom.node).map(|h| h.lir()),
+            expr: atom.node.lir(),
+            ty: atom.ty.lir(),
+        }
+    }
+}
+
+impl<F: LirFlavor> LirFromRc<HAtom> for LWriteArg<F> {
+    fn lir_from(atom: &HAtom) -> Self {
+        LWriteArg {
+            ty: atom.ty.lir(),
+            expr: atom.val.lir(),
+        }
+    }
+}
+
+impl<F: LirFlavor> LirFromRc<HVarDef> for LDecl<F> {
     fn lir_from(var: &HVarDef) -> Self {
         LDecl {
             name: match &var.expr {
@@ -112,7 +120,16 @@ impl LirFrom<HVarDef> for LDecl {
     }
 }
 
-impl LirFrom<HAlloc> for LAlloc {
+impl<F: LirFlavor> LirFromRc<HRange> for LDecl<F> {
+    fn lir_from(range: &HRange) -> Self {
+        LDecl {
+            name: range.index.to_string(),
+            ty: range.bound.val.ty.lir(),
+        }
+    }
+}
+
+impl<F: LirFlavor> LirFrom<HAlloc> for LAlloc<F> {
     fn lir_from(alloc: &HAlloc) -> Self {
         LAlloc {
             decl: node_decl(&alloc.array).map(|h| h.lir()),
@@ -123,7 +140,7 @@ impl LirFrom<HAlloc> for LAlloc {
     }
 }
 
-impl LirFrom<HNodeDef> for LExpr {
+impl<F: LirFlavor> LirFromRc<HNodeDef> for LExpr<F> {
     fn lir_from(node: &HNodeDef) -> Self {
         match &node.expr {
             HNodeDefExpr::Var { var, .. } => LExpr::Var {
@@ -141,7 +158,7 @@ impl LirFrom<HNodeDef> for LExpr {
     }
 }
 
-impl LirFrom<HVal> for LExpr {
+impl<F: LirFlavor> LirFromRc<HVal> for LExpr<F> {
     fn lir_from(val: &HVal) -> Self {
         match &val.expr {
             HValExpr::Var { name, .. } => LExpr::Var {
@@ -167,37 +184,30 @@ impl LirFrom<HVal> for LExpr {
                     .collect(),
             },
             HValExpr::RelChain { rels } => LExpr::And {
-                clauses: rels
-                    .iter()
-                    .map(|(left, op, right)| LExpr::Rel {
-                        left: Box::new(left.val.lir()),
-                        op: op.clone(),
-                        right: Box::new(right.val.lir()),
-                    })
-                    .collect(),
+                clauses: rels.iter().map(LirInto::lir).collect(),
             },
             HValExpr::Err => unreachable!(),
         }
     }
 }
 
-impl LirFrom<HSign> for Option<LSign> {
+impl<F: LirFlavor> LirFrom<HSign> for Option<LSign<F>> {
     fn lir_from(sign: &HSign) -> Self {
         match sign {
             HSign::Plus(None) => None,
-            HSign::Plus(Some(_)) => Some(LSign::Plus),
-            HSign::Minus(_) => Some(LSign::Minus),
+            HSign::Plus(Some(_)) => Some(LSign::Plus(PhantomData)),
+            HSign::Minus(_) => Some(LSign::Minus(PhantomData)),
         }
     }
 }
 
-impl LirFrom<HAtomTy> for AtomTy {
+impl LirFromRc<HAtomTy> for AtomTy {
     fn lir_from(ty: &HAtomTy) -> Self {
         ty.sem.unwrap()
     }
 }
 
-impl LirFrom<HValTy> for LTy {
+impl<F: LirFlavor> LirFromRc<HValTy> for LTy<F> {
     fn lir_from(ty: &HValTy) -> Self {
         match ty {
             HValTy::Atom { atom_ty } => LTy::Atom {
@@ -211,7 +221,7 @@ impl LirFrom<HValTy> for LTy {
     }
 }
 
-impl LirFrom<HFun> for LFun {
+impl<F: LirFlavor> LirFromRc<HFun> for LFun<F> {
     fn lir_from(fun: &HFun) -> Self {
         LFun {
             name: fun.name.to_string(),
@@ -221,7 +231,18 @@ impl LirFrom<HFun> for LFun {
     }
 }
 
-impl LirFrom<HArg> for LParam {
+impl<F: LirFlavor> LirFrom<HRel> for LExpr<F> {
+    fn lir_from(rel: &HRel) -> Self {
+        let (left, op, right) = rel;
+        LExpr::Rel {
+            left: Box::new(left.val.lir()),
+            op: Lir::from(op.clone()),
+            right: Box::new(right.val.lir()),
+        }
+    }
+}
+
+impl<F: LirFlavor> LirFromRc<HArg> for LParam<F> {
     fn lir_from(arg: &HArg) -> Self {
         LParam {
             name: match &arg.expr {
@@ -233,6 +254,6 @@ impl LirFrom<HArg> for LParam {
     }
 }
 
-pub fn build_lir(spec: &Rc<HSpec>) -> LSpec {
+pub fn build_lir<F: LirFlavor>(spec: &Rc<HSpec>) -> Lir<F, LSpec<F>> {
     spec.lir()
 }

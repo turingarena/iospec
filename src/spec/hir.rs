@@ -215,10 +215,12 @@ pub enum HValExpr {
         ty: Rc<HAtomTy>,
     },
     RelChain {
-        rels: Vec<(Rc<HAtom>, RelOp, Rc<HAtom>)>,
+        rels: Vec<HRel>,
     },
     Err,
 }
+
+pub type HRel = (Rc<HAtom>, RelOp, Rc<HAtom>);
 
 /// Type of a value (either atomic or aggregate)
 #[derive(Debug)]
