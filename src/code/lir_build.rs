@@ -1,7 +1,5 @@
 //! Build LIR from HIR.
 
-use std::marker::PhantomData;
-
 use crate::atom::*;
 use crate::code::lir::*;
 use crate::spec::hir::*;
@@ -195,12 +193,12 @@ impl<L: CodeLang> LirFromRc<HVal, L> for LExpr<L> {
     }
 }
 
-impl<L: CodeLang> LirFrom<HSign, L> for Option<LSign<L>> {
+impl<L: CodeLang> LirFrom<HSign, L> for Option<LSign> {
     fn lir_from(sign: &HSign, _lang: &L) -> Self {
         match sign {
             HSign::Plus(None) => None,
-            HSign::Plus(Some(_)) => Some(LSign::Plus(PhantomData)),
-            HSign::Minus(_) => Some(LSign::Minus(PhantomData)),
+            HSign::Plus(Some(_)) => Some(LSign::Plus),
+            HSign::Minus(_) => Some(LSign::Minus),
         }
     }
 }

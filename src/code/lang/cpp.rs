@@ -97,25 +97,25 @@ impl Code<Cpp> for LExpr<Cpp> {
     }
 }
 
-impl Code<Cpp> for Option<LSign<Cpp>> {
+impl Code<Cpp> for Option<LSign> {
     fn code_into(self: &Self, _lang: &Cpp, tokens: &mut Tokens) {
         match self {
-            Some(LSign::Plus(_)) => quote_in!(*tokens => +),
-            Some(LSign::Minus(_)) => quote_in!(*tokens => -),
+            Some(LSign::Plus) => quote_in!(*tokens => +),
+            Some(LSign::Minus) => quote_in!(*tokens => -),
             None => (),
         }
     }
 }
 
-impl Code<Cpp> for Lir<Cpp, RelOp> {
+impl Code<Cpp> for RelOp {
     fn code_into(self: &Self, _lang: &Cpp, tokens: &mut Tokens) {
         quote_in!(*tokens => #(self.to_string()))
     }
 }
 
-impl Code<Cpp> for Lir<Cpp, AtomTy> {
+impl Code<Cpp> for AtomTy {
     fn code_into(self: &Self, _lang: &Cpp, tokens: &mut Tokens) {
-        match self.as_ref() {
+        match self {
             AtomTy::Bool => quote_in!(*tokens => bool),
             AtomTy::Nat { size } | AtomTy::Int { size } => {
                 quote_in!(*tokens => int#(size.bits())_t)
@@ -125,13 +125,13 @@ impl Code<Cpp> for Lir<Cpp, AtomTy> {
 }
 
 #[derive(Debug, Clone)]
-struct CppFormat;
+struct CppStdioFormat;
 
-impl CodeLang for CppFormat {}
+impl CodeLang for CppStdioFormat {}
 
-impl Code<CppFormat> for Lir<CppFormat, AtomTy> {
-    fn code_into(self: &Self, _lang: &CppFormat, tokens: &mut Tokens) {
-        match self.as_ref() {
+impl Code<CppStdioFormat> for AtomTy {
+    fn code_into(self: &Self, _lang: &CppStdioFormat, tokens: &mut Tokens) {
+        match self {
             AtomTy::Bool => quote_in!(*tokens => %d),
             AtomTy::Nat { size } | AtomTy::Int { size } => match size {
                 BitSize::S8 | BitSize::S16 | BitSize::S32 => quote_in!(*tokens => %d),
@@ -157,7 +157,7 @@ impl Code<Cpp> for LStmt<Cpp> {
                 printf(#(quoted(quote!(
                     #(
                         for arg in args join ( ) =>
-                        #(&arg.ty.with_lang(CppFormat))
+                        #(&arg.ty.with_lang(CppStdioFormat))
                     )#(r"\n")
                 ))), #(
                     for arg in args join (, ) =>
@@ -175,7 +175,7 @@ impl Code<Cpp> for LStmt<Cpp> {
                 scanf(#(quoted(quote!(
                     #(
                         for arg in args join () =>
-                        #(&arg.ty.with_lang(CppFormat))
+                        #(&arg.ty.with_lang(CppStdioFormat))
                     )
                 ))), #(
                     for arg in args join (, ) =>

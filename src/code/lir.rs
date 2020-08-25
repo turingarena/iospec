@@ -3,13 +3,14 @@
 //! LIR is meant to be directly translated into parser code.
 //! It is a tree without references to higher level nodes (HIR).
 //! Thus, it can be easily traversed structurally and translated into code.
+//! Moreover, each node owns (a reference to) the configuration of the target language,
+//! so that nodes can be translated to target code without contextual information.
 
-use std::marker::PhantomData;
+use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::atom::*;
 use crate::spec::rel::RelOp;
-use std::ops::Deref;
 
 pub trait CodeLang: Clone {}
 
@@ -138,7 +139,7 @@ pub enum LExpr<L: CodeLang> {
         factors: Vec<Lir<L, LExpr<L>>>,
     },
     Sum {
-        terms: Vec<(Lir<L, Option<LSign<L>>>, Lir<L, LExpr<L>>)>,
+        terms: Vec<(Lir<L, Option<LSign>>, Lir<L, LExpr<L>>)>,
     },
     Rel {
         left: Box<Lir<L, LExpr<L>>>,
@@ -151,9 +152,9 @@ pub enum LExpr<L: CodeLang> {
 }
 
 #[derive(Debug, Clone)]
-pub enum LSign<L: CodeLang> {
-    Plus(PhantomData<L>),
-    Minus(PhantomData<L>),
+pub enum LSign {
+    Plus,
+    Minus,
 }
 
 #[derive(Debug, Clone)]
