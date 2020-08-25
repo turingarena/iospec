@@ -21,6 +21,7 @@ impl FormatInto<CppLang> for &LSpec {
         quote_in! {*tokens =>
             ##include <cstdio>
             ##include <cstdint>
+            ##include <cassert>
 
             #(
                 for f in funs join (#<line>) =>
@@ -109,7 +110,7 @@ impl FormatInto<CppLang> for &LSign {
 
 impl FormatInto<CppLang> for &RelOp {
     fn format_into(self, tokens: &mut Tokens<CppLang>) {
-        quote_in!(*tokens => #self)
+        quote_in!(*tokens => #(self.to_string()))
     }
 }
 
@@ -215,6 +216,9 @@ impl FormatInto<CppLang> for &LStmt {
                         #body
                     }
                 }
+            }
+            LStmt::Assume { cond } => quote_in! { *tokens =>
+                assert(#cond);
             }
         }
     }

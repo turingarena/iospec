@@ -52,6 +52,9 @@ pub enum LStmt {
         bound: LExpr,
         body: LBlock,
     },
+    Assume {
+        cond: LExpr,
+    },
 }
 
 #[derive(Debug, Clone)]
