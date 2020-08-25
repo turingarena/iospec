@@ -6,24 +6,24 @@ pub trait Code {
     fn code_into(self: &Self, tokens: &mut Tokens);
 }
 
-impl<T: Code, F: LirFlavor> Code for Lir<F, T> {
+impl<T: Code, C: LirConfig> Code for Lir<C, T> {
     fn code_into(self: &Self, tokens: &mut Tokens) {
         self.as_ref().code_into(tokens)
     }
 }
 
-impl<F: LirFlavor, T> FormatInto<()> for &Lir<F, T>
+impl<C: LirConfig, T> FormatInto<()> for &Lir<C, T>
 where
-    Lir<F, T>: Code,
+    Lir<C, T>: Code,
 {
     fn format_into(self, tokens: &mut Tokens) {
         self.code_into(tokens)
     }
 }
 
-impl<F: LirFlavor, T> FormatInto<()> for &Box<Lir<F, T>>
+impl<C: LirConfig, T> FormatInto<()> for &Box<Lir<C, T>>
 where
-    Lir<F, T>: Code,
+    Lir<C, T>: Code,
 {
     fn format_into(self, tokens: &mut Tokens) {
         self.code_into(tokens)

@@ -11,39 +11,30 @@ use crate::atom::*;
 use crate::spec::rel::RelOp;
 use std::ops::Deref;
 
-pub trait LirFlavor {}
+pub trait LirConfig: Clone {}
 
 #[derive(Debug, Clone)]
-pub struct Lir<F: LirFlavor, T> {
-    pub flavor: PhantomData<F>,
+pub struct Lir<C: LirConfig, T> {
+    pub config: C,
     pub code: Rc<T>,
 }
 
-impl<F: LirFlavor, T> From<T> for Lir<F, T> {
-    fn from(code: T) -> Self {
-        Self {
-            code: Rc::new(code),
-            flavor: PhantomData,
-        }
-    }
-}
-
-impl<F: LirFlavor, T> Lir<F, T> {
-    pub fn in_flavor<FF: LirFlavor>(self: &Self) -> Lir<FF, T> {
+impl<C: LirConfig, T> Lir<C, T> {
+    pub fn with_config<FF: LirConfig>(self: &Self, config: FF) -> Lir<FF, T> {
         Lir {
             code: self.code.clone(),
-            flavor: PhantomData,
+            config,
         }
     }
 }
 
-impl<F: LirFlavor, T> AsRef<T> for Lir<F, T> {
+impl<C: LirConfig, T> AsRef<T> for Lir<C, T> {
     fn as_ref(self: &Self) -> &T {
         self.code.as_ref()
     }
 }
 
-impl<F: LirFlavor, T> Deref for Lir<F, T> {
+impl<C: LirConfig, T> Deref for Lir<C, T> {
     type Target = T;
 
     fn deref(self: &Self) -> &Self::Target {
@@ -52,121 +43,121 @@ impl<F: LirFlavor, T> Deref for Lir<F, T> {
 }
 
 #[derive(Debug, Clone)]
-pub struct LSpec<F: LirFlavor> {
-    pub funs: Vec<Lir<F, LFun<F>>>,
-    pub main: Lir<F, LBlock<F>>,
+pub struct LSpec<C: LirConfig> {
+    pub funs: Vec<Lir<C, LFun<C>>>,
+    pub main: Lir<C, LBlock<C>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LFun<F: LirFlavor> {
+pub struct LFun<C: LirConfig> {
     pub name: String,
-    pub params: Vec<Lir<F, LParam<F>>>,
-    pub ret: Option<Lir<F, AtomTy>>,
+    pub params: Vec<Lir<C, LParam<C>>>,
+    pub ret: Option<Lir<C, AtomTy>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LParam<F: LirFlavor> {
+pub struct LParam<C: LirConfig> {
     pub name: String,
-    pub ty: Lir<F, LTy<F>>,
+    pub ty: Lir<C, LTy<C>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LBlock<F: LirFlavor> {
-    pub stmts: Vec<Lir<F, LStmt<F>>>,
+pub struct LBlock<C: LirConfig> {
+    pub stmts: Vec<Lir<C, LStmt<C>>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum LStmt<F: LirFlavor> {
+pub enum LStmt<C: LirConfig> {
     Read {
-        args: Vec<Lir<F, LReadArg<F>>>,
+        args: Vec<Lir<C, LReadArg<C>>>,
     },
     Write {
-        args: Vec<Lir<F, LWriteArg<F>>>,
+        args: Vec<Lir<C, LWriteArg<C>>>,
     },
     Call {
-        decl: Option<Lir<F, LDecl<F>>>,
+        decl: Option<Lir<C, LDecl<C>>>,
         name: String,
-        args: Vec<Lir<F, LExpr<F>>>,
-        ret: Option<Lir<F, LExpr<F>>>,
+        args: Vec<Lir<C, LExpr<C>>>,
+        ret: Option<Lir<C, LExpr<C>>>,
     },
     For {
-        allocs: Vec<Lir<F, LAlloc<F>>>,
-        index: Lir<F, LDecl<F>>,
-        index_ty: Lir<F, AtomTy>,
-        bound: Lir<F, LExpr<F>>,
-        body: Lir<F, LBlock<F>>,
+        allocs: Vec<Lir<C, LAlloc<C>>>,
+        index: Lir<C, LDecl<C>>,
+        index_ty: Lir<C, AtomTy>,
+        bound: Lir<C, LExpr<C>>,
+        body: Lir<C, LBlock<C>>,
     },
     Assume {
-        cond: Lir<F, LExpr<F>>,
+        cond: Lir<C, LExpr<C>>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct LDecl<F: LirFlavor> {
-    pub ty: Lir<F, LTy<F>>,
+pub struct LDecl<C: LirConfig> {
+    pub ty: Lir<C, LTy<C>>,
     pub name: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct LReadArg<F: LirFlavor> {
-    pub decl: Option<Lir<F, LDecl<F>>>,
-    pub expr: Lir<F, LExpr<F>>,
-    pub ty: Lir<F, AtomTy>,
+pub struct LReadArg<C: LirConfig> {
+    pub decl: Option<Lir<C, LDecl<C>>>,
+    pub expr: Lir<C, LExpr<C>>,
+    pub ty: Lir<C, AtomTy>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LWriteArg<F: LirFlavor> {
-    pub expr: Lir<F, LExpr<F>>,
-    pub ty: Lir<F, AtomTy>,
+pub struct LWriteArg<C: LirConfig> {
+    pub expr: Lir<C, LExpr<C>>,
+    pub ty: Lir<C, AtomTy>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LAlloc<F: LirFlavor> {
-    pub decl: Option<Lir<F, LDecl<F>>>,
-    pub array: Lir<F, LExpr<F>>,
-    pub item_ty: Lir<F, LTy<F>>,
-    pub size: Lir<F, LExpr<F>>,
+pub struct LAlloc<C: LirConfig> {
+    pub decl: Option<Lir<C, LDecl<C>>>,
+    pub array: Lir<C, LExpr<C>>,
+    pub item_ty: Lir<C, LTy<C>>,
+    pub size: Lir<C, LExpr<C>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum LExpr<F: LirFlavor> {
+pub enum LExpr<C: LirConfig> {
     Var {
         name: String,
     },
     Subscript {
-        array: Box<Lir<F, LExpr<F>>>,
-        index: Box<Lir<F, LExpr<F>>>,
+        array: Box<Lir<C, LExpr<C>>>,
+        index: Box<Lir<C, LExpr<C>>>,
     },
     Lit {
         value: i64,
     },
     Paren {
-        inner: Box<Lir<F, LExpr<F>>>,
+        inner: Box<Lir<C, LExpr<C>>>,
     },
     Mul {
-        factors: Vec<Lir<F, LExpr<F>>>,
+        factors: Vec<Lir<C, LExpr<C>>>,
     },
     Sum {
-        terms: Vec<(Lir<F, Option<LSign<F>>>, Lir<F, LExpr<F>>)>,
+        terms: Vec<(Lir<C, Option<LSign<C>>>, Lir<C, LExpr<C>>)>,
     },
     Rel {
-        left: Box<Lir<F, LExpr<F>>>,
-        op: Lir<F, RelOp>,
-        right: Box<Lir<F, LExpr<F>>>,
+        left: Box<Lir<C, LExpr<C>>>,
+        op: Lir<C, RelOp>,
+        right: Box<Lir<C, LExpr<C>>>,
     },
     And {
-        clauses: Vec<Lir<F, LExpr<F>>>,
+        clauses: Vec<Lir<C, LExpr<C>>>,
     },
 }
 
 #[derive(Debug, Clone)]
-pub enum LSign<F: LirFlavor> {
-    Plus(PhantomData<F>),
-    Minus(PhantomData<F>),
+pub enum LSign<C: LirConfig> {
+    Plus(PhantomData<C>),
+    Minus(PhantomData<C>),
 }
 
 #[derive(Debug, Clone)]
-pub enum LTy<F: LirFlavor> {
-    Atom { atom: Lir<F, AtomTy> },
-    Array { item: Box<Lir<F, LTy<F>>> },
+pub enum LTy<C: LirConfig> {
+    Atom { atom: Lir<C, AtomTy> },
+    Array { item: Box<Lir<C, LTy<C>>> },
 }

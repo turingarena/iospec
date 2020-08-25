@@ -11,7 +11,7 @@ use super::lir_code::*;
 #[derive(Debug, Clone)]
 pub struct Cpp;
 
-impl LirFlavor for Cpp {}
+impl LirConfig for Cpp {}
 
 impl Code for LSpec<Cpp> {
     fn code_into(self: &Self, tokens: &mut Tokens) {
@@ -127,7 +127,7 @@ impl Code for Lir<Cpp, AtomTy> {
 #[derive(Debug, Clone)]
 struct CppFormat;
 
-impl LirFlavor for CppFormat {}
+impl LirConfig for CppFormat {}
 
 impl Code for Lir<CppFormat, AtomTy> {
     fn code_into(self: &Self, tokens: &mut Tokens) {
@@ -157,7 +157,7 @@ impl Code for LStmt<Cpp> {
                 printf(#(quoted(quote!(
                     #(
                         for arg in args join ( ) =>
-                        #(&arg.ty.in_flavor::<CppFormat>())
+                        #(&arg.ty.with_config(CppFormat))
                     )#(r"\n")
                 ))), #(
                     for arg in args join (, ) =>
@@ -175,7 +175,7 @@ impl Code for LStmt<Cpp> {
                 scanf(#(quoted(quote!(
                     #(
                         for arg in args join () =>
-                        #(&arg.ty.in_flavor::<CppFormat>())
+                        #(&arg.ty.with_config(CppFormat))
                     )
                 ))), #(
                     for arg in args join (, ) =>
