@@ -451,7 +451,12 @@ impl HirCompileFrom<AExpr> for HValExpr {
     fn compile(ast: AExpr, env: &Env, dgns: &mut Vec<Diagnostic>) -> Self {
         match ast {
             AExpr::IntLit { token } => {
-                let ty = AtomTy::from_str(token.suffix()).ok();
+                let suffix = token.suffix();
+                let ty = if suffix.is_empty() {
+                    Some(AtomTy::Nat { size: BitSize::S32 })
+                } else {
+                    AtomTy::from_str(suffix).ok()
+                };
                 let value_i64_result = i64::from_str(token.base10_digits());
 
                 let value = match (ty, value_i64_result.clone()) {

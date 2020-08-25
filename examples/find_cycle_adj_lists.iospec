@@ -1,16 +1,16 @@
 read N: n32; // number of nodes
 
-assume 1n32 <= N <= 1_000n32;
+assume 1 <= N <= 1_000;
 
 for u upto N {
     read D[u]: n32; // degree of u
 
-    assume 0n32 <= D[u] <= N - 1n32;
+    assume 0 <= D[u] <= N - 1;
 
     for i upto D[u] {
         read A[u][i]: n32; // adjacency list
 
-        assume 0n32 <= A[u][i] <= N - 1n32;
+        assume 0 <= A[u][i] <= N - 1;
         assume A[u][i] != u; // no self loops
     }
 }

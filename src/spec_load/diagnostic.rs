@@ -200,14 +200,7 @@ impl Diagnostic {
                 &format!("invalid literal",),
                 std::iter::empty()
                     .chain(if ty.is_none() {
-                        Some(if token.suffix().is_empty() {
-                            sess.error_ann(
-                                "must specify the type as suffix (e.g., `10n32`)",
-                                token.span(),
-                            )
-                        } else {
-                            sess.error_ann("invalid type as suffix", token.span())
-                        })
+                        Some(sess.error_ann("invalid suffix", token.span()))
                     } else {
                         None
                     })
