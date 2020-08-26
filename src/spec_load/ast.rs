@@ -75,7 +75,7 @@ pub struct ATy {
     pub ident: AIdent,
 }
 
-/// AST of, e.g, `N[A[i]]` (or `A[i] * N + 1` when implemented).
+/// AST of, e.g, `N[A[i]]` or `A[i] * N + 1`.
 #[derive(Debug)]
 pub enum AExpr {
     IntLit {
