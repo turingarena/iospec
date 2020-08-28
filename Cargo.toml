@@ -3,8 +3,12 @@ name = "turingarena-iospec"
 version = "0.1.0"
 authors = ["Massimo Cairo <cairomassimo@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+keywords = ["turingarena", "iospec"]
+categories = ["command-line-utilities"]
+description = "Tool to specify I/O format and automate validation, parser generation, and more. Part of TuringArena: tools to create programming challenges."
+readme = "README.md"
+repository = "https://github.com/turingarena/iospec/"
 
 [dependencies]
 syn = "1.0.39"
