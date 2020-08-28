@@ -4,7 +4,6 @@ use std::ops::Deref;
 
 use crate::spec::hir::*;
 
-#[derive(Debug, Clone)]
 pub struct HAlloc {
     pub array: Rc<HNodeDef>,
     pub item_ty: Rc<HValTy>,

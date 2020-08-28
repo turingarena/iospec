@@ -3,7 +3,6 @@ use std::error::Error;
 use crate::atom::*;
 use crate::spec::hir::*;
 
-#[derive(Debug)]
 pub enum RError {
     UnresolvedVal {
         val: Rc<HVal>,
@@ -25,7 +24,6 @@ pub enum RError {
     },
 }
 
-#[derive(Debug)]
 pub enum AtomSourceError {
     Parse(Box<dyn Error>),
     Type(AtomTypeError),
@@ -33,7 +31,6 @@ pub enum AtomSourceError {
     End,
 }
 
-#[derive(Debug)]
 pub struct AtomValueError {
     pub expected: i64,
     pub actual: i64,

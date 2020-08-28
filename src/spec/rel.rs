@@ -3,7 +3,7 @@
 use syn::export::fmt::{Display, Error};
 use syn::export::Formatter;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub enum RelOp {
     Eq(syn::token::Eq),
     Ne(syn::token::Ne),

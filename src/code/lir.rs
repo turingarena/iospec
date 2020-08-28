@@ -14,7 +14,7 @@ use crate::spec::rel::RelOp;
 
 pub trait CodeLang: Clone {}
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Lir<L: CodeLang, T> {
     pub lang: L,
     pub code: Rc<T>,
@@ -43,31 +43,31 @@ impl<L: CodeLang, T> Deref for Lir<L, T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LSpec<L: CodeLang> {
     pub funs: Vec<Lir<L, LFun<L>>>,
     pub main: Lir<L, LBlock<L>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LFun<L: CodeLang> {
     pub name: String,
     pub params: Vec<Lir<L, LParam<L>>>,
     pub ret: Option<Lir<L, AtomTy>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LParam<L: CodeLang> {
     pub name: String,
     pub ty: Lir<L, LTy<L>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LBlock<L: CodeLang> {
     pub stmts: Vec<Lir<L, LStmt<L>>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum LStmt<L: CodeLang> {
     Read {
         args: Vec<Lir<L, LReadArg<L>>>,
@@ -94,26 +94,26 @@ pub enum LStmt<L: CodeLang> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LDecl<L: CodeLang> {
     pub ty: Lir<L, LTy<L>>,
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LReadArg<L: CodeLang> {
     pub decl: Option<Lir<L, LDecl<L>>>,
     pub expr: Lir<L, LExpr<L>>,
     pub ty: Lir<L, AtomTy>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LWriteArg<L: CodeLang> {
     pub expr: Lir<L, LExpr<L>>,
     pub ty: Lir<L, AtomTy>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LAlloc<L: CodeLang> {
     pub decl: Option<Lir<L, LDecl<L>>>,
     pub array: Lir<L, LExpr<L>>,
@@ -121,7 +121,7 @@ pub struct LAlloc<L: CodeLang> {
     pub size: Lir<L, LExpr<L>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum LExpr<L: CodeLang> {
     Var {
         name: String,
@@ -152,14 +152,14 @@ pub enum LExpr<L: CodeLang> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum LSign {
     ImplicitPlus,
     Plus,
     Minus,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum LTy<L: CodeLang> {
     Atom { atom: Lir<L, AtomTy> },
     Array { item: Box<Lir<L, LTy<L>>> },

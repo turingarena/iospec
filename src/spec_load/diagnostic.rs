@@ -4,7 +4,6 @@ use crate::spec::hir_quote::quote_hir;
 use crate::spec::hir_span::*;
 use crate::spec::sess::*;
 
-#[derive(Debug, Clone)]
 pub enum Diagnostic {
     ParseError {
         error: syn::parse::Error,

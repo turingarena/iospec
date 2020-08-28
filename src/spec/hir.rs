@@ -21,13 +21,11 @@ use crate::atom::*;
 use crate::spec::kw;
 use crate::spec::rel::*;
 
-#[derive(Debug)]
 pub struct HSpec {
     pub main: Rc<HStep>,
 }
 
 /// An executable part of the spec, i.e., either a statement or block (analysis).
-#[derive(Debug)]
 pub struct HStep {
     pub expr: HStepExpr,
     /// Data nodes defined inside this statement/block
@@ -37,7 +35,6 @@ pub struct HStep {
 }
 
 /// An executable part of the spec, i.e., either a statement or block (construction).
-#[derive(Debug)]
 pub enum HStepExpr {
     Seq {
         steps: Vec<Rc<HStep>>,
@@ -74,7 +71,6 @@ pub enum HStepExpr {
 
 /// A called function.
 /// E.g., `f(A, B) -> C: i32` in `... call f(A, B) -> C: i32; ...`
-#[derive(Debug)]
 pub struct HFun {
     pub name: Rc<HName>,
     pub args: Vec<Rc<HArg>>,
@@ -87,7 +83,6 @@ pub struct HFun {
 
 /// An argument of a called function (analysis).
 /// E.g., `A` in `... call f(A, B) -> C: i32; ...`.
-#[derive(Debug)]
 pub struct HArg {
     pub expr: HArgExpr,
     pub val: Rc<HVal>,
@@ -95,7 +90,6 @@ pub struct HArg {
 
 /// An argument of a called function (construction).
 /// E.g., `A` in `... call f(A, B) -> C: i32; ...`.
-#[derive(Debug)]
 pub enum HArgExpr {
     Name { name: Rc<HName> },
     Err,
@@ -103,7 +97,6 @@ pub enum HArgExpr {
 
 /// Definition of an atomic value in input/output data.
 /// E.g., `A[i][j]: n32` in `... read A[i][j]: n32; ...`.
-#[derive(Debug)]
 pub struct HAtomDef {
     pub node: Rc<HNodeDef>,
     pub colon: syn::Token![:],
@@ -112,7 +105,6 @@ pub struct HAtomDef {
 
 /// Definition of a value (either atomic or aggregate) in input/output data (analysis).
 /// E.g., `A`, `A[i]` and `A[i][j]` in `... read A[i][j]: n32; ...`.
-#[derive(Debug)]
 pub struct HNodeDef {
     pub expr: HNodeDefExpr,
     pub ty: Rc<HValTy>,
@@ -121,7 +113,6 @@ pub struct HNodeDef {
 
 /// Definition of a value (either atomic or aggregate) in input/output data (construction).
 /// E.g., `A`, `A[i]` and `A[i][j]` in `... read A[i][j]: n32; ...`.
-#[derive(Debug)]
 pub enum HNodeDefExpr {
     Var {
         var: Rc<HVarDef>,
@@ -136,7 +127,6 @@ pub enum HNodeDefExpr {
 
 /// Definition of a variable containing input/output data (analysis).
 /// E.g., `A` in `... read A[i][j]: n32; ...`.
-#[derive(Debug)]
 pub struct HVarDef {
     pub expr: HVarDefExpr,
     pub ty: Rc<HValTy>,
@@ -144,7 +134,6 @@ pub struct HVarDef {
 
 /// Definition of a variable containing input/output data (construction).
 /// E.g., `A` in `... read A[i][j]: n32; ...`.
-#[derive(Debug)]
 pub enum HVarDefExpr {
     Name { name: Rc<HName> },
     Err,
@@ -152,7 +141,6 @@ pub enum HVarDefExpr {
 
 /// Range in a `for` statement.
 /// E.g., `i to A[B[i]][k]` in `... for i upto A[B[j]][k] { ... } ...`.
-#[derive(Debug)]
 pub struct HRange {
     pub index: Rc<HName>,
     pub upto: kw::upto,
@@ -161,7 +149,6 @@ pub struct HRange {
 
 /// Upper bound of a `for ... upto`.
 /// E.g., `A[B[i]][k]` in `... for i upto A[B[j]][k] { ... } ...`.
-#[derive(Debug)]
 pub struct HRangeBound {
     pub val: Rc<HVal>,
     pub ty: Rc<HAtomTy>,
@@ -169,7 +156,6 @@ pub struct HRangeBound {
 
 /// Reference to an atomic value of input/output data.
 /// E.g., `A[B[i]][k]` in `... write A[B[j]][k]; ...`.
-#[derive(Debug)]
 pub struct HAtom {
     pub val: Rc<HVal>,
     pub ty: Rc<HAtomTy>,
@@ -177,7 +163,6 @@ pub struct HAtom {
 
 /// A value (rvalue, atomic or aggregate) defined by an expression (analysis).
 /// E.g., `A[B[i]]` in `... for i upto A[B[j]][k] { ... } ...`.
-#[derive(Debug)]
 pub struct HVal {
     pub expr: HValExpr,
     pub ty: Rc<HValTy>,
@@ -185,7 +170,6 @@ pub struct HVal {
 
 /// A value (rvalue, atomic or aggregate) defined by an expression (construction).
 /// E.g., `A[B[i]]` in `... for i upto A[B[j]][k] { ... } ...`.
-#[derive(Debug)]
 pub enum HValExpr {
     Lit {
         token: syn::LitInt,
@@ -223,14 +207,12 @@ pub enum HValExpr {
 pub type HRel = (Rc<HAtom>, RelOp, Rc<HAtom>);
 
 /// Type of a value (either atomic or aggregate)
-#[derive(Debug)]
 pub enum HSign {
     Plus(Option<syn::Token![+]>),
     Minus(syn::Token![-]),
 }
 
 /// Type of a value (either atomic or aggregate)
-#[derive(Debug)]
 pub enum HValTy {
     Atom { atom_ty: Rc<HAtomTy> },
     Array { item: Rc<HValTy>, range: Rc<HRange> },
@@ -238,14 +220,12 @@ pub enum HValTy {
 }
 
 /// Type of an atomic value (analysis)
-#[derive(Debug)]
 pub struct HAtomTy {
     pub expr: HAtomTyExpr,
     pub sem: Option<AtomTy>,
 }
 
 /// Type of an atomic value (construction)
-#[derive(Debug)]
 pub enum HAtomTyExpr {
     Name {
         name: Rc<HName>,
@@ -261,7 +241,6 @@ pub enum HAtomTyExpr {
 }
 
 /// Binding of name to a data variable or an index (analysis).
-#[derive(Debug)]
 pub struct HVar {
     pub name: Rc<HName>,
     pub ty: Rc<HValTy>,
@@ -269,7 +248,6 @@ pub struct HVar {
 }
 
 /// Binding of name to a data variable or an index (construction).
-#[derive(Debug)]
 pub enum HVarExpr {
     Data { def: Rc<HVarDef> },
     Index { range: Rc<HRange> },
@@ -277,7 +255,6 @@ pub enum HVarExpr {
 }
 
 /// An identifier (in any context)
-#[derive(Debug)]
 pub struct HName {
     pub ident: proc_macro2::Ident,
 }

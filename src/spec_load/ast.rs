@@ -9,19 +9,16 @@ use crate::spec::kw;
 use crate::spec::rel::*;
 
 /// AST of a spec file as a whole. Wraps `ABlock`.
-#[derive(Debug)]
 pub struct ASpec {
     pub main: ABlock,
 }
 
 /// AST of a block (sequence of statements), e.g. `read A: n32; call f(A) -> S: i32;`.
-#[derive(Debug)]
 pub struct ABlock {
     pub stmts: Vec<AStmt>,
 }
 
 /// AST of a statement, e.g., `read A: n32;` or `for i upto N { [...] }`.
-#[derive(Debug)]
 pub enum AStmt {
     /// AST of, e.g., `write N, A[i];`.
     Write {
@@ -62,7 +59,6 @@ pub enum AStmt {
 }
 
 /// AST of, e.g., `N: n32` or `A[i]: i32`.
-#[derive(Debug)]
 pub struct ADef {
     pub expr: AExpr,
     pub colon: syn::Token![:],
@@ -70,13 +66,11 @@ pub struct ADef {
 }
 
 /// AST of, e.g, `n32`.
-#[derive(Debug)]
 pub struct ATy {
     pub ident: AIdent,
 }
 
 /// AST of, e.g, `N[A[i]]` or `A[i] * N + 1`.
-#[derive(Debug)]
 pub enum AExpr {
     IntLit {
         token: syn::LitInt,
@@ -105,14 +99,12 @@ pub enum AExpr {
     },
 }
 
-#[derive(Debug)]
 pub enum ASign {
     Plus(syn::Token![+]),
     Minus(syn::Token![-]),
 }
 
 /// AST of an identifier, including variable names, function names, and types.
-#[derive(Debug)]
 pub struct AIdent {
     pub token: proc_macro2::Ident,
 }

@@ -13,7 +13,7 @@ use crate::spec::hir::*;
 use super::diagnostic::*;
 use super::hir_err::HErr;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Env {
     refs: Vec<Rc<HVar>>,
     outer: Option<Box<Env>>,
@@ -86,14 +86,14 @@ impl Env {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct HDefEnv {
     pub env: Env,
     pub loc: Rc<HDataLoc>,
     pub ty: Rc<HValTy>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum HDataLoc {
     Main,
     For {
